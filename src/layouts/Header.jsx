@@ -195,98 +195,7 @@ const Navbar = ({ toggleSidebar }) => {
               )}
             </button>
 
-            {isAuthenticated ? (
-              <div className="flex items-center space-x-2" ref={userMenuRef}>
-                {/* User Menu */}
-                <div className="relative">
-                  <button
-                    onClick={toggleUserDropdown}
-                    className="flex items-center space-x-2 p-1 pr-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
-                    aria-expanded={userDropdownOpen}
-                    aria-haspopup="true"
-                  >
-                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-medium text-sm">
-                      {getInitials(user?.name || user?.email)}
-                    </div>
-                    <span className="hidden md:inline text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {user?.name || 'User'}
-                    </span>
-                    {userDropdownOpen ? (
-                      <FiChevronUp className="h-4 w-4 text-gray-500" />
-                    ) : (
-                      <FiChevronDown className="h-4 w-4 text-gray-500" />
-                    )}
-                  </button>
-
-                  <AnimatePresence>
-                    {userDropdownOpen && (
-                      <motion.div
-                        initial="hidden"
-                        animate="visible"
-                        exit="exit"
-                        variants={userMenuVariants}
-                        className="absolute right-0 mt-2 w-56 rounded-lg bg-white dark:bg-gray-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50 overflow-hidden"
-                        role="menu"
-                        aria-orientation="vertical"
-                        aria-labelledby="user-menu-button"
-                        tabIndex="-1"
-                      >
-                        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">{user?.name || 'User'}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email || ''}</p>
-                          <p className="mt-1 text-xs font-medium text-primary-600 dark:text-primary-400">
-                            {user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'User'}
-                          </p>
-                        </div>
-                        <div className="py-1">
-                          <Link
-                            to="/dashboard/profile"
-                            className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                            role="menuitem"
-                          >
-                            <FiUser className="mr-3 h-5 w-5 text-gray-400" />
-                            Your Profile
-                          </Link>
-                          <Link
-                            to="/dashboard/settings"
-                            className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                            role="menuitem"
-                          >
-                            <FiSettings className="mr-3 h-5 w-5 text-gray-400" />
-                            Settings
-                          </Link>
-                        </div>
-                        <div className="py-1 border-t border-gray-100 dark:border-gray-700">
-                          <button
-                            onClick={handleLogout}
-                            className="w-full text-left flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                            role="menuitem"
-                          >
-                            <FiLogOut className="mr-3 h-5 w-5" />
-                            Sign out
-                          </button>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </div>
-            ) : (
-              <div className="hidden md:flex items-center space-x-3">
-                <Link
-                  to="/login"
-                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-                >
-                  Sign in
-                </Link>
-                <Link
-                  to="/register"
-                  className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-primary-600 rounded-lg hover:from-primary-600 hover:to-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-all shadow-md hover:shadow-lg"
-                >
-                  Get started
-                </Link>
-              </div>
-            )}
+            
 
             {/* Mobile menu button */}
             <button
@@ -338,27 +247,9 @@ const Navbar = ({ toggleSidebar }) => {
                 </div>
               </Link>
               
-              <Link
-                to="/dashboard/students"
-                className="block px-4 py-3 text-base font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700/50 rounded-lg transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <div className="flex items-center space-x-3">
-                  <FiUsers className="h-5 w-5 text-primary-500" />
-                  <span>Students</span>
-                </div>
-              </Link>
+             
               
-              <Link
-                to="/dashboard/subjects"
-                className="block px-4 py-3 text-base font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700/50 rounded-lg transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <div className="flex items-center space-x-3">
-                  <FiBookOpen className="h-5 w-5 text-primary-500" />
-                  <span>Subjects</span>
-                </div>
-              </Link>
+          
               
               <div className="px-4 py-3 flex items-center justify-between">
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">

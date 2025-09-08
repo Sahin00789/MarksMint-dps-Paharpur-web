@@ -6,12 +6,14 @@ import {
   bulkCreateStudents,
   updateStudent,
   uploadStudentPhotosBatch,
+  deleteStudent,
 } from "@/services/students";
 import AddStudentModal from "./Modals/addStudentModal";
 import EditStudentModal from "./Modals/editStudentModal";
 import ExcelImportModal from "./Modals/ExcelImportModalforStudents";
 import BulkPhotoUpload from "./Modals/bulkPhotoUpload";
-import { FaUserPlus, FaFileExcel, FaImages } from "react-icons/fa";
+import DeleteConfirmationModal from "./Modals/DeleteConfirmationModal";
+import { FaUserPlus, FaFileExcel, FaImages, FaTrash } from "react-icons/fa";
 import schoolInformation from "@/shared/schoolInformation";
 import { isObject } from "framer-motion";
 
@@ -27,6 +29,9 @@ export default function StudentsPanel() {
   const [submitting, setSubmitting] = useState(false);
   const [showPhotosModal, setShowPhotosModal] = useState(false);
   const [photosPreview, setPhotosPreview] = useState([]);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Initialize from persisted selection (do not persist changes here)
   useEffect(() => {
@@ -192,6 +197,28 @@ export default function StudentsPanel() {
   const handleOpenEdit = (stu) => {
     setEditingStudent(stu);
     setShowEditModal(true);
+  };
+
+  const handleOpenDelete = (student) => {
+    setStudentToDelete(student);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteStudent = async () => {
+    if (!studentToDelete) return;
+    
+    try {
+      setIsDeleting(true);
+      await deleteStudent(studentToDelete._id);
+      setStudents(prev => prev.filter(s => s._id !== studentToDelete._id));
+      setShowDeleteModal(false);
+      setStudentToDelete(null);
+    } catch (error) {
+      console.error("Error deleting student:", error);
+      setError(error.message || "Failed to delete student");
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   // Reorder fields to show contact at the bottom
@@ -423,7 +450,14 @@ export default function StudentsPanel() {
                     </div>
                     
                     {/* Action Buttons */}
-                    <div className="mt-5 pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-end">
+                    <div className="mt-5 pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-between">
+                      <button 
+                        onClick={() => handleOpenDelete(stu)}
+                        className="flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors duration-200 shadow-sm"
+                      >
+                        <FaTrash className="w-3.5 h-3.5 mr-1.5" />
+                        Delete
+                      </button>
                       <button 
                         onClick={() => handleOpenEdit(stu)}
                         className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors duration-200 shadow-sm"
@@ -431,7 +465,7 @@ export default function StudentsPanel() {
                         <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
-                        Edit Student
+                        Edit
                       </button>
                     </div>
                   </div>
@@ -446,6 +480,18 @@ export default function StudentsPanel() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setStudentToDelete(null);
+        }}
+        student={studentToDelete || {}}
+        onConfirm={handleDeleteStudent}
+        isLoading={isDeleting}
+      />
 
       {/* Add Student Modal */}
       <AddStudentModal

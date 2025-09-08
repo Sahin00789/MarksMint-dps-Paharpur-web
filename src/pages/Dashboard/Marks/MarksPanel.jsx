@@ -5,7 +5,7 @@ import React, {
   useCallback,
   useRef,
 } from "react";
-import { FiUpload, FiPrinter } from "react-icons/fi";
+import { FiUpload, FiPrinter, FiLoader } from "react-icons/fi";
 import ClassSelectorCard from "@/components/common/ClassSelectorCard";
 import {
   getStudentsByClass,
@@ -127,6 +127,27 @@ export default function MarksPanel() {
   }, [selectedClass]);
 
   useEffect(() => {
+    const fetchStudents = async () => {
+      if (!selectedClass) return;
+      
+      try {
+        setLoading(true);
+        setError(null);
+        setStudents([]); // Clear previous students while loading
+        const data = await getStudentsByClass(selectedClass, selectedExam);
+        setStudents(data);
+      } catch (err) {
+        console.error('Error fetching students:', err);
+        setError('Failed to load students. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchStudents();
+  }, [selectedClass, selectedExam]);
+
+  useEffect(() => {
     const fetchData = async () => {
       if (!selectedClass) return;
       setLoading(true);
@@ -246,13 +267,48 @@ export default function MarksPanel() {
 
         <div className="mt-4">
           {!selectedClass ? (
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              Select a class to manage marks.
-            </p>
+            <div className="flex flex-col items-center justify-center h-64 bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
+              <div className="text-center space-y-3">
+                <div className="mx-auto h-12 w-12 text-gray-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">No class selected</h3>
+                <p className="text-gray-500 dark:text-gray-400">Select a class to view student marks</p>
+              </div>
+            </div>
           ) : loading ? (
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              Loading students…
-            </p>
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden border border-gray-100 dark:border-gray-700">
+              <div className="p-6">
+                <div className="animate-pulse flex flex-col items-center justify-center space-y-6 py-8">
+                  <div className="flex space-x-2">
+                    {[0, 1, 2].map((i) => (
+                      <div 
+                        key={i}
+                        className="h-8 w-8 bg-indigo-100 dark:bg-indigo-900 rounded-full animate-bounce"
+                        style={{
+                          animationDelay: `${i * 0.15}s`,
+                          animationDuration: '1s',
+                          animationIterationCount: 'infinite'
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <div className="text-center space-y-2">
+                    <p className="text-lg font-medium text-gray-900 dark:text-white">Loading Student Data</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Please wait while we fetch the latest information</p>
+                  </div>
+                </div>
+                
+                {/* Skeleton loader for content area */}
+                <div className="mt-6 space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-20 bg-gray-50 dark:bg-gray-700 rounded-lg animate-pulse"></div>
+                  ))}
+                </div>
+              </div>
+            </div>
           ) : error ? (
             <p className="text-sm text-red-600">{error}</p>
           ) : (
@@ -267,16 +323,32 @@ export default function MarksPanel() {
                     return a.studentName.localeCompare(b.studentName);
                   })
                   .map((stu) => {
-                    // Calculate total and percentage if marks exist
-                    const marks = stu.marks?.[selectedExam] || {};
+                    // Ensure marks is an object and get the selected exam's marks
+                    const examMarks = stu.marks && typeof stu.marks === 'object' 
+                      ? stu.marks[selectedExam] || {}
+                      : {};
+                    
+                    // Calculate total marks and handle absent cases
+                    let totalMarks = 0;
+                    let absentCount = 0;
+                    
+                    Object.values(examMarks).forEach(mark => {
+                      if (mark === 'AB' || mark === 'ab' || mark === 'Ab' || mark === 'aB') {
+                        absentCount++;
+                      } else {
+                        const numMark = Number(mark);
+                        if (!isNaN(numMark)) {
+                          totalMarks += numMark;
+                        }
+                      }
+                    });
+                    
                     const maxMark = fullMarks?.[selectedExam] || 100;
-                    const totalMarks = Object.values(marks).reduce(
-                      (sum, mark) => sum + (Number(mark) || 0),
-                      0
-                    );
                     const totalPossibleMarks = subjects.length * maxMark;
-                    const percentage =
-                      totalPossibleMarks > 0
+                    const isFullyAbsent = absentCount === subjects.length && subjects.length > 0;
+                    const percentage = isFullyAbsent 
+                      ? 0 
+                      : totalPossibleMarks > 0 
                         ? Math.round((totalMarks / totalPossibleMarks) * 100)
                         : 0;
 
@@ -286,7 +358,7 @@ export default function MarksPanel() {
                         className="bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 dark:border-gray-700 overflow-hidden group cursor-pointer"
                         onClick={() => {
                           setEditingStudent(stu);
-                          setMarksForm(marks);
+                          setMarksForm(examMarks);
                           setShowMarksModal(true);
                         }}
                       >
@@ -340,8 +412,8 @@ export default function MarksPanel() {
                         <div className="p-4">
                           <div className="grid grid-cols-2 gap-3">
                             {subjects.map((subj) => {
-                              const mark = marks[subj];
-                              const isAbsent = mark === "AB";
+                              const mark = examMarks[subj];
+                              const isAbsent = mark === "AB" || mark === "ab" || mark === "Ab" || mark === "aB";
                               const numericMark = isAbsent
                                 ? 0
                                 : Number(mark) || 0;
@@ -443,8 +515,9 @@ export default function MarksPanel() {
                           <button 
                             onClick={(e) => {
                               e.stopPropagation();
+                              const examMarks = stu.marks?.[selectedExam] || {};
                               setEditingStudent(stu);
-                              setMarksForm(marks);
+                              setMarksForm(examMarks);
                               setShowMarksModal(true);
                             }}
                             className="mt-2 w-full py-1.5 px-3 text-sm font-medium rounded-md bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-800/50 transition-colors flex items-center justify-center gap-1.5"
@@ -489,6 +562,7 @@ export default function MarksPanel() {
         student={editingStudent}
         examName={selectedExam}
         subjects={subjects}
+        fullMarks={fullMarks[selectedExam]}
         initialMarks={marksForm}
         onSubmit={async (updatedMarks) => {
           if (!editingStudent || !selectedClass || !selectedExam) return;

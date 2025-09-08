@@ -2,31 +2,46 @@ import api from './api';
 
 // Adjust endpoints to match your backend. These are placeholders.
 export async function getStudentsByClass(cls, exam = null, params = {}) {
-  // Add cache-busting param to avoid 304 with empty body in some browsers
-  const requestParams = { 
-    class: cls, 
-    exam, // Include exam in params for rank calculation
-    _ts: Date.now(), 
-    ...params 
-  };
-  console.debug('[students] GET /students params ->', requestParams);
-  const res = await api.get('/students', { params: requestParams });
-  const data = res?.data;
-  
-  // The backend now returns the array directly
-  if (Array.isArray(data)) {
-    console.debug('[students] response status', res.status, 'count', data.length);
-    return data;
+  try {
+    const requestParams = { 
+      class: cls, 
+      exam,
+      _ts: Date.now(),
+      ...params 
+    };
+    
+    console.debug('[students] GET /students params ->', requestParams);
+    const res = await api.get('/students', { params: requestParams });
+    let data = res?.data;
+    
+    // Ensure we have an array of students
+    let students = [];
+    if (Array.isArray(data)) {
+      students = data;
+    } else if (data && typeof data === 'object') {
+      if (Array.isArray(data.students)) students = data.students;
+      else if (Array.isArray(data.data)) students = data.data;
+      else if (Array.isArray(data.results)) students = data.results;
+    }
+    
+    // Process each student's marks to ensure consistent format
+    students = students.map(student => {
+      if (student.marks && typeof student.marks === 'object') {
+        // Ensure marks is always an object
+        student.marks = student.marks ;
+      } else {
+        student.marks = {};
+      }
+      return student;
+    });
+    
+    console.debug('[students] Processed', students.length, 'students');
+    return students;
+    
+  } catch (error) {
+    console.error('Error in getStudentsByClass:', error);
+    throw error;
   }
-  
-  // Fallback to previous response formats for backward compatibility
-  let list = [];
-  if (Array.isArray(data?.students)) list = data.students;
-  else if (Array.isArray(data?.data)) list = data.data;
-  else if (Array.isArray(data?.results)) list = data.results;
-  
-  console.debug('[students] response status', res.status, 'count', list.length);
-  return list;
 }
 
 export async function getStudentById(id) {
@@ -66,9 +81,12 @@ export async function bulkCreateStudents(fileOrArray, extra = {}) {
     const res = await api.post('/students/bulk', form, { headers: { 'Content-Type': 'multipart/form-data' } });
     return res.data;
   }
+
+  console.log( extra);
+  
   // Otherwise send JSON array
-  const res = await api.post('/students/bulkupdatestudents', { students: fileOrArray, ...extra });
-   console.log("formbyapi",fileOrArray);
+  const res = await api.post('/students/bulkupdatestudents', { students: fileOrArray });
+  
   return res.data;
 }
 
@@ -141,11 +159,7 @@ export async function bulkUpdateMarks(classId, exam, marksData) {
   } catch (error) {
     console.error('Error in bulkUpdateMarks:', error);
     // Log the exact data that caused the error for debugging
-    console.error('Error data:', {
-      classId,
-      exam,
-      marksData
-    });
+    
     throw error;
   }
 }

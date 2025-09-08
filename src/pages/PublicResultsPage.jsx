@@ -87,6 +87,14 @@ function PublicResultsPage() {
       return;
     }
     
+    console.log('=== FETCHING RESULTS ===');
+    console.log('Searching with params:', {
+      class: formData.class,
+      roll: formData.roll,
+      dob: formData.dob,
+      term: term
+    });
+    
     setLoading(true);
     setError('');
     setResult(null);
@@ -101,10 +109,38 @@ function PublicResultsPage() {
         }
       });
       
+      console.log('=== API RESPONSE ===');
+      console.log('Status:', response.status);
+      console.log('Response data:', response.data);
+      
+      if (response.data?.marks) {
+        console.log('Marks data received:', response.data.marks);
+      } else {
+        console.log('No marks data in response');
+      }
+      
       setResult(response.data);
     } catch (err) {
-      console.error('Error fetching result:', err);
-      setError(err.response?.data?.message || 'Failed to fetch result. Please check your details and try again.');
+      console.error('=== ERROR FETCHING RESULTS ===');
+      console.error('Error details:', {
+        message: err.message,
+        response: {
+          status: err.response?.status,
+          data: err.response?.data,
+          headers: err.response?.headers
+        },
+        request: err.request,
+        config: {
+          url: err.config?.url,
+          method: err.config?.method,
+          params: err.config?.params,
+          headers: err.config?.headers
+        }
+      });
+      
+      const errorMessage = err.response?.data?.message || 'Failed to fetch result. Please check your details and try again.';
+      console.error('Error message to display:', errorMessage);
+      setError(errorMessage);
       toast.error('Failed to fetch results. Please check your details and try again.');
     } finally {
       setLoading(false);
@@ -146,8 +182,14 @@ function PublicResultsPage() {
 
   // Update maxMarks when class, term, or configs change
   useEffect(() => {
+    console.log('=== UPDATING MAX MARKS ===');
+    console.log('Current form data:', formData);
+    console.log('Current term:', term);
+    console.log('Class configs:', classConfigs);
+    
     if (formData.class && term && classConfigs[formData.class]?.[term]) {
       const classFullMarks = classConfigs[formData.class][term];
+      console.log('Found full marks for class/term:', classFullMarks);
       setMaxMarks(parseInt(classFullMarks) || 100);
     } else if (result?.fullMarks) {
       setMaxMarks(parseInt(result.fullMarks) || 100);

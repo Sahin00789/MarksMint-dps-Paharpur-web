@@ -17,8 +17,8 @@ import {
 } from 'react-icons/fa';
 import { FiClock, FiAlertCircle } from 'react-icons/fi';
 import api from '../services/api';
-import Navbar from "../layouts/Navbar";
-import { schoolinfo } from "../shared/schoolInformation";
+import Navbar from "../layouts/Header";
+import { schoolinfo } from "@/shared/schoolInformation";
 
 function Home() {
   const [publicResultStatuses, setPublicResultStatuses] = useState([]);
@@ -58,9 +58,7 @@ function Home() {
       <Navbar/></div>
       {/* Main Content */}
       <div className="max-w-7xl mx-auto mt-14 w-full px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* School Info Card */}
-        <SchoolInfoCard />
-        
+       
         {/* Exam Results Section */}
         <section id="results" className="py-8">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
@@ -73,6 +71,8 @@ function Home() {
             error={error}
           />
         </section>
+         {/* School Info Card */}
+        <SchoolInfoCard />
         
         {/* Developer Info */}
         <DeveloperCard />

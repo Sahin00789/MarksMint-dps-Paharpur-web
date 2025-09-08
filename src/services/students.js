@@ -1,18 +1,31 @@
 import api from './api';
 
 // Adjust endpoints to match your backend. These are placeholders.
-export async function getStudentsByClass(cls, params = {}) {
+export async function getStudentsByClass(cls, exam = null, params = {}) {
   // Add cache-busting param to avoid 304 with empty body in some browsers
-  const requestParams = { class: cls, _ts: Date.now(), ...params };
+  const requestParams = { 
+    class: cls, 
+    exam, // Include exam in params for rank calculation
+    _ts: Date.now(), 
+    ...params 
+  };
   console.debug('[students] GET /students params ->', requestParams);
   const res = await api.get('/students', { params: requestParams });
   const data = res?.data;
+  
+  // The backend now returns the array directly
+  if (Array.isArray(data)) {
+    console.debug('[students] response status', res.status, 'count', data.length);
+    return data;
+  }
+  
+  // Fallback to previous response formats for backward compatibility
   let list = [];
-  if (Array.isArray(data)) list = data;
-  else if (Array.isArray(data?.students)) list = data.students;
+  if (Array.isArray(data?.students)) list = data.students;
   else if (Array.isArray(data?.data)) list = data.data;
   else if (Array.isArray(data?.results)) list = data.results;
-  console.debug('[students] response status', res.status, 'count', Array.isArray(list) ? list.length : 0);
+  
+  console.debug('[students] response status', res.status, 'count', list.length);
   return list;
 }
 
@@ -54,7 +67,8 @@ export async function bulkCreateStudents(fileOrArray, extra = {}) {
     return res.data;
   }
   // Otherwise send JSON array
-  const res = await api.post('/students/bulk', { students: fileOrArray, ...extra });
+  const res = await api.post('/students/bulkupdatestudents', { students: fileOrArray, ...extra });
+   console.log("formbyapi",fileOrArray);
   return res.data;
 }
 
@@ -87,10 +101,10 @@ export async function uploadStudentPhotosBatch(files = [], params = {}) {
  */
 export async function bulkUpdateMarks(classId, exam, marksData) {
   try {
-    const res = await api.put(`/students/marks/bulk`, {
-      class: classId,
+    const res = await api.post(`/students/bulkupdatemarks`, {
+      cls: classId,
       exam,
-      marks: marksData
+      marksdata: marksData
     });
     return res.data;
   } catch (error) {

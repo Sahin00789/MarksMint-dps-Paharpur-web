@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api';
+const API_URL = 'https://marksmint-dps-paharpur-server.onrender.com/';
 
 const api = axios.create({
   baseURL: API_URL,

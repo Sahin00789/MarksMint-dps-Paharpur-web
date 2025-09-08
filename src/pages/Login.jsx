@@ -29,7 +29,10 @@ function Login() {
       const result = await login(credentials);
       if (result.success) {
         toast.success("Login successful!");
-        navigate("/dashboard/students", { replace: true });
+        // Add a small delay to ensure the auth state is updated
+        setTimeout(() => {
+          navigate("/dashboard/students", { replace: true });
+        }, 100);
       } else {
         throw new Error(result.error || "Login failed. Please try again.");
       }

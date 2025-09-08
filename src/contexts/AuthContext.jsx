@@ -138,8 +138,12 @@ export const AuthProvider = ({ children }) => {
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         console.log('[Auth] Login successful for user:', user.username);
         
-        // Update state
-        setUser(user);
+        // Update state and wait for it to complete
+        await new Promise(resolve => {
+          setUser(user);
+          // Small delay to ensure state is updated
+          setTimeout(resolve, 50);
+        });
         
         return { success: true, user };
       } else {
@@ -147,7 +151,8 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Login failed:', error);
-      localStorage.removeItem('token');
+      safeRemoveItem('token');
+      safeRemoveItem('user');
       localStorage.removeItem('user');
       setUser(null);
       

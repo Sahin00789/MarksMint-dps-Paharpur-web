@@ -5,8 +5,8 @@ export const schoolinfo = {
     Address:'Paharpur, Banshihari, Dakshin Dinajpur, 733125',
     regNumber:'IV006608/IV',
     runBy:'M.M.D.C.T.',
-    mobileNumber: '+91 000000000',
-   email: 'you@gmail.com'
+    mobileNumber: '+91 6295884463',
+   email: 'dinapublicschool.paharpur@gmail.com'
 };
 
 export const classesIntheSchhol =['LKG','UKG','I','II','III','IV','V','VI','VII'];

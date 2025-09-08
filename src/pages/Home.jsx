@@ -83,47 +83,91 @@ function Home() {
 
 const DeveloperCard = () => {
   return (
-    <div className="w-full p-3 bg-gradient-to-br from-indigo-50 to-purple-100 rounded-2xl shadow-xl overflow-hidden transition-all duration-300 hover:shadow-2xl">
-      <div className="px-4 py-3 md:px-5 md:py-3 text-black min-h-[72px] flex items-center">
-        <div className="flex items-center justify-between w-full">
-          <div className="flex items-center">
-            <div className="bg-white/20 p-3 rounded-xl mr-4">
-              <FaCode className="h-6 w-6" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-extrabold leading-tight">
-                <span className="text-black">Marks</span>
-                <span className="text-emerald-300">Mint</span>
-              </h2>
-              <p className="text-indigo-500 text-xs md:text-sm">Student Management System</p>
-            </div>
-          </div>
+    <motion.div 
+      className="w-full"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-100 dark:border-gray-700">
+        {/* App Header */}
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-4 text-white">
+          <h2 className="text-2xl font-bold">
+            <span className="text-blue-100">Marks</span>
+            <span className="text-purple-100">Mint</span>
+            <span className="text-sm font-normal ml-2 opacity-90">Student Management System</span>
+          </h2>
         </div>
-
-        {/* Inline details to keep height low */}
-        <div className="hidden md:flex items-center gap-4 ml-6">
-          <div className="flex items-center text-indigo-500 w-32 text-sm">
-            <FaUserTie className="h-4 w-4 mr-2 opacity-90" />
-            <span className="font-medium">Sahin Arman</span>
+        
+        <div className="p-5">
+          <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+            {/* Developer Avatar */}
+            <div className="relative">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 p-1">
+                <div className="w-full h-full rounded-full bg-white dark:bg-gray-700 flex items-center justify-center">
+                  <FaUserTie className="h-10 w-10 text-blue-600 dark:text-blue-400" />
+                </div>
+              </div>
+              <div className="absolute -bottom-1 -right-1 bg-white dark:bg-gray-800 p-1.5 rounded-full shadow-md">
+                <FaCode className="h-3 w-3 text-purple-600 dark:text-purple-400" />
+              </div>
+            </div>
+            
+            {/* Developer Info */}
+            <div className="flex-1 text-center md:text-left">
+              <div className="mb-2">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Sahin Arman</h2>
+                <p className="text-blue-600 dark:text-blue-400 font-medium">Full Stack Developer & Creator</p>
+              </div>
+              
+              <div className="flex flex-wrap justify-center md:justify-start gap-4 text-sm">
+                <a 
+                  href="mailto:sahin401099@gmail.com"
+                  className="flex items-center text-gray-600 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400 transition-colors"
+                >
+                  <FaEnvelope className="mr-1.5" /> Email
+                </a>
+                <a 
+                  href="https://github.com/sahin-arman"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 transition-colors"
+                >
+                  <FaGithub className="mr-1.5" /> GitHub
+                </a>
+                <a 
+                  href="https://linkedin.com/in/sahin-arman"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center text-gray-600 hover:text-blue-700 dark:text-gray-300 dark:hover:text-blue-400 transition-colors"
+                >
+                  <FaLinkedin className="mr-1.5" /> LinkedIn
+                </a>
+              </div>
+            </div>
           </div>
-          <a
-            href="mailto:sahin401099@gmail.com"
-            className="flex items-center text-indigo-500 text-sm hover:text-black transition-colors"
-          >
-            <FaEnvelope className="h-4 w-4 mr-2 opacity-90" />
-            <span className="truncate">sahin401099@gmail.com</span>
-          </a>
-          <div className="flex items-center gap-2">
-            <a href="#" aria-label="GitHub" className="p-1.5 bg-white/15 rounded-full hover:bg-white/25 transition-colors">
-              <FaGithub className="h-4 w-4" />
-            </a>
-            <a href="#" aria-label="LinkedIn" className="p-1.5 bg-white/15 rounded-full hover:bg-white/25 transition-colors">
-              <FaLinkedin className="h-4 w-4" />
-            </a>
+          
+          {/* Tech Stack */}
+          <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-700">
+            <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Built With</h4>
+            <div className="flex flex-wrap gap-2">
+              <span className="px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-sm rounded-full font-medium">
+                React.js
+              </span>
+              <span className="px-3 py-1.5 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-sm rounded-full font-medium">
+                Node.js
+              </span>
+              <span className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-sm rounded-full font-medium">
+                MongoDB
+              </span>
+              <span className="px-3 py-1.5 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-sm rounded-full font-medium">
+                Tailwind CSS
+              </span>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
@@ -257,8 +301,8 @@ const SchoolInfoCard = () => {
     branch: schoolinfo?.branch || 'Paharpur',
     address: schoolinfo?.Address || 'Paharpur, Banshihari, Dakshin Dinajpur, 733125',
     regNumber: schoolinfo?.regNumber || 'IV006608/IV',
-    mobileNumber: schoolinfo?.mobileNumber || '+91 0000000000',
-    email: schoolinfo?.email || 'you@gmail.com',
+    mobileNumber: schoolinfo?.mobileNumber ,
+    email: schoolinfo?.email ,
     runBy: schoolinfo?.runBy || 'M.M.D.C.T.'
   };
 
@@ -290,6 +334,18 @@ const SchoolInfoCard = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="flex items-center">
+            <FiExternalLink className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-3 flex-shrink-0" />
+            <a 
+              href="https://dpspaharpur.web.app/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center"
+            >
+              Visit School Website
+              <FiExternalLink className="ml-1 h-3 w-3" />
+            </a>
+          </div>
+          <div className="flex items-center">
             <FaIdCard className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-3 flex-shrink-0" />
             <p className="text-gray-700 dark:text-gray-300">Reg: {schoolData.regNumber}</p>
           </div>
@@ -309,25 +365,12 @@ const SchoolInfoCard = () => {
               {schoolData.email}
             </a>
           </div>
-          <div className="flex items-center">
-            <FaEnvelope className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-3 flex-shrink-0" />
-            <a href={`https://${schoolData.website}`} target="_blank" rel="noopener noreferrer" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-              {schoolData.website}
-            </a>
-          </div>
-          <div className="flex items-center">
-            <FaUserTie className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-3 flex-shrink-0" />
-            <p className="text-gray-700 dark:text-gray-300">Est. {schoolData.established}</p>
-          </div>
+        
+        
         </div>
 
-        {/* Board Information */}
-        <div className="pt-2">
-          <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Board Affiliation</p>
-          <div className="inline-block bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-sm px-3 py-1 rounded-full">
-            {schoolData.board}
-          </div>
-        </div>
+      
+       
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { classesIntheSchhol } from '../../shared/schoolInformation';
-import { getClassConfig } from '../../services/classConfig';
+import { getClassesConfigStatus } from '../../services/classConfig';
 
 export default function ClassSelectorCard({ onSelect, selected, key }) {
   // Ensure we have a stable reference to the selected class
@@ -10,37 +10,36 @@ export default function ClassSelectorCard({ onSelect, selected, key }) {
 
   useEffect(() => {
     let mounted = true;
-    (async () => {
+    
+    const fetchConfigStatus = async () => {
       setLoading(true);
       try {
-        // Get config for each class and create a status map
-        const configPromises = classesIntheSchhol.map(className => 
-          getClassConfig(className).catch(() => null)
-        );
-        const configs = await Promise.all(configPromises);
-        const map = {};
-        configs.forEach((config, index) => {
-          if (config) {
-            map[classesIntheSchhol[index]] = {
-              isConfigured: true,
-              subjectCount: config.subjects?.length || 0,
-              termCount: config.terms?.length || 0
-            };
-          } else {
-            map[classesIntheSchhol[index]] = {
-              isConfigured: false,
-              subjectCount: 0,
-              termCount: 0
-            };
-          }
+        // Use the bulk status endpoint to get all configs at once
+        const statusMap = await getClassesConfigStatus(classesIntheSchhol);
+        
+        // Transform the data to match our expected format
+        const formattedMap = {};
+        classesIntheSchhol.forEach(className => {
+          const config = statusMap[className] || {};
+          formattedMap[className] = {
+            isConfigured: config.configured || false,
+            subjectCount: config.subjects?.length || 0,
+            termCount: config.terms?.length || 0,
+            ...config
+          };
         });
-        if (mounted) setStatusMap(map || {});
-      } catch (_) {
+        
+        if (mounted) setStatusMap(formattedMap);
+      } catch (error) {
+        console.error('Error fetching class config status:', error);
         if (mounted) setStatusMap({});
       } finally {
         if (mounted) setLoading(false);
       }
-    })();
+    };
+    
+    fetchConfigStatus();
+    
     return () => { mounted = false; };
   }, []);
 
@@ -67,7 +66,7 @@ export default function ClassSelectorCard({ onSelect, selected, key }) {
                 selectedClass === cls
                   ? 'bg-indigo-600 text-white shadow-md hover:bg-indigo-700'
                   : statusMap?.[cls]?.configured === false
-                  ? 'bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-800/50'
+                  ? 'bg-yellow-100 hover:bg-yellow-200 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-200 dark:hover:bg-yellow-800/60 border border-yellow-300 dark:border-yellow-700'
                   : 'bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200'
               }`}
               aria-pressed={selected === cls}
@@ -75,8 +74,8 @@ export default function ClassSelectorCard({ onSelect, selected, key }) {
               {cls}
               {!loading && statusMap?.[cls]?.configured === false && (
                 <span 
-                  className="ml-2 w-2 h-2 rounded-full bg-amber-500 flex-shrink-0"
-                  title="Configuration required"
+                  className="ml-2 w-2 h-2 rounded-full bg-yellow-500 animate-pulse flex-shrink-0"
+                  title="Configuration required - Click to configure this class"
                 />
               )}
             </button>

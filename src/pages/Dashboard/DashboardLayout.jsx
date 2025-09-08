@@ -19,28 +19,39 @@ import { useAuth } from "@contexts/AuthContext";
 import { useTheme } from "@contexts/ThemeContext";
 import schoolInformation from "@/shared/schoolInformation";
 
-const NavItem = ({ to, icon: Icon, label, onClick, isCollapsed }) => {
+const NavItem = ({ to, icon: Icon, label, onClick, isCollapsed, color = "indigo" }) => {
   const { pathname } = useLocation();
-  const isActive =
-    pathname === to ||
-    (pathname === "/dashboard" && to === "/dashboard/students");
+  const isActive = pathname === to || (pathname === "/dashboard" && to === "/dashboard/students");
+  
+  const colorClasses = {
+    blue: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200",
+    green: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-200",
+    amber: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200",
+    purple: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-200"
+  };
 
   return (
     <NavLink
       to={to}
       onClick={onClick}
       className={`
-        flex items-center gap-3 p-3 rounded-lg transition-colors
+        flex items-center gap-3 p-3 rounded-lg transition-all duration-200
         ${
           isActive
-            ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-200"
+            ? colorClasses[color] || colorClasses.blue
             : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
         }
         ${isCollapsed ? "justify-center" : ""}
       `}
       title={isCollapsed ? label : ""}
     >
-      <Icon size={20} className="flex-shrink-0" />
+      <div className={`p-2 rounded-lg ${
+        isActive 
+          ? 'bg-white/20' 
+          : `bg-${color}-100 text-${color}-600 dark:bg-${color}-900/50 dark:text-${color}-300`
+      }`}>
+        <Icon size={18} className="flex-shrink-0" />
+      </div>
       {!isCollapsed && <span className="text-sm font-medium">{label}</span>}
     </NavLink>
   );
@@ -135,51 +146,62 @@ export default function DashboardLayout({ children }) {
           </div>
         </div>
 
-        {/* Sidebar Links */}
-        <div className="p-2 space-y-1 mt-4">
-          <NavItem
-            to="/dashboard/students"
-            icon={Users}
-            label="Students"
-            isCollapsed={!isMobile && isCollapsed}
-            onClick={() => isMobile && setMobileOpen(false)}
-          />
-          <NavItem
-            to="/dashboard/marks"
-            icon={BookOpen}
-            label="Marks"
-            isCollapsed={!isMobile && isCollapsed}
-            onClick={() => isMobile && setMobileOpen(false)}
-          />
+        {/* Sidebar Content */}
+        <div className="flex flex-col h-[calc(100vh-65px)]">
+          {/* Main Navigation */}
+          <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            <NavItem
+              to="/dashboard/students"
+              icon={Users}
+              label="Students"
+              isCollapsed={!isMobile && isCollapsed}
+              onClick={() => isMobile && setMobileOpen(false)}
+              color="blue"
+            />
+            <NavItem
+              to="/dashboard/marks"
+              icon={BookOpen}
+              label="Marks"
+              isCollapsed={!isMobile && isCollapsed}
+              onClick={() => isMobile && setMobileOpen(false)}
+              color="green"
+            />
+            <NavItem
+              to="/dashboard/results-publish"
+              icon={Award}
+              label="Publish Results"
+              isCollapsed={!isMobile && isCollapsed}
+              onClick={() => isMobile && setMobileOpen(false)}
+              color="amber"
+            />
+            <NavItem
+              to="/dashboard/config"
+              icon={Settings}
+              label="Settings"
+              isCollapsed={!isMobile && isCollapsed}
+              onClick={() => isMobile && setMobileOpen(false)}
+              color="purple"
+            />
+          </div>
 
-          <NavItem
-            to="/dashboard/results-publish"
-            icon={Bell}
-            label="Publish"
-            isCollapsed={!isMobile && isCollapsed}
-            onClick={() => isMobile && setMobileOpen(false)}
-          />
-          <NavItem
-            to="/dashboard/config"
-            icon={Settings}
-            label="Settings"
-            isCollapsed={!isMobile && isCollapsed}
-            onClick={() => isMobile && setMobileOpen(false)}
-          />
+          {/* Bottom Navigation */}
+          <div className="p-2 border-t border-gray-200 dark:border-gray-700 absolute bottom-0 left-0 right-0">
+            <NavItem
+              to="/"
+              icon={Home}
+              label="Back To Home"
+              isCollapsed={!isMobile && isCollapsed}
+              onClick={() => isMobile && setMobileOpen(false)}
+            />
+          </div>
         </div>
-        <NavItem
-          to="/"
-          icon={Home}
-          label="Back To Home"
-          isCollapsed={!isMobile && isCollapsed}
-          onClick={() => isMobile && setMobileOpen(false)}
-        />
       </div>
 
       {/* ===== Main Content Area ===== */}
       <div className="flex-1 flex flex-col overflow-hidden bg-gray-50 dark:bg-gray-900">
         {/* Navbar */}
         <nav className="flex items-center justify-between bg-white shadow px-4 py-3 dark:bg-gray-800">
+          {/* Left side - Menu and School Info */}
           <div className="flex items-center gap-4">
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
@@ -188,31 +210,39 @@ export default function DashboardLayout({ children }) {
             >
               {mobileOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {schoolInformation.name}
-            </h1>
+            <div className="flex items-center gap-4">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 px-4 py-2 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
+                <h1 className="text-lg font-bold bg-gradient-to-r from-blue-600 to-indigo-700 bg-clip-text text-transparent dark:from-blue-400 dark:to-indigo-300">
+                  MarksMint
+                </h1>
+              </div>
+              <div className="hidden sm:block border-l-2 border-gray-200 dark:border-gray-600 h-8"></div>
+              <div className="hidden sm:block text-gray-700 dark:text-gray-300">
+                <h2 className="font-semibold">Dina Public School</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Paharpur Branch</p>
+              </div>
+            </div>
           </div>
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
-            aria-label="Toggle theme"
-          >
-            {theme === 'dark' ? (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
-              </svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
-              </svg>
-            )}
-          </button>
-          <div className="flex items-center gap-4 relative" ref={dropdownRef}>
-            <div
-              className="flex items-center gap-2 cursor-pointer"
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+
+          {/* Right side - Theme Toggle and User Menu */}
+          <div className="flex items-center gap-4">
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+              aria-label="Toggle theme"
             >
-              <div className="flex items-center gap-3">
+              {theme === 'dark' ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+                </svg>
+              )}
+            </button>
+            <div className="flex items-center gap-4 relative" ref={dropdownRef}>
+              <div className="flex items-center gap-3 cursor-pointer" onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
                 <div className="h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-600 dark:text-indigo-200 font-medium">
                   AD
                 </div>

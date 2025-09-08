@@ -102,28 +102,28 @@ export default function ClassConfigModalV2({ selectedClass, initialData, onSave,
   };
 
   return (
-    <div className="min-w-[32rem] max-w-4xl mx-auto bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 p-6 rounded-xl shadow-xl transition-all duration-300 transform hover:shadow-2xl">
-      <div className="flex items-center justify-between">
+    <div className="w-full sm:min-w-[90vw] md:min-w-[32rem] max-w-4xl mx-2 sm:mx-auto bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 p-4 sm:p-6 rounded-xl shadow-xl transition-all duration-300 transform hover:shadow-2xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
           {selectedClass} • Configuration
         </h3>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <button 
             onClick={handleSave} 
-            className="px-4 py-2 text-sm rounded-md bg-gradient-to-r from-indigo-600 to-indigo-700 text-white hover:from-indigo-700 hover:to-indigo-800 transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg"
+            className="px-3 sm:px-4 py-2 text-sm rounded-md bg-gradient-to-r from-indigo-600 to-indigo-700 text-white hover:from-indigo-700 hover:to-indigo-800 transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg w-full sm:w-auto"
           >
             Save Configuration
           </button>
           <button 
             onClick={onClose} 
-            className="px-4 py-2 text-sm rounded-md bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 dark:from-gray-700 dark:to-gray-600 dark:hover:from-gray-600 dark:hover:to-gray-500 text-gray-800 dark:text-gray-100 transition-all duration-300 transform hover:scale-105 shadow-md"
+            className="px-3 sm:px-4 py-2 text-sm rounded-md bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 dark:from-gray-700 dark:to-gray-600 dark:hover:from-gray-600 dark:hover:to-gray-500 text-gray-800 dark:text-gray-100 transition-all duration-300 transform hover:scale-105 shadow-md w-full sm:w-auto"
           >
             Close
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mt-4 sm:mt-6">
         {/* Exams & Full Marks Section */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -145,7 +145,7 @@ export default function ClassConfigModalV2({ selectedClass, initialData, onSave,
                   type="text"
                   value={exam}
                   onChange={(e) => updateExamName(index, e.target.value)}
-                  className="min-w-0 flex-1 px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 truncate"
+                  className="min-w-0 flex-1 px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 truncate w-full"
                 />
                 <div className="flex items-center gap-2">
                   <input
@@ -177,19 +177,18 @@ export default function ClassConfigModalV2({ selectedClass, initialData, onSave,
           <h4 className="text-base font-medium text-gray-900 dark:text-white">
             Subjects
           </h4>
-          
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="text"
               value={newSubject}
               onChange={(e) => setNewSubject(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addSubject()}
               placeholder="Enter subject name"
-              className="flex-1 px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+              className="flex-1 px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 w-full"
+              onKeyPress={(e) => e.key === 'Enter' && addSubject()}
             />
             <button
               onClick={addSubject}
-              className="px-4 py-2 text-sm rounded-md bg-gradient-to-r from-indigo-600 to-indigo-700 text-white hover:from-indigo-700 hover:to-indigo-800 transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg whitespace-nowrap"
+              className="px-3 py-2 text-sm rounded-md bg-gradient-to-r from-green-100 to-green-50 text-green-700 dark:from-green-900/30 dark:to-green-800/10 dark:text-green-300 hover:from-green-200 hover:to-green-100 dark:hover:from-green-800/50 dark:hover:to-green-700/30 transition-all duration-300 transform hover:scale-105 shadow-sm w-full sm:w-auto"
             >
               Add Subject
             </button>
@@ -240,7 +239,7 @@ export default function ClassConfigModalV2({ selectedClass, initialData, onSave,
               onChange={(e) => setOpenDays(Number(e.target.value) || 0)}
               min="0"
               step="1"
-              className="w-full px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+              className="w-16 sm:w-20 px-2 py-1 text-sm text-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
             />
           </div>
         </div>

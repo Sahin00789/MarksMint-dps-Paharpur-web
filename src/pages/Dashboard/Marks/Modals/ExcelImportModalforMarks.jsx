@@ -25,7 +25,7 @@ const ExcelImportModal = ({
   const [isMounted, setIsMounted] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [file, setFile] = useState(null);
-
+  
   // Handle animation states
 
   useEffect(() => {
@@ -142,21 +142,102 @@ const ExcelImportModal = ({
 
   if (!isMounted) return null;
 
+  // Animation variants for modal
+  const backdropVariants = {
+    hidden: { opacity: 0 },
+    visible: { 
+      opacity: 1,
+      transition: { duration: 0.2 }
+    },
+    exit: { 
+      opacity: 0,
+      transition: { duration: 0.15 }
+    }
+  };
+
+  const modalVariants = {
+    hidden: { scale: 0.95, opacity: 0 },
+    visible: {
+      scale: 1,
+      opacity: 1,
+      transition: {
+        type: 'spring',
+        damping: 20,
+        stiffness: 300
+      }
+    },
+    exit: {
+      scale: 0.95,
+      opacity: 0,
+      transition: { duration: 0.15 }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 10, opacity: 0 },
+    visible: (i) => ({
+      y: 0,
+      opacity: 1,
+      transition: {
+        delay: i * 0.05,
+        duration: 0.3
+      }
+    })
+  };
+
+  if (!isMounted) return null;
+
   if (isOpen)
     return (
       <AnimatePresence>
         <motion.div
-          initial={{ y: -10, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 "
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto"
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          variants={backdropVariants}
         >
           <motion.div
-            className={`w-[95vw] max-w-[1000px] h-[90vh] max-h-[800px] transition-all duration-300 ease-in-out transform flex flex-col
-            bg-white dark:bg-gray-900 rounded-lg shadow-xl overflow-hidden`}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={onClose}
+            variants={backdropVariants}
+          />
+          <motion.div
+            className="relative z-10 w-full max-w-5xl max-h-[70vh] bg-white dark:bg-gray-800 rounded-xl shadow-2xl overflow-hidden"
+            variants={modalVariants}
+            onClick={(e) => e.stopPropagation()}
           >
-            <div>
+            <div className="p-6 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+                <div>
+                  <motion.h3
+                    className="text-xl font-semibold text-gray-900 dark:text-white"
+                    variants={itemVariants}
+                    custom={0}
+                  >
+                    Import {title} from Excel
+                  </motion.h3>
+                  <motion.p
+                    className="mt-1 text-sm text-gray-500 dark:text-gray-400"
+                    variants={itemVariants}
+                    custom={0.1}
+                  >
+                    Upload an Excel file with {title.toLowerCase()} data
+                  </motion.p>
+                </div>
+                <motion.button
+                  type="button"
+                  onClick={onClose}
+                  className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  variants={itemVariants}
+                  custom={0.1}
+                >
+                  <span className="sr-only">Close</span>
+                  <FiX className="h-6 w-6" />
+                </motion.button>
+              </div>
               <div className="space-y-1">
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
@@ -165,14 +246,15 @@ const ExcelImportModal = ({
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                     {title} - {selectedClass}
                   </h2>
-                  <p className="border-2 rounded-2xl py-1 px-2 m-2 font-semibold bg-lime-200">{selectedExam}</p>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-lime-100 text-lime-800 dark:bg-lime-900/30 dark:text-lime-300">
+                    {selectedExam}
+                  </span>
                 </div>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 pl-1">
                   Upload an Excel file with {title.toLowerCase()} data.
                   Supported formats: .xlsx, .xls, .csv
                 </p>
               </div>
-            </div>
 
             <div className="flex-1 overflow-y-auto p-1 space-y-4">
               <div className="bg-blue-50 dark:bg-blue-900/10 p-3 rounded-lg border border-blue-200 dark:border-blue-800/50">
@@ -257,9 +339,9 @@ const ExcelImportModal = ({
                       </span>
                     </div>
                   </div>
-                  <div className="flex-1 overflow-auto">
+                  <div className="flex-1 overflow-auto max-h-96">
                     <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                      <thead className="bg-gray-50 dark:bg-gray-800">
+                      <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
                         <tr>
                           {previewData.headers.map((header, index) => (
                             <th
@@ -290,58 +372,34 @@ const ExcelImportModal = ({
                       </tbody>
                     </table>
                   </div>
+                  <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 border-t dark:border-gray-700 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleImport}
+                      disabled={!previewData || isLoading}
+                      className={`relative px-6 py-2 text-sm font-medium text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 border border-transparent rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200 ${
+                        !previewData || isLoading ? 'opacity-70 cursor-not-allowed' : 'hover:shadow-md transform hover:-translate-y-0.5'
+                      }`}
+                    >
+                      {isLoading ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Importing...
+                        </span>
+                      ) : (
+                        <span className="flex items-center justify-center gap-2">
+                          <FiUpload className="w-4 h-4" />
+                          Import Data
+                        </span>
+                      )}
+                    </button>
+                  </div>
                 </div>
               )}
-            </div>
-
-            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-              <button
-                type="button"
-                variant="outline"
-                onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-600"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleImport}
-                disabled={!previewData || isLoading}
-                className={
-                  ("px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500",
-                  (!previewData || isLoading) &&
-                    "opacity-70 cursor-not-allowed",
-                  "transition-colors duration-150 ease-in-out")
-                }
-              >
-                {isLoading ? (
-                  <>
-                    <svg
-                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    Importing...
-                  </>
-                ) : (
-                  "Import Students"
-                )}
-              </button>
+              </div>
             </div>
           </motion.div>
         </motion.div>

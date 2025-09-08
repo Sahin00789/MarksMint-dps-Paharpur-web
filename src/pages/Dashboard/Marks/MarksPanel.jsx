@@ -15,7 +15,7 @@ import {
 import { getClassConfig } from "@/services/classConfig";
 
 import ExcelImportModalforMarks from "@/pages/Dashboard/Marks/Modals/ExcelImportModalforMarks.jsx";
-import MarksUpdateModal from "./Modals/MarksUpdateModal";
+import MarksUpdateModal from "./Modals/marksUpdateModal.jsx";
 
 export default function MarksPanel() {
   const [selectedClass, setSelectedClass] = useState(null);

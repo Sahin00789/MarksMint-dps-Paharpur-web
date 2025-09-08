@@ -34,37 +34,19 @@ const ExcelImportModal = ({
   }, [isOpen]);
 
   const downloadTemplate = () => {
-    // Create sample data for the template
-    const templateData = [
-      {
-        'Roll': '1',
-        'Student Name': 'John Doe',
-        'Admission No': 'ADM001',
-        'Date of Birth': '01/01/2010',
-        'Gender': 'Male',
-        'Father\'s Name': 'John Doe Sr.',
-        'Mother\'s Name': 'Jane Doe',
-        'Contact No': '9876543210',
-        'Address': '123 Main St, City',
-        'Blood Group': 'A+',
-        'House': 'Red',
-        'Category': 'General'
-      },
-      {
-        'Roll': '2',
-        'Student Name': 'Jane Smith',
-        'Admission No': 'ADM002',
-        'Date of Birth': '15/05/2010',
-        'Gender': 'Female',
-        'Father\'s Name': 'James Smith',
-        'Mother\'s Name': 'Jill Smith',
-        'Contact No': '9876543211',
-        'Address': '456 Oak St, City',
-        'Blood Group': 'B+',
-        'House': 'Blue',
-        'Category': 'OBC'
-      }
-    ];
+    if (!selectedColumns || selectedColumns.length === 0) {
+      setError('No columns selected for the template');
+      return;
+    }
+
+    // Create an object with empty strings for all selected columns
+    const headerRow = selectedColumns.reduce((acc, col) => {
+      acc[col] = ''; // Empty value for each column
+      return acc;
+    }, {});
+
+    // Single row with just the headers (empty values)
+    const templateData = [headerRow];
 
     // Create worksheet
     const ws = XLSX.utils.json_to_sheet(templateData);

@@ -1,12 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import * as XLSX from "xlsx";
-import {
-  FiUpload,
-  FiFileText,
-  FiCheck,
-  FiAlertCircle,
-  FiX,
-} from "react-icons/fi";
+import { FiUpload, FiFileText, FiCheck, FiAlertCircle, FiX, FiDownload } from "react-icons/fi";
 import { AnimatePresence, motion, usePresenceData, wrap } from "framer-motion";
 
 const ExcelImportModal = ({
@@ -38,6 +32,50 @@ const ExcelImportModal = ({
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
+
+  const downloadTemplate = () => {
+    // Create sample data for the template
+    const templateData = [
+      {
+        'Roll': '1',
+        'Student Name': 'John Doe',
+        'Admission No': 'ADM001',
+        'Date of Birth': '01/01/2010',
+        'Gender': 'Male',
+        'Father\'s Name': 'John Doe Sr.',
+        'Mother\'s Name': 'Jane Doe',
+        'Contact No': '9876543210',
+        'Address': '123 Main St, City',
+        'Blood Group': 'A+',
+        'House': 'Red',
+        'Category': 'General'
+      },
+      {
+        'Roll': '2',
+        'Student Name': 'Jane Smith',
+        'Admission No': 'ADM002',
+        'Date of Birth': '15/05/2010',
+        'Gender': 'Female',
+        'Father\'s Name': 'James Smith',
+        'Mother\'s Name': 'Jill Smith',
+        'Contact No': '9876543211',
+        'Address': '456 Oak St, City',
+        'Blood Group': 'B+',
+        'House': 'Blue',
+        'Category': 'OBC'
+      }
+    ];
+
+    // Create worksheet
+    const ws = XLSX.utils.json_to_sheet(templateData);
+    
+    // Create workbook
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Students Template');
+    
+    // Generate file and trigger download
+    XLSX.writeFile(wb, `${selectedClass || 'Students'}_Template.xlsx`);
+  };
 
   const handleFileUpload = (e) => {
     const uploadedFile = e.target.files?.[0];
@@ -263,6 +301,11 @@ const ExcelImportModal = ({
 
               <div className="flex-1 overflow-y-auto p-1 space-y-4">
                 <div className="bg-blue-50 dark:bg-blue-900/10 p-3 rounded-lg border border-blue-200 dark:border-blue-800/50">
+                  <div className="mb-4 flex justify-between items-center">
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+                      {title || 'Import Student Data'}
+                    </h3>
+                  </div>
                   <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
                     Required Columns:
                   </h3>
@@ -279,7 +322,7 @@ const ExcelImportModal = ({
                 </div>
               </div>
 
-              <div className="flex flex-col items-center justify-center py-8 px-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800/50">
+              <div className="w-full">
                 <input
                   id="file-upload"
                   type="file"
@@ -287,52 +330,70 @@ const ExcelImportModal = ({
                   accept=".xlsx, .xls, .csv"
                   onChange={handleFileUpload}
                 />
-                <div className="flex flex-col items-center gap-4 w-full">
-                  <button
-                    type="button"
-                    onClick={() => document.getElementById("file-upload")?.click()}
-                    className="relative w-full max-w-md px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 focus:ring-offset-white dark:focus:ring-offset-gray-800 flex items-center justify-center gap-2 group"
-                  >
-                    <FiUpload className="w-5 h-5 transition-transform duration-200 group-hover:scale-110" />
-                    <span className="text-sm sm:text-base font-medium">
-                      {file ? "Change Excel File" : "Upload Excel File"}
-                    </span>
-                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3/4 h-1 bg-blue-400/30 rounded-full">
-                      <div className="h-full bg-white/50 rounded-full animate-pulse"></div>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  {/* Upload Button */}
+                  <div className="flex-1">
+                    <div 
+                      onClick={() => document.getElementById("file-upload")?.click()}
+                      className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800/70 cursor-pointer transition-colors p-6 text-center"
+                    >
+                      <FiUpload className="w-10 h-10 text-gray-400 mb-3" />
+                      <p className="font-medium text-gray-700 dark:text-gray-200 mb-1">
+                        {file ? 'Change File' : 'Upload Student Data'}
+                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Drag & drop or click to browse
+                      </p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                        XLSX, XLS, or CSV (MAX. 10MB)
+                      </p>
                     </div>
-                  </button>
+                  </div>
                   
-                  {file && (
-                    <div className="flex items-center gap-3 mt-2">
-                      <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-sm font-medium rounded-full border border-green-200 dark:border-green-800">
-                        <FiFileText className="w-4 h-4" />
-                        <span className="truncate max-w-[200px] sm:max-w-xs">
-                          {file.name}
-                        </span>
-                        <span className="text-xs text-green-600 dark:text-green-400">
-                          {(file.size / 1024).toFixed(1)} KB
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleRemoveFile}
-                        className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors duration-200"
-                        title="Remove file"
-                      >
-                        <FiX className="w-4 h-4" />
-                      </button>
+                  {/* Divider */}
+                  <div className="flex items-center justify-center">
+                    <div className="h-20 w-px bg-gray-200 dark:bg-gray-700"></div>
+                  </div>
+                  
+                  {/* Download Template Button */}
+                  <div className="flex-1">
+                    <div 
+                      onClick={downloadTemplate}
+                      className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-indigo-200 dark:border-indigo-900 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 cursor-pointer transition-colors p-6 text-center"
+                    >
+                      <FiDownload className="w-10 h-10 text-indigo-500 dark:text-indigo-400 mb-3" />
+                      <p className="font-medium text-indigo-700 dark:text-indigo-200 mb-1">
+                        Download Template
+                      </p>
+                      <p className="text-sm text-indigo-600 dark:text-indigo-400">
+                        Get the Student template
+                      </p>
+                      <p className="text-xs text-indigo-500/80 dark:text-indigo-500 mt-1">
+                        Pre-formatted with required fields
+                      </p>
                     </div>
-                  )}
+                  </div>
                 </div>
-
+                
                 {file && (
-                  <div className="mt-6 text-center space-y-1">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Drag and drop your file here, or click to browse
-                    </p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500">
-                      Supported formats: .xlsx, .xls, .csv (Max 5MB)
-                    </p>
+                  <div className="mt-4 flex justify-between items-center">
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-sm font-medium rounded-full border border-green-200 dark:border-green-800">
+                      <FiFileText className="w-4 h-4 flex-shrink-0" />
+                      <span className="truncate max-w-[200px] sm:max-w-md">
+                        {file.name}
+                      </span>
+                      <span className="text-xs text-green-600 dark:text-green-400 whitespace-nowrap">
+                        ({(file.size / 1024).toFixed(1)} KB)
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveFile}
+                      className="inline-flex items-center px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                    >
+                      <FiX className="mr-1.5 h-4 w-4" />
+                      Remove File
+                    </button>
                   </div>
                 )}
               </div>

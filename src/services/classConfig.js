@@ -10,6 +10,10 @@ export const getClassConfig = async (className) => {
     const response = await api.get(`/configs/${className}`);
     return response.data;
   } catch (error) {
+    if (error.response?.status === 404) {
+      // Return empty config if not found
+      return { terms: [], subjects: [], fullMarks: {} };
+    }
     console.error('Error fetching class config:', error);
     throw error;
   }
@@ -23,7 +27,13 @@ export const getClassConfig = async (className) => {
  */
 export const updateClassConfig = async (className, config) => {
   try {
-    const response = await api.put(`/configs/${className}`, config);
+    const response = await api.post('/configs', { 
+      class: className, 
+      terms: config.terms || [],
+      subjects: config.subjects || [],
+      fullMarks: config.fullMarks || {},
+      openDays: config.openDays || 0
+    });
     return response.data;
   } catch (error) {
     console.error('Error updating class config:', error);
@@ -45,7 +55,7 @@ export const getClassesConfigStatus = async (classNames) => {
     // Create a map of class names to their config status
     const statusMap = {};
     classNames.forEach(className => {
-      // The server returns configs with 'class' field instead of 'className'
+      // The server returns configs with 'class' field
       const config = items.find(c => c && c.class === className);
       if (config) {
         statusMap[className] = { 
@@ -57,11 +67,13 @@ export const getClassesConfigStatus = async (classNames) => {
           openDays: config.openDays || 0
         };
       } else {
+        // Return empty config for classes that don't exist yet
         statusMap[className] = { 
           configured: false,
           exams: [],
           subjects: [],
-          openDays: 0
+          openDays: 0,
+          fullMarks: {}
         };
       }
     });
@@ -69,7 +81,17 @@ export const getClassesConfigStatus = async (classNames) => {
     return statusMap;
   } catch (error) {
     console.error('Error fetching classes config status:', error);
-    throw error;
+    // Return empty configs for all classes if there's an error
+    return classNames.reduce((acc, className) => ({
+      ...acc,
+      [className]: {
+        configured: false,
+        exams: [],
+        subjects: [],
+        openDays: 0,
+        fullMarks: {}
+      }
+    }), {});
   }
 };
 

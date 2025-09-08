@@ -1,41 +1,28 @@
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_BASE || '/api';
+import api from './api';
 
 // Public endpoints
 export const getPublishedStatuses = async () => {
-  const response = await axios.get(`${API_URL}/results/public/statuses`);
+  const response = await api.get('/results/public/statuses');
   return response.data.items || [];
 };
 
 export const getPublishedStatus = async (term) => {
-  const response = await axios.get(`${API_URL}/results/public/status/${encodeURIComponent(term)}`);
+  const response = await api.get(`/results/public/status/${encodeURIComponent(term)}`);
   return response.data;
 };
 
-// Protected endpoints (require authentication)
-const getAuthHeaders = () => ({
-  headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-});
-
+// Protected endpoints (handled by api interceptor)
 export const getResultsList = async () => {
-  const response = await axios.get(`${API_URL}/results`, getAuthHeaders());
+  const response = await api.get('/results');
   return response.data.items || [];
 };
 
 export const updatePublishStatus = async (term, isPublished, adminPassword) => {
-  const response = await axios.post(
-    `${API_URL}/results`,
-    { term, isPublished, adminPassword },
-    getAuthHeaders()
-  );
+  const response = await api.post('/results', { term, isPublished, adminPassword });
   return response.data;
 };
 
 export const getTermStats = async (term) => {
-  const response = await axios.get(
-    `${API_URL}/results/stats/${encodeURIComponent(term)}`,
-    getAuthHeaders()
-  );
+  const response = await api.get(`/results/stats/${encodeURIComponent(term)}`);
   return response.data;
 };

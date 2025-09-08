@@ -85,19 +85,22 @@ export default function MarksPanel() {
     [selectedClass, selectedExam]
   );
 
-  // Load and persist class selection
+  // Load class from localStorage on initial render
   useEffect(() => {
-    const saved =
-      typeof window !== "undefined"
-        ? window.localStorage.getItem("ui.selectedClass")
-        : null;
-    if (saved) setSelectedClass(saved);
+    const savedClass = typeof window !== 'undefined' 
+      ? window.localStorage.getItem('ui.selectedClass')
+      : null;
+    
+    if (savedClass) {
+      setSelectedClass(savedClass);
+    }
   }, []);
 
+  // Save class to localStorage when it changes
   useEffect(() => {
     if (selectedClass) {
       try {
-        window.localStorage.setItem("ui.selectedClass", selectedClass);
+        window.localStorage.setItem('ui.selectedClass', selectedClass);
       } catch (_) {}
     }
   }, [selectedClass]);
@@ -131,11 +134,20 @@ export default function MarksPanel() {
         setExams(cfg.terms || []);
         setSubjects(cfg.subjects);
 
-        if (!selectedExam && Array.isArray(cfg?.terms) && cfg.terms.length) {
+        // Set the first exam if none selected
+        if (Array.isArray(cfg?.terms) && cfg.terms.length && !selectedExam) {
           setSelectedExam(cfg.terms[0]);
-          setFullMarks(cfg.fullMarks);
         }
-        setFullMarks(cfg?.["fullMarks"]);
+        
+        // Update fullMarks with the config
+        if (cfg?.fullMarks) {
+          setFullMarks(prev => ({
+            ...prev,
+            ...cfg.fullMarks,
+            // Ensure current exam has a value
+            [selectedExam]: cfg.fullMarks[selectedExam] ?? 100
+          }));
+        }
       } catch (e) {
         setError("Failed to load students/config");
       } finally {
@@ -288,7 +300,7 @@ export default function MarksPanel() {
                                   <span className="text-sm font-normal">
                                     /
                                     {subjects.length *
-                                      (fullMarks[selectedExam] || 100)}
+                                      (fullMarks?.[selectedExam] || 100)}
                                   </span>
                                 </div>
                                 <div className="text-xs opacity-80">

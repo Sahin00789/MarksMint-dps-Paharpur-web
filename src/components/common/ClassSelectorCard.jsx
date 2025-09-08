@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { classesIntheSchhol } from '../../shared/schoolInformation';
 import { getClassesConfigStatus } from '../../services/classConfig';
 
-export default function ClassSelectorCard({ onSelect, selected, key }) {
-  // Ensure we have a stable reference to the selected class
+export default function ClassSelectorCard({ onSelect, selected }) {
+  // Use the selected prop directly to ensure it stays in sync with parent
   const selectedClass = selected || '';
   const [statusMap, setStatusMap] = useState({});
   const [loading, setLoading] = useState(false);
@@ -56,28 +56,32 @@ export default function ClassSelectorCard({ onSelect, selected, key }) {
           {classesIntheSchhol.map((cls, index) => (
             <button
               key={index}
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                cls === selectedClass
+                  ? 'bg-indigo-600 text-white'
+                  : statusMap?.[cls]?.configured === false
+                  ? 'bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-900/50 text-amber-800 dark:text-amber-200'
+                  : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200'
+              }`}
               onClick={() => {
                 // Only trigger onSelect if the class is different
                 if (cls !== selectedClass) {
                   onSelect && onSelect(cls);
                 }
               }}
-              className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 flex items-center ${
-                selectedClass === cls
-                  ? 'bg-indigo-600 text-white shadow-md hover:bg-indigo-700'
-                  : statusMap?.[cls]?.configured === false
-                  ? 'bg-yellow-100 hover:bg-yellow-200 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-200 dark:hover:bg-yellow-800/60 border border-yellow-300 dark:border-yellow-700'
-                  : 'bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200'
-              }`}
               aria-pressed={selected === cls}
             >
-              {cls}
-              {!loading && statusMap?.[cls]?.configured === false && (
-                <span 
-                  className="ml-2 w-2 h-2 rounded-full bg-yellow-500 animate-pulse flex-shrink-0"
-                  title="Configuration required - Click to configure this class"
-                />
-              )}
+              <span className="flex items-center">
+                {cls}
+                {!loading && statusMap?.[cls]?.configured === false && (
+                  <span 
+                    className="ml-1.5 text-xs opacity-80"
+                    title="Configuration required - Click to configure this class"
+                  >
+                    ⚠️
+                  </span>
+                )}
+              </span>
             </button>
           ))}
         </div>

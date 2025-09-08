@@ -195,6 +195,17 @@ const Navbar = ({ toggleSidebar }) => {
               )}
             </button>
 
+            {/* Admin Login Button - Desktop Only */}
+            {!isAuthenticated && (
+              <Link
+                to="/admin/login"
+                className="hidden md:flex items-center space-x-1 px-3 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:focus:ring-offset-gray-900"
+              >
+                <FiUser className="h-4 w-4" />
+                <span>Admin Login</span>
+              </Link>
+            )}
+
             
 
             {/* Mobile menu button */}

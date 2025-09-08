@@ -37,11 +37,12 @@ export default function ClassConfigModalV2({ selectedClass, initialData, onSave,
   const handleSave = () => {
     const payload = {
       class: selectedClass,
-      exams,
+      terms: exams, // Changed from exams to terms to match API expectations
       subjects,
       fullMarks: fullMarksByExam,
       openDays: Number(openDays) || 0
     };
+    console.log('ClassConfigModalV2 - Saving payload:', payload);
     onSave?.(payload);
   };
 

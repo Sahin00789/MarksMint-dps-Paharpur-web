@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import { classesIntheSchhol } from "@/shared/schoolInformation";
 import ClassConfigModalV2 from "@/pages/Dashboard/Configuaration/Modals/ClassConfigModalV2";
-import { getClassConfig, getClassesConfigStatus } from "@/services/classConfig";
+import { getClassConfig, getClassesConfigStatus, updateClassConfig } from "@/services/classConfig";
 
 function ConfigurationPanel() {
   const [selectedClass, setSelectedClass] = useState(null);
@@ -64,7 +64,7 @@ function ConfigurationPanel() {
     if (!selectedClass) return;
     setSaving(true);
     try {
-      await saveClassConfig(selectedClass, payload);
+      await updateClassConfig(selectedClass, payload);
       closeModal();
       await loadStatuses();
       toast.success("Configuration saved");

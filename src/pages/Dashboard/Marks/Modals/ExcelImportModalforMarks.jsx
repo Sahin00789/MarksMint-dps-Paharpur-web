@@ -1,12 +1,6 @@
 import React, { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
-import {
-  FiUpload,
-  FiFileText,
-  FiCheck,
-  FiAlertCircle,
-  FiX,
-} from "react-icons/fi";
+import { FiUpload, FiFileText, FiCheck, FiAlertCircle, FiX, FiDownload } from "react-icons/fi";
 import { AnimatePresence, motion, usePresenceData, wrap } from "framer-motion";
 
 const ExcelImportModal = ({
@@ -39,6 +33,39 @@ const ExcelImportModal = ({
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
+
+  const downloadTemplate = () => {
+    // Create sample data for the template
+    const templateData = [
+      {
+        'Roll': '1',
+        'Student Name': 'John Doe',
+        // Add subjects dynamically if available
+        ...(selectedColumns?.reduce((acc, subject) => ({
+          ...acc,
+          [subject]: ''
+        }), {}) || {})
+      },
+      {
+        'Roll': '2',
+        'Student Name': 'Jane Smith',
+        ...(selectedColumns?.reduce((acc, subject) => ({
+          ...acc,
+          [subject]: ''
+        }), {}) || {})
+      }
+    ];
+
+    // Create worksheet
+    const ws = XLSX.utils.json_to_sheet(templateData);
+    
+    // Create workbook
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Marks Template');
+    
+    // Generate file and trigger download
+    XLSX.writeFile(wb, `${selectedClass}_${selectedExam || 'Marks'}_Template.xlsx`);
+  };
 
   const handleFileUpload = (e) => {
     const uploadedFile = e.target.files?.[0];
@@ -187,7 +214,7 @@ const ExcelImportModal = ({
 
   if (!isMounted) return null;
 
-  if (isOpen)
+  if (isOpen) {
     return (
       <AnimatePresence>
         <motion.div
@@ -203,7 +230,7 @@ const ExcelImportModal = ({
             variants={backdropVariants}
           />
           <motion.div
-            className="relative z-10 w-full max-w-5xl max-h-[70vh] bg-white dark:bg-gray-800 rounded-xl shadow-2xl overflow-hidden"
+            className="relative z-10 w-full max-w-5xl max-h-[85vh] bg-white dark:bg-gray-800 rounded-xl shadow-2xl overflow-hidden"
             variants={modalVariants}
             onClick={(e) => e.stopPropagation()}
           >
@@ -241,27 +268,23 @@ const ExcelImportModal = ({
               <div className="space-y-1">
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                    <FiFileText className="w-7 h-7 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {title} - {selectedClass}
-                  </h2>
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-lime-100 text-lime-800 dark:bg-lime-900/30 dark:text-lime-300">
                     {selectedExam}
                   </span>
                 </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 pl-1">
-                  Upload an Excel file with {title.toLowerCase()} data.
-                  Supported formats: .xlsx, .xls, .csv
-                </p>
               </div>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 pl-1">
+                Upload an Excel file with {title.toLowerCase()} data.
+                Supported formats: .xlsx, .xls, .csv
+              </p>
+            </div>
 
             <div className="flex-1 overflow-y-auto p-1 space-y-4">
               <div className="bg-blue-50 dark:bg-blue-900/10 p-3 rounded-lg border border-blue-200 dark:border-blue-800/50">
-                <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
+                <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
                   Required Columns:
                 </h3>
-                <div className="flex flex-wrap gap-1.5 text-sm">
+                <div className="flex flex-wrap gap-1.5">
                   {selectedColumns.map((col, index) => (
                     <span
                       key={index}
@@ -273,7 +296,7 @@ const ExcelImportModal = ({
                 </div>
               </div>
 
-              <div className="flex flex-col items-center justify-center py-8 px-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800/50">
+              <div className="w-full">
                 <input
                   id="file-upload"
                   type="file"
@@ -281,42 +304,72 @@ const ExcelImportModal = ({
                   accept=".xlsx, .xls, .csv"
                   onChange={handleFileUpload}
                 />
-                <div className="flex flex-col items-center gap-3">
-                  <div className="flex gap-10 items-center">
-                    <button
-                      type="button"
-                      variant="outline"
-                      onClick={() =>
-                        document.getElementById("file-upload")?.click()
-                      }
+                <div className="flex flex-col sm:flex-row gap-4">
+                  {/* Upload Button */}
+                  <div className="flex-1">
+                    <div 
+                      onClick={() => document.getElementById("file-upload")?.click()}
+                      className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800/70 cursor-pointer transition-colors p-6 text-center"
                     >
-                      <FiUpload className="mr-2 h-4 w-4" />
-                      {file ? "Change File" : "Browse Files"}
-                    </button>
-                    {file && (
-                      <button
-                        type="button"
-                        variant="ghost"
-                        onClick={handleRemoveFile}
-                        className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
-                      >
-                        <FiX className="mr-2 h-4 w-4" />
-                        Remove
-                      </button>
-                    )}
-                  </div>
-
-                  {file && (
-                    <div className="text-center">
-                      <p className="text-sm font-medium text-gray-700 dark:text-gray-200 truncate max-w-xs">
-                        {file.name} ({(file.size / 1024).toFixed(1)} KB)
+                      <FiUpload className="w-10 h-10 text-gray-400 mb-3" />
+                      <p className="font-medium text-gray-700 dark:text-gray-200 mb-1">
+                        {file ? 'Change File' : 'Upload Excel File'}
                       </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {previewData?.rows?.length || 0} records found
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Drag & drop or click to browse
+                      </p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                        XLSX, XLS, or CSV (MAX. 10MB)
                       </p>
                     </div>
-                  )}
+                  </div>
+                  
+                  {/* Divider */}
+                  <div className="flex items-center justify-center">
+                    <div className="h-20 w-px bg-gray-200 dark:bg-gray-700"></div>
+                  </div>
+                  
+                  {/* Download Template Button */}
+                  <div className="flex-1">
+                    <div 
+                      onClick={downloadTemplate}
+                      className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-indigo-200 dark:border-indigo-900 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 cursor-pointer transition-colors p-6 text-center"
+                    >
+                      <FiDownload className="w-10 h-10 text-indigo-500 dark:text-indigo-400 mb-3" />
+                      <p className="font-medium text-indigo-700 dark:text-indigo-200 mb-1">
+                        Download Template
+                      </p>
+                      <p className="text-sm text-indigo-600 dark:text-indigo-400">
+                        Get the Excel template
+                      </p>
+                      <p className="text-xs text-indigo-500/80 dark:text-indigo-500 mt-1">
+                        Pre-formatted with required columns
+                      </p>
+                    </div>
+                  </div>
                 </div>
+                {file && (
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleRemoveFile}
+                      className="inline-flex items-center px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                    >
+                      <FiX className="mr-1.5 h-4 w-4" />
+                      Remove File
+                    </button>
+                  </div>
+                )}
+                {file && (
+                  <div className="mt-3 text-center">
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-200 truncate max-w-xs mx-auto">
+                      {file.name} ({(file.size / 1024).toFixed(1)} KB)
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {previewData?.rows?.length || 0} records found
+                    </p>
+                  </div>
+                )}
               </div>
 
               {error && (
@@ -405,6 +458,8 @@ const ExcelImportModal = ({
         </motion.div>
       </AnimatePresence>
     );
+  }
+  return null;
 };
 
 export default ExcelImportModal;

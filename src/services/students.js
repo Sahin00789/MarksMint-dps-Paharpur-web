@@ -96,19 +96,56 @@ export async function uploadStudentPhotosBatch(files = [], params = {}) {
  * Update marks for multiple students in a class for a specific exam
  * @param {string} classId - The class ID
  * @param {string} exam - The exam name/ID
- * @param {Array} marksData - Array of { studentId, subjectCode, marks } objects
+ * @param {Array} marksData - Array of { roll, studentName, marks: { [subject]: mark } } objects
  * @returns {Promise<Object>} The API response
  */
 export async function bulkUpdateMarks(classId, exam, marksData) {
   try {
+    // Transform the data to match server expectations
+    const formattedData = marksData.map(student => {
+      const marks = {};
+      
+      // Process each subject mark
+      if (student.marks && student.marks[exam]) {
+        Object.entries(student.marks[exam]).forEach(([subject, mark]) => {
+          // Convert empty strings to null and ensure 'AB' is uppercase
+          if (mark === '') {
+            marks[subject] = null;
+          } else if (typeof mark === 'string' && mark.toUpperCase() === 'AB') {
+            marks[subject] = 'AB';
+          } else if (!isNaN(mark) && mark !== '') {
+            // Convert numeric strings to numbers
+            marks[subject] = Number(mark);
+          } else {
+            marks[subject] = mark;
+          }
+        });
+      }
+
+      return {
+        roll: student.roll,
+        studentName: student.studentName,
+        marks: {
+          [exam]: marks
+        }
+      };
+    });
+
     const res = await api.post(`/students/bulkupdatemarks`, {
       cls: classId,
       exam,
-      marksdata: marksData
+      marksdata: formattedData
     });
+    
     return res.data;
   } catch (error) {
     console.error('Error in bulkUpdateMarks:', error);
+    // Log the exact data that caused the error for debugging
+    console.error('Error data:', {
+      classId,
+      exam,
+      marksData
+    });
     throw error;
   }
 }

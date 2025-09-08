@@ -43,16 +43,38 @@ export default function MarksPanel() {
         setSubmitting(true);
         setError(null);
 
-        const formatedData = importData.rows.map((student) => {
-          // pick subjects dynamically from headers except Roll & Student Name & class
+        const formattedData = importData.rows.map((student) => {
           const subjects = {};
+          
+          // Process each header (column) in the Excel file
           importData.headers.forEach((header) => {
-            if (
-              header !== "Roll" &&
-              header !== "Student Name" &&
-              header !== "class"
-            ) {
-              subjects[header] = student[header]; // convert to number
+            if (header === "Roll" || header === "Student Name" || header === "class") {
+              return; // Skip these columns
+            }
+            
+            const markValue = student[header];
+            
+            // Convert mark to appropriate format
+            if (markValue === undefined || markValue === null) {
+              return; // Skip undefined or null values
+            }
+            
+            if (typeof markValue === 'string') {
+              const trimmed = markValue.trim();
+              if (trimmed === '') {
+                return; // Skip empty strings
+              }
+              if (trimmed.toUpperCase() === 'AB') {
+                subjects[header] = 'AB';
+              } else if (!isNaN(trimmed)) {
+                subjects[header] = Number(trimmed);
+              } else {
+                subjects[header] = trimmed;
+              }
+            } else if (!isNaN(markValue)) {
+              subjects[header] = Number(markValue);
+            } else {
+              subjects[header] = markValue;
             }
           });
 
@@ -60,14 +82,13 @@ export default function MarksPanel() {
             studentName: student["Student Name"],
             roll: student["Roll"],
             marks: {
-              [selectedExam]: subjects,
-            },
+              [selectedExam]: subjects
+            }
           };
         });
-        // Transform the mapping into the format expected by the API
-        console.log(formatedData);
 
-        await bulkUpdateMarks(selectedClass, selectedExam, formatedData);
+        console.log('Sending data to server:', JSON.stringify(formattedData, null, 2));
+        await bulkUpdateMarks(selectedClass, selectedExam, formattedData);
 
         // Refresh the student data
         const data = await getStudentsByClass(selectedClass);

@@ -4,7 +4,7 @@ const API_URL = 'https://marksmint-dps-paharpur-server.onrender.com/api';
 const API_URL2 = 'http://localhost:5000/api';
 
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: API_URL2,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',

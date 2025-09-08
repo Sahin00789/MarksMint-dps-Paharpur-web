@@ -53,6 +53,7 @@ const ResultPublishPanel = () => {
       setLoading(true);
       const { data } = await api.get('/results');
       console.log('Results data:', data); // Debug log
+      
       setResults(data.items || []);
     } catch (error) {
       console.error('Error fetching results status:', error);
@@ -180,6 +181,14 @@ const ResultPublishPanel = () => {
                             <span className="inline-block w-2 h-2 rounded-full bg-blue-500 mr-1.5"></span>
                             <span>{result.stats.totalStudents || 0} Total</span>
                           </div>
+                          <div className="flex items-center text-gray-600 dark:text-gray-300">
+                            <span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-1.5"></span>
+                            <span>{
+                              result.stats.perClass 
+                                ? Object.values(result.stats.perClass).reduce((sum, cls) => sum + (cls.absent || 0), 0) 
+                                : 0
+                            } Absent</span>
+                          </div>
                         </>
                       )}
                     </div>
@@ -238,6 +247,7 @@ const ResultPublishPanel = () => {
                                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Class</th>
                                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Updated</th>
                                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Pending</th>
+                                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Absent</th>
                                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total</th>
                                 </tr>
                               </thead>
@@ -247,9 +257,41 @@ const ResultPublishPanel = () => {
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{className}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 dark:text-green-400">{stats.updated}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-yellow-600 dark:text-yellow-400">{stats.pending}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600 dark:text-red-400">{stats.absent || 0}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{stats.total}</td>
                                   </tr>
                                 ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Pending Students List */}
+                      {result.stats?.perClass && Object.values(result.stats.perClass).some(cls => cls.pendingStudents?.length > 0) && (
+                        <div className="mt-6">
+                          <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Pending Students</h4>
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                              <thead className="bg-gray-50 dark:bg-gray-800">
+                                <tr>
+                                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Class</th>
+                                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Roll No.</th>
+                                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Name</th>
+                                </tr>
+                              </thead>
+                              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                {Object.entries(result.stats.perClass)
+                                  .filter(([_, cls]) => cls.pendingStudents?.length > 0)
+                                  .flatMap(([className, cls]) => 
+                                    cls.pendingStudents.map((student, idx) => (
+                                      <tr key={`${className}-${student.roll}-${idx}`} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                        <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">{className}</td>
+                                        <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{student.roll}</td>
+                                        <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{student.name}</td>
+                                      </tr>
+                                    ))
+                                  )}
                               </tbody>
                             </table>
                           </div>

@@ -14,6 +14,8 @@ import ExcelImportModal from "./Modals/ExcelImportModalforStudents";
 import BulkPhotoUpload from "./Modals/bulkPhotoUpload";
 import DeleteConfirmationModal from "./Modals/DeleteConfirmationModal";
 import { FaUserPlus, FaFileExcel, FaImages, FaTrash } from "react-icons/fa";
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import schoolInformation from "@/shared/schoolInformation";
 import { isObject } from "framer-motion";
 
@@ -34,13 +36,22 @@ export default function StudentsPanel() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Initialize from persisted selection (do not persist changes here)
+  // Load selected class from localStorage on component mount
   useEffect(() => {
-    const saved =
-      typeof window !== "undefined"
-        ? window.localStorage.getItem("ui.selectedClass")
-        : null;
-    if (saved) setSelectedClass(saved);
+    if (typeof window !== "undefined") {
+      const savedClass = localStorage.getItem("ui.selected");
+      if (savedClass) {
+        setSelectedClass(savedClass);
+      }
+    }
   }, []);
+
+  // Save selected class to localStorage when it changes
+  useEffect(() => {
+    if (selectedClass && typeof window !== "undefined") {
+      localStorage.setItem("ui.selected", selectedClass);
+    }
+  }, [selectedClass]);
 
   const handleExcelImport = useCallback(
     async (importedData) => {
@@ -72,7 +83,7 @@ export default function StudentsPanel() {
             roll: student.Roll,
             fatherName: student["Father Name"],
             className: selectedClass,
-            mobileNumberNumber: student["Mobile Number"],
+            mobileNumber: student["Mobile Number"],
             address: student.Address,
             dob: student["Date of Birth"],
           };
@@ -93,8 +104,7 @@ export default function StudentsPanel() {
         await getStudentsByClass(selectedClass);
 
         // Show success message
-        alert(`Successfully imported ${validStudents.length} students`);
-
+        toast.success(`Successfully imported ${validStudents.length} students`);
         return true;
       } catch (error) {
         console.error("Error importing students:", error);
@@ -144,51 +154,69 @@ export default function StudentsPanel() {
 
   const handleCreateStudent = async (e) => {
     e.preventDefault();
-    if (!selectedClass) return;
+    
+    if (!selectedClass) {
+      toast.warning("Please select a class first");
+      return;
+    }
+    
     const formEl = e.currentTarget;
     const form = new FormData(formEl);
-    const studentName = form.get("studentName")?.toString().trim();
-    const roll = form.get("roll")?.toString().trim();
-    const section = form.get("section")?.toString().trim();
-    const session = form.get("session")?.toString().trim();
-    const dob = form.get("dob")?.toString().trim();
-    const fatherName = form.get("fatherName")?.toString().trim();
-    const mobileNumber = form.get("mobileNumber")?.toString().trim();
-    const address = form.get("address")?.toString().trim();
-    const photoFile = formEl.elements.photo?.files?.[0];
-    if (!studentName || !roll) return;
+    
+    // Get all form fields
+    const formData = {
+      studentName: form.get("studentName")?.toString().trim(),
+      roll: form.get("roll")?.toString().trim(),
+      section: form.get("section")?.toString().trim(),
+      session: form.get("session")?.toString().trim() || new Date().getFullYear().toString(),
+      dob: form.get("dob")?.toString().trim(),
+      fatherName: form.get("fatherName")?.toString().trim(),
+      mobileNumber: form.get("mobileNumber")?.toString().trim(),
+      address: form.get("address")?.toString().trim()
+    };
+    
+    // Validate required fields
+    if (!formData.studentName || !formData.roll) {
+      toast.error("Student name and roll number are required");
+      return;
+    }
+    
+    // Validate mobile number if provided
+    if (formData.mobileNumber && !/^\d{10}$/.test(formData.mobileNumber)) {
+      toast.error("Please enter a valid 10-digit mobile number");
+      return;
+    }
+    
     setSubmitting(true);
+    
     try {
+      const photoFile = formEl.elements.photo?.files?.[0];
+      
       if (photoFile) {
+        // If there's a photo, use FormData for file upload
         const fd = new FormData();
         fd.append("class", selectedClass);
-        fd.append("studentName", studentName);
-        fd.append("roll", roll);
-        if (section) fd.append("section", section);
-        if (session) fd.append("session", session);
-        if (dob) fd.append("dob", dob);
-        if (fatherName) fd.append("fatherName", fatherName);
-        if (mobileNumber) fd.append("mobileNumber", mobileNumber);
-        if (address) fd.append("address", address);
+        
+        // Append all non-empty fields
+        Object.entries(formData).forEach(([key, value]) => {
+          if (value) fd.append(key, value);
+        });
+        
         fd.append("photo", photoFile);
         await createStudent(fd);
       } else {
+        // For non-file submission, send as JSON
         await createStudent({
           class: selectedClass,
-          studentName,
-          roll,
-          section,
-          session,
-          dob,
-          fatherName,
-          mobileNumber,
-          address,
+          ...formData
         });
       }
       setShowAddModal(false);
       await refresh();
     } catch (e) {
-      setError("Failed to create student");
+      const errorMessage = e.response?.data?.message || "Failed to create student";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -213,9 +241,12 @@ export default function StudentsPanel() {
       setStudents(prev => prev.filter(s => s._id !== studentToDelete._id));
       setShowDeleteModal(false);
       setStudentToDelete(null);
+      toast.success("Student deleted successfully");
     } catch (error) {
       console.error("Error deleting student:", error);
-      setError(error.message || "Failed to delete student");
+      const errorMessage = error.message || "Failed to delete student";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsDeleting(false);
     }
@@ -294,24 +325,43 @@ export default function StudentsPanel() {
     if (!editingStudent?._id) return;
     const formEl = e.currentTarget;
     const form = new FormData(formEl);
-    const studentName = form.get("studentName")?.toString().trim();
-    const roll = form.get("roll")?.toString().trim();
-    const section = form.get("section")?.toString().trim();
-    const session = form.get("session")?.toString().trim();
-    const dob = form.get("dob")?.toString().trim();
-    const fatherName = form.get("fatherName")?.toString().trim();
-    const mobileNumber = form.get("mobileNumber")?.toString().trim();
-    const address = form.get("address")?.toString().trim();
-    const payload = {
-      studentName,
-      roll,
-      section,
-      session,
-      dob,
-      fatherName,
-      mobileNumber,
-      address,
-    };
+    const payload = {};
+    
+    // Get all form fields and add to payload if they exist
+    const fields = [
+      'studentName', 'roll', 'section', 'session', 
+      'dob', 'fatherName', 'mobileNumber', 'address'
+    ];
+    
+    fields.forEach(field => {
+      const value = form.get(field)?.toString().trim();
+      if (value) {
+        payload[field] = value;
+      }
+    });
+    
+    // Handle file upload if a new photo is selected
+    const photoFile = formEl.elements.photo?.files?.[0];
+    if (photoFile) {
+      const fd = new FormData();
+      Object.keys(payload).forEach(key => {
+        fd.append(key, payload[key]);
+      });
+      fd.append('photo', photoFile);
+      setSubmitting(true);
+      try {
+        await updateStudent(editingStudent._id, fd);
+        setShowEditModal(false);
+        setEditingStudent(null);
+        await refresh();
+        return;
+      } catch (e) {
+        setError("Failed to update student");
+        return;
+      } finally {
+        setSubmitting(false);
+      }
+    }
     setSubmitting(true);
     try {
       await updateStudent(editingStudent._id, payload);
@@ -319,7 +369,9 @@ export default function StudentsPanel() {
       setEditingStudent(null);
       await refresh();
     } catch (e) {
-      setError("Failed to update student");
+      const errorMessage = e.response?.data?.message || "Failed to update student";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -342,7 +394,19 @@ export default function StudentsPanel() {
   };
 
   return (
-    <div className="p-2 ">
+    <div className="p-2">
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="colored"
+      />
       <div className="flex flex-col space-y-4">
         <div className="flex md:flex-row flex-col space-y-2 justify-between items-center  mb-6">
           <h2 className="text-2xl font-bold text-gray-800">Students</h2>
@@ -498,13 +562,35 @@ export default function StudentsPanel() {
         isOpen={showAddModal}
         cls={selectedClass}
         onClose={() => setShowAddModal(false)}
-        onSubmit={async (studentData) => {
+        onSubmit={async (formData) => {
           try {
             setSubmitting(true);
-            const newStudent = await createStudent({
-              ...studentData,
-              cls: selectedClass,
+            
+            // Convert FormData to object
+            const formDataObj = {};
+            formData.forEach((value, key) => {
+              formDataObj[key] = value;
             });
+            
+            // Create a proper FormData object for the API call
+            const apiFormData = new FormData();
+            
+            // Add all fields from the form
+            Object.entries(formDataObj).forEach(([key, value]) => {
+              if (key !== 'photo' && value !== null && value !== undefined) {
+                apiFormData.append(key, value);
+              }
+            });
+            
+            // Add the photo file if it exists
+            if (formDataObj.photo) {
+              apiFormData.append('photo', formDataObj.photo);
+            }
+            
+            // Call the API with the FormData
+            const newStudent = await createStudent(apiFormData);
+            
+            // Update the UI
             setStudents((prev) => [...prev, newStudent]);
             setShowAddModal(false);
           } catch (error) {
@@ -551,27 +637,7 @@ export default function StudentsPanel() {
             setEditingStudent(null);
           }}
           student={editingStudent}
-          onSubmit={async (updatedData) => {
-            try {
-              setSubmitting(true);
-              const updatedStudent = await updateStudent(
-                editingStudent._id,
-                updatedData
-              );
-              setStudents((prev) =>
-                prev.map((s) =>
-                  s._id === updatedStudent._id ? updatedStudent : s
-                )
-              );
-              setShowEditModal(false);
-              setEditingStudent(null);
-            } catch (error) {
-              console.error("Error updating student:", error);
-              setError(error.message || "Failed to update student");
-            } finally {
-              setSubmitting(false);
-            }
-          }}
+          onSave={handleUpdateStudent}
         />
       )}
     </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getClassConfig } from '@/services/classConfig';
+import { toast } from 'react-toastify';
 
 export default function MarksUpdateModal({ 
   isOpen, 
@@ -152,17 +153,36 @@ export default function MarksUpdateModal({
     return preparedMarks;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    if (!onSubmit) return;
+    
+    // Check if at least one mark is entered
+    const hasMarks = Object.values(marks).some(mark => mark !== '' && mark !== undefined) || 
+                    Object.values(absentSubjects).some(Boolean);
+    
+    if (!hasMarks) {
+      toast.warning('Please enter marks or mark as absent for at least one subject');
+      return;
+    }
+    
+    // Prepare the marks data
+    const marksToSubmit = {};
+    
+    // Process each subject
+    subjects.forEach(subject => {
+      // If subject is marked as absent, set 'AB', otherwise use the entered mark
+      marksToSubmit[subject] = absentSubjects[subject] ? 'AB' : (marks[subject] || '');
+    });
     
     try {
       setIsSubmitting(true);
-      const marksToSubmit = prepareMarksForSubmission();
-      await onSubmit(marksToSubmit);
+      onSubmit(marksToSubmit);
+      toast.success('Marks updated successfully');
       onClose();
     } catch (error) {
-      console.error('Error saving marks:', error);
+      console.error('Error updating marks:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to update marks';
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }

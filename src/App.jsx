@@ -45,6 +45,18 @@ const AppContent = () => {
   
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'dark' : ''}`}>
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={true}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme={theme}
+      />
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <Routes>
           <Route index element={<Home />} />

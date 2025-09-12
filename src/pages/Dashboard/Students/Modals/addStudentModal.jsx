@@ -6,13 +6,23 @@ export default function AddStudentModal({ isOpen, onClose, onSubmit, cls }) {
   const [formData, setFormData] = React.useState({
     studentName: '',
     rollNumber: '',
-    class: cls,
+    class: '',
     fatherName: '',
     contactNumber: '',
     address: '',
-    dob: '', // Changed from dateOfBirth to match backend
+    dob: '',
     photo: null
   });
+
+  // Update form data when cls prop changes
+  React.useEffect(() => {
+    if (cls) {
+      setFormData(prev => ({
+        ...prev,
+        class: cls
+      }));
+    }
+  }, [cls]);
 
   const fileInputRef = useRef(null);
 
@@ -33,33 +43,53 @@ export default function AddStudentModal({ isOpen, onClose, onSubmit, cls }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    
+    // Validate required fields
+    if (!formData.studentName || !formData.rollNumber) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
     const formDataToSend = new FormData();
     
-    // Format date as MM/DD/YYYY before sending
-    const formattedData = { ...formData };
-    if (formData.dob) {
-      try {
-        const date = new Date(formData.dob);
-        if (!isNaN(date.getTime())) {
-          formattedData.dob = format(date, 'MM/dd/yyyy');
+    // Add all form fields to FormData
+    Object.entries(formData).forEach(([key, value]) => {
+      if (key === 'dob' && value) {
+        // Format date as MM/DD/YYYY before sending
+        try {
+          const date = new Date(value);
+          if (!isNaN(date.getTime())) {
+            formDataToSend.append('dob', format(date, 'MM/dd/yyyy'));
+          }
+        } catch (e) {
+          console.error('Error formatting date:', e);
+          formDataToSend.append('dob', value);
         }
-      } catch (e) {
-        console.error('Error formatting date:', e);
-      }
-    }
-    
-    // Append all form fields to FormData
-    Object.entries(formattedData).forEach(([key, value]) => {
-      if (key !== 'photo' && value !== null) {
+      } else if (key === 'rollNumber') {
+        // Convert rollNumber to roll
+        formDataToSend.append('roll', value ? value.toString() : '');
+      } else if (key === 'class' && !value) {
+        // Ensure class is set from props if not in form data
+        formDataToSend.append('class', cls || '');
+      } else if (value !== null && value !== undefined && key !== 'photo') {
         formDataToSend.append(key, value);
       }
     });
     
-    // Append the photo file if it exists
+    // Add the photo file if it exists
     if (formData.photo) {
       formDataToSend.append('photo', formData.photo);
     }
     
+    // Ensure required fields are set
+    if (!formDataToSend.has('class') && cls) {
+      formDataToSend.set('class', cls);
+    }
+    if (!formDataToSend.has('session')) {
+      formDataToSend.set('session', new Date().getFullYear().toString());
+    }
+    
+    console.log('Submitting form data:', Object.fromEntries(formDataToSend.entries()));
     onSubmit(formDataToSend);
   };
 
@@ -179,13 +209,20 @@ export default function AddStudentModal({ isOpen, onClose, onSubmit, cls }) {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Class *
                   </label>
-                  <input
-                    type="text"
-                    name="class"
-                    value={formData.class}
-                    readOnly
-                    className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm cursor-not-allowed"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      name="class"
+                      value={formData.class || 'No class selected'}
+                      readOnly
+                      className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm cursor-not-allowed"
+                    />
+                    {!formData.class && (
+                      <p className="mt-1 text-xs text-red-500">
+                        Please select a class first from the main page
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-1">

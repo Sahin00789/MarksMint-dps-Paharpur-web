@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { format, parseISO } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'react-toastify';
 
 const EditStudentModal = ({ isOpen, onClose, student, onSave }) => {
   const [formData, setFormData] = useState({
@@ -8,7 +9,7 @@ const EditStudentModal = ({ isOpen, onClose, student, onSave }) => {
     roll: '',
     class: '',
     fatherName: '',
-    contactNumber: '',
+    mobileNumber: '',
     address: '',
     dob: '', // Changed from dateOfBirth to match backend
     photo: null,
@@ -19,61 +20,53 @@ const EditStudentModal = ({ isOpen, onClose, student, onSave }) => {
 
   useEffect(() => {
     if (student) {
-      console.log('Student data:', JSON.stringify(student, null, 2));
-      console.log('Date of birth type:', typeof student.dob, 'value:', student.dob);
-      // Format date to YYYY-MM-DD for date input
-      let formattedDate = '';
-      if (student.dob) {
+      const formatDate = (dateValue) => {
+        if (!dateValue) return '';
+        
         try {
-          // Handle different date formats
           let date;
-          if (typeof student.dob === 'string') {
-            // First try parsing as MM/DD/YYYY (from the logs)
-            if (student.dob.includes('/')) {
-              const [month, day, year] = student.dob.split('/').map(Number);
+          
+          if (typeof dateValue === 'string') {
+            if (dateValue.includes('/')) {
+              const [month, day, year] = dateValue.split('/').map(Number);
               if (!isNaN(month) && !isNaN(day) && !isNaN(year)) {
                 date = new Date(year, month - 1, day);
               }
             }
-            // If that fails, try parsing as ISO string
+            
             if (!date || isNaN(date.getTime())) {
-              date = parseISO(student.dob);
+              date = parseISO(dateValue);
             }
-            // If that fails, try parsing as DD-MM-YYYY
-            if (isNaN(date.getTime()) && student.dob.includes('-')) {
-              const [day, month, year] = student.dob.split('-').map(Number);
+            
+            if (isNaN(date.getTime()) && dateValue.includes('-')) {
+              const [day, month, year] = dateValue.split('-').map(Number);
               if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
                 date = new Date(year, month - 1, day);
               }
             }
-          } else if (student.dob instanceof Date) {
-            date = student.dob;
-          } else if (student.dob?.$date) {
-            // Handle MongoDB date format
-            date = new Date(student.dob.$date);
+          } else if (dateValue instanceof Date) {
+            date = dateValue;
+          } else if (dateValue?.$date) {
+            date = new Date(dateValue.$date);
           } else {
-            date = new Date(student.dob);
+            date = new Date(dateValue);
           }
           
-          if (date && !isNaN(date.getTime())) {
-            formattedDate = format(date, 'yyyy-MM-dd');
-            console.log('Formatted date:', formattedDate, 'from:', student.dob);
-          } else {
-            console.warn('Invalid date value:', student.dob);
-          }
+          return date && !isNaN(date.getTime()) ? format(date, 'yyyy-MM-dd') : '';
         } catch (e) {
-          console.error('Error parsing date:', e, 'Value:', student.dob);
+          console.error('Error parsing date:', dateValue, e);
+          return '';
         }
-      }
+      };
       
       setFormData({
         studentName: student.studentName || '',
         roll: student.roll || '',
         class: student.class || '',
         fatherName: student.fatherName || '',
-        contactNumber: student.contactNumber || student.mobileNumber || '',
+        mobileNumber: student.mobileNumber || student.contactNumber || '',
         address: student.address || '',
-        dob: formattedDate, // Changed from dateOfBirth to dob
+        dob: formatDate(student.dob),
         photo: null,
         photoPreview: student.photoUrl || student.photo || ''
       });
@@ -103,52 +96,38 @@ const EditStudentModal = ({ isOpen, onClose, student, onSave }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const formDataToSubmit = new FormData();
     
-    // Append all form data
-    Object.keys(formData).forEach(key => {
-      if (key !== 'photoPreview') {
-        formDataToSubmit.append(key, formData[key]);
-      }
-    });
+    // Validate required fields
+    if (!formData.studentName || !formData.roll) {
+      toast.error('Student name and roll number are required');
+      return;
+    }
     
-    onSave(student._id, formDataToSubmit);
+    // Validate mobile number if provided
+    if (formData.mobileNumber && !/^\d{10}$/.test(formData.mobileNumber)) {
+      toast.error('Please enter a valid 10-digit mobile number');
+      return;
+    }
+    
+    const { photoPreview, ...formDataToSubmit } = formData;
+    onSave(e, formDataToSubmit);
   };
 
-  // Animation variants
   const backdropVariants = {
     hidden: { opacity: 0 },
-    visible: { 
-      opacity: 1,
-      transition: { duration: 0.2 }
-    },
-    exit: { 
-      opacity: 0,
-      transition: { duration: 0.15 }
-    }
+    visible: { opacity: 1, transition: { duration: 0.2 } },
+    exit: { opacity: 0, transition: { duration: 0.15 } }
   };
 
   const modalVariants = {
-    hidden: { 
-      opacity: 0, 
-      y: 20,
-      scale: 0.98
-    },
+    hidden: { opacity: 0, y: 20, scale: 0.98 },
     visible: {
       opacity: 1,
       y: 0,
       scale: 1,
-      transition: { 
-        type: 'spring',
-        damping: 25,
-        stiffness: 500
-      }
+      transition: { type: 'spring', damping: 25, stiffness: 500 }
     },
-    exit: {
-      opacity: 0,
-      y: 20,
-      transition: { duration: 0.2 }
-    }
+    exit: { opacity: 0, y: 20, transition: { duration: 0.2 } }
   };
 
   return (
@@ -303,8 +282,8 @@ const EditStudentModal = ({ isOpen, onClose, student, onSave }) => {
                 </label>
                 <input
                   type="tel"
-                  name="contactNumber"
-                  value={formData.contactNumber}
+                  name="mobileNumber"
+                  value={formData.mobileNumber || formData.contactNumber || ''}
                   onChange={handleChange}
                   className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   required

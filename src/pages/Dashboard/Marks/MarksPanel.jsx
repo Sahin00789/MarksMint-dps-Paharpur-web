@@ -16,6 +16,7 @@ import { getClassConfig } from "@/services/classConfig";
 
 import ExcelImportModalforMarks from "@/pages/Dashboard/Marks/Modals/ExcelImportModalforMarks.jsx";
 import MarksUpdateModal from "./Modals/marksUpdateModal.jsx";
+import { Circle } from "lucide-react";
 
 export default function MarksPanel() {
   const [selectedClass, setSelectedClass] = useState(null);
@@ -45,27 +46,31 @@ export default function MarksPanel() {
 
         const formattedData = importData.rows.map((student) => {
           const subjects = {};
-          
+
           // Process each header (column) in the Excel file
           importData.headers.forEach((header) => {
-            if (header === "Roll" || header === "Student Name" || header === "class") {
+            if (
+              header === "Roll" ||
+              header === "Student Name" ||
+              header === "class"
+            ) {
               return; // Skip these columns
             }
-            
+
             const markValue = student[header];
-            
+
             // Convert mark to appropriate format
             if (markValue === undefined || markValue === null) {
               return; // Skip undefined or null values
             }
-            
-            if (typeof markValue === 'string') {
+
+            if (typeof markValue === "string") {
               const trimmed = markValue.trim();
-              if (trimmed === '') {
+              if (trimmed === "") {
                 return; // Skip empty strings
               }
-              if (trimmed.toUpperCase() === 'AB') {
-                subjects[header] = 'AB';
+              if (trimmed.toUpperCase() === "AB") {
+                subjects[header] = "AB";
               } else if (!isNaN(trimmed)) {
                 subjects[header] = Number(trimmed);
               } else {
@@ -82,12 +87,15 @@ export default function MarksPanel() {
             studentName: student["Student Name"],
             roll: student["Roll"],
             marks: {
-              [selectedExam]: subjects
-            }
+              [selectedExam]: subjects,
+            },
           };
         });
 
-        console.log('Sending data to server:', JSON.stringify(formattedData, null, 2));
+        console.log(
+          "Sending data to server:",
+          JSON.stringify(formattedData, null, 2)
+        );
         await bulkUpdateMarks(selectedClass, selectedExam, formattedData);
 
         // Refresh the student data
@@ -108,10 +116,11 @@ export default function MarksPanel() {
 
   // Load class from localStorage on initial render
   useEffect(() => {
-    const savedClass = typeof window !== 'undefined' 
-      ? window.localStorage.getItem('ui.selectedClass')
-      : null;
-    
+    const savedClass =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem("ui.selectedClass")
+        : null;
+
     if (savedClass) {
       setSelectedClass(savedClass);
     }
@@ -121,7 +130,7 @@ export default function MarksPanel() {
   useEffect(() => {
     if (selectedClass) {
       try {
-        window.localStorage.setItem('ui.selectedClass', selectedClass);
+        window.localStorage.setItem("ui.selectedClass", selectedClass);
       } catch (_) {}
     }
   }, [selectedClass]);
@@ -129,7 +138,7 @@ export default function MarksPanel() {
   useEffect(() => {
     const fetchStudents = async () => {
       if (!selectedClass) return;
-      
+
       try {
         setLoading(true);
         setError(null);
@@ -137,13 +146,13 @@ export default function MarksPanel() {
         const data = await getStudentsByClass(selectedClass, selectedExam);
         setStudents(data);
       } catch (err) {
-        console.error('Error fetching students:', err);
-        setError('Failed to load students. Please try again.');
+        console.error("Error fetching students:", err);
+        setError("Failed to load students. Please try again.");
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchStudents();
   }, [selectedClass, selectedExam]);
 
@@ -180,14 +189,14 @@ export default function MarksPanel() {
         if (Array.isArray(cfg?.terms) && cfg.terms.length && !selectedExam) {
           setSelectedExam(cfg.terms[0]);
         }
-        
+
         // Update fullMarks with the config
         if (cfg?.fullMarks) {
-          setFullMarks(prev => ({
+          setFullMarks((prev) => ({
             ...prev,
             ...cfg.fullMarks,
             // Ensure current exam has a value
-            [selectedExam]: cfg.fullMarks[selectedExam] ?? 100
+            [selectedExam]: cfg.fullMarks[selectedExam] ?? 100,
           }));
         }
       } catch (e) {
@@ -270,12 +279,26 @@ export default function MarksPanel() {
             <div className="flex flex-col items-center justify-center h-64 bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
               <div className="text-center space-y-3">
                 <div className="mx-auto h-12 w-12 text-gray-400">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                    />
                   </svg>
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white">No class selected</h3>
-                <p className="text-gray-500 dark:text-gray-400">Select a class to view student marks</p>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                  No class selected
+                </h3>
+                <p className="text-gray-500 dark:text-gray-400">
+                  Select a class to view student marks
+                </p>
               </div>
             </div>
           ) : loading ? (
@@ -284,27 +307,34 @@ export default function MarksPanel() {
                 <div className="animate-pulse flex flex-col items-center justify-center space-y-6 py-8">
                   <div className="flex space-x-2">
                     {[0, 1, 2].map((i) => (
-                      <div 
+                      <div
                         key={i}
                         className="h-8 w-8 bg-indigo-100 dark:bg-indigo-900 rounded-full animate-bounce"
                         style={{
                           animationDelay: `${i * 0.15}s`,
-                          animationDuration: '1s',
-                          animationIterationCount: 'infinite'
+                          animationDuration: "1s",
+                          animationIterationCount: "infinite",
                         }}
                       />
                     ))}
                   </div>
                   <div className="text-center space-y-2">
-                    <p className="text-lg font-medium text-gray-900 dark:text-white">Loading Student Data</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Please wait while we fetch the latest information</p>
+                    <p className="text-lg font-medium text-gray-900 dark:text-white">
+                      Loading Student Data
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Please wait while we fetch the latest information
+                    </p>
                   </div>
                 </div>
-                
+
                 {/* Skeleton loader for content area */}
                 <div className="mt-6 space-y-4">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-20 bg-gray-50 dark:bg-gray-700 rounded-lg animate-pulse"></div>
+                    <div
+                      key={i}
+                      className="h-20 bg-gray-50 dark:bg-gray-700 rounded-lg animate-pulse"
+                    ></div>
                   ))}
                 </div>
               </div>
@@ -324,16 +354,22 @@ export default function MarksPanel() {
                   })
                   .map((stu) => {
                     // Ensure marks is an object and get the selected exam's marks
-                    const examMarks = stu.marks && typeof stu.marks === 'object' 
-                      ? stu.marks[selectedExam] || {}
-                      : {};
-                    
+                    const examMarks =
+                      stu.marks && typeof stu.marks === "object"
+                        ? stu.marks[selectedExam] || {}
+                        : {};
+
                     // Calculate total marks and handle absent cases
                     let totalMarks = 0;
                     let absentCount = 0;
-                    
-                    Object.values(examMarks).forEach(mark => {
-                      if (mark === 'AB' || mark === 'ab' || mark === 'Ab' || mark === 'aB') {
+
+                    Object.values(examMarks).forEach((mark) => {
+                      if (
+                        mark === "AB" ||
+                        mark === "ab" ||
+                        mark === "Ab" ||
+                        mark === "aB"
+                      ) {
                         absentCount++;
                       } else {
                         const numMark = Number(mark);
@@ -342,25 +378,22 @@ export default function MarksPanel() {
                         }
                       }
                     });
-                    
+
                     const maxMark = fullMarks?.[selectedExam] || 100;
                     const totalPossibleMarks = subjects.length * maxMark;
-                    const isFullyAbsent = absentCount === subjects.length && subjects.length > 0;
-                    const percentage = isFullyAbsent 
-                      ? 0 
-                      : totalPossibleMarks > 0 
-                        ? Math.round((totalMarks / totalPossibleMarks) * 100)
-                        : 0;
+                    const isFullyAbsent =
+                      absentCount === subjects.length && subjects.length > 0;
+                    const percentage = isFullyAbsent
+                      ? 0
+                      : totalPossibleMarks > 0
+                      ? Math.round((totalMarks / totalPossibleMarks) * 100)
+                      : 0;
 
                     return (
                       <div
                         key={stu._id}
                         className="bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 dark:border-gray-700 overflow-hidden group cursor-pointer"
-                        onClick={() => {
-                          setEditingStudent(stu);
-                          setMarksForm(examMarks);
-                          setShowMarksModal(true);
-                        }}
+                        
                       >
                         {/* Header with student info */}
                         <div className=" bg-gradient-to-r from-indigo-600 to-purple-600 p-4 text-white">
@@ -378,13 +411,7 @@ export default function MarksPanel() {
                                 </span>
                               </div>
                             </div>
-                            <div>
-                              {stu.rank && (
-                                <span className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-base font-extrabold rounded-full h-8 w-8 flex items-center justify-center shadow-xl ring-2 ring-white dark:ring-white/80 z-10 transform hover:scale-125 transition-all duration-200">
-                                  {stu.rank}
-                                </span>
-                              )}
-                            </div>
+                            <div></div>
 
                             <div className="flex flex-col items-center">
                               <div className="relative">
@@ -413,7 +440,11 @@ export default function MarksPanel() {
                           <div className="grid grid-cols-2 gap-3">
                             {subjects.map((subj) => {
                               const mark = examMarks[subj];
-                              const isAbsent = mark === "AB" || mark === "ab" || mark === "Ab" || mark === "aB";
+                              const isAbsent =
+                                mark === "AB" ||
+                                mark === "ab" ||
+                                mark === "Ab" ||
+                                mark === "aB";
                               const numericMark = isAbsent
                                 ? 0
                                 : Number(mark) || 0;
@@ -475,7 +506,14 @@ export default function MarksPanel() {
                             })}
                           </div>
                         </div>
-
+                        <div className=" flex items-center justify-center  ">
+                          
+                          {stu.rank && (
+                            <div className=" bg-gradient-to-r from-amber-500 to-pink-500 text-white text-base font-extrabold  flex flex-col items-center justify-center shadow-xl ring-2 ring-white dark:ring-white/80 z-10 transform hover:scale-125 transition-all duration-200 w-14 h-6  rounded-t-full ">
+                             <p>{stu.rank}</p>  
+                            </div>
+                          )}
+                        </div>
                         {/* Footer with percentage and edit button */}
                         <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-100 dark:border-gray-700">
                           <div className="flex items-center justify-between">
@@ -512,7 +550,7 @@ export default function MarksPanel() {
                               </span>
                             </div>
                           </div>
-                          <button 
+                          <button
                             onClick={(e) => {
                               e.stopPropagation();
                               const examMarks = stu.marks?.[selectedExam] || {};
@@ -522,8 +560,19 @@ export default function MarksPanel() {
                             }}
                             className="mt-2 w-full py-1.5 px-3 text-sm font-medium rounded-md bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-800/50 transition-colors flex items-center justify-center gap-1.5"
                           >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            <svg
+                              className="w-3.5 h-3.5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                              />
                             </svg>
                             Edit Marks
                           </button>
@@ -566,30 +615,30 @@ export default function MarksPanel() {
         initialMarks={marksForm}
         onSubmit={async (updatedMarks) => {
           if (!editingStudent || !selectedClass || !selectedExam) return;
-          
+
           try {
             setSubmitting(true);
-            
+
             // Prepare the data in the format expected by the API
             const updateData = {
               studentName: editingStudent.studentName,
               roll: editingStudent.roll,
               marks: {
-                [selectedExam]: updatedMarks
-              }
+                [selectedExam]: updatedMarks,
+              },
             };
-            
+
             // Call the API to update marks
             await bulkUpdateMarks(selectedClass, selectedExam, [updateData]);
-            
+
             // Refresh the student data
             const data = await getStudentsByClass(selectedClass, selectedExam);
             setStudents(Array.isArray(data) ? data : []);
-            
+
             return true;
           } catch (error) {
-            console.error('Error updating marks:', error);
-            setError(error.message || 'Failed to update marks');
+            console.error("Error updating marks:", error);
+            setError(error.message || "Failed to update marks");
             return false;
           } finally {
             setSubmitting(false);

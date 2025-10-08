@@ -328,7 +328,6 @@ const AdmitPrintPage = ({ student, examConfig, isPrintMode = false, onContentRea
     boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
     borderRadius: '0.5rem',
     overflow: 'hidden',
-    position: 'relative',
     '::before': {
       content: '""',
       position: 'absolute',
@@ -375,8 +374,7 @@ const AdmitPrintPage = ({ student, examConfig, isPrintMode = false, onContentRea
     color: '#1f2937',
     fontSize: '13px',
     background: '#fff',
-    position: 'relative',
-    '::before': {
+    '&::before': {
       content: '""',
       position: 'absolute',
       top: 0,
@@ -406,21 +404,19 @@ const AdmitPrintPage = ({ student, examConfig, isPrintMode = false, onContentRea
       <div style={containerStyle}>
         {/* Watermark */}
         {/* School Info Card */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        position: 'relative',
-        marginBottom:"2px",
-        paddingBottom:"20px",
-        paddingTop:"5px",
-        width: '100%',
-        height: '150px',
-        marginBottom: '5px',
-        backgroundColor: '#f8fafc',
-        borderRadius: '0.5rem',
-        overflow: 'hidden',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          position: 'relative',
+          paddingBottom: '20px',
+          paddingTop: '5px',
+          width: '100%',
+          height: '150px',
+          backgroundColor: '#f8fafc',
+          borderRadius: '0.5rem',
+          overflow: 'hidden',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+        }}>
         {/* School Info */}
         <div style={{
           flex: 1,
@@ -1304,15 +1300,13 @@ const AdmitPrintPage = ({ student, examConfig, isPrintMode = false, onContentRea
             backgroundColor: 'white',
             borderRadius: '0.5rem',
             padding: '0.5rem',
-            paddingBottom: '0',
+            paddingBottom: '1.5rem',
             boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'flex-end',
             minHeight: '80px',
-            position: 'relative',
-            paddingBottom: '1.5rem',
             position: 'relative'
           }}>
             <div style={{
@@ -1341,15 +1335,13 @@ const AdmitPrintPage = ({ student, examConfig, isPrintMode = false, onContentRea
             backgroundColor: 'white',
             borderRadius: '0.5rem',
             padding: '0.5rem',
-            paddingBottom: '0',
+            paddingBottom: '1.5rem',
             boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'flex-end',
             minHeight: '80px',
-            position: 'relative',
-            paddingBottom: '1.5rem',
             position: 'relative'
           }}>
             <div style={{
@@ -1378,15 +1370,13 @@ const AdmitPrintPage = ({ student, examConfig, isPrintMode = false, onContentRea
             backgroundColor: 'white',
             borderRadius: '0.5rem',
             padding: '0.5rem',
-            paddingBottom: '0',
+            paddingBottom: '1.5rem',
             boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'flex-end',
             minHeight: '80px',
-            position: 'relative',
-            paddingBottom: '1.5rem',
             position: 'relative'
           }}>
             <div style={{

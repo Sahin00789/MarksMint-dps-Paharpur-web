@@ -26,7 +26,7 @@ import { format, parseISO, parse, isBefore } from "date-fns";
 import { enIN } from "date-fns/locale/en-IN";
 import { toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
-import debounce from 'lodash/debounce';
+import debounce from 'lodash.debounce';
 import AdmitPrintPage from "@/pages/Dashboard/Academics/AdmitCard/AdmitCardPage/AdmitPrintPage";
 import ExamDependentClassSelectorCard from "@/components/common/ExamDependentClassSelectorCard";
 import { getStudentsByClass } from "@/services/students";
@@ -50,7 +50,7 @@ const AdmitCardPanel = () => {
   const [exams, setExams] = useState([]);
   const [examConfigs, setExamConfigs] = useState({});
   const [classConfig, setClassConfig] = useState({});
-  const [subjects, setSubjects] = useState([]);
+  let [subjects, setSubjects] = useState([]);
   const [selectedExam, setSelectedExam] = useState(null);
   const [selectedExamConfig, setSelectedExamConfig] = useState(null);
   const [rawExamConfig, setRawExamConfig] = useState(null);

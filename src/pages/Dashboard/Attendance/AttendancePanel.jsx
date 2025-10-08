@@ -418,10 +418,29 @@ export default function AttendancePanel() {
                     <div className="bg-gradient-to-r from-pink-500 to-rose-500 p-3 relative rounded-t-2xl">
                       <div className="absolute top-0 right-0 w-16 h-16 -mr-4 -mt-4 bg-white/10 rounded-full"></div>
                       <div className="relative z-10 flex items-center space-x-3">
-                        <div className="flex-shrink-0">
-                          <div className="h-10 w-10 rounded-full border-2 border-white/40 flex items-center justify-center bg-pink-400/30 backdrop-blur-sm text-white font-bold text-sm">
-                            {student.studentName ? student.studentName.trim().charAt(0).toUpperCase() : 'N'}
-                          </div>
+                        <div className="flex-shrink-0 relative">
+                          {student.photoUrl ? (
+                            <>
+                              <img
+                                src={student.photoUrl}
+                                alt={student.studentName || 'Student'}
+                                className="h-10 w-10 rounded-full object-cover border-2 border-white/40"
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.style.display = 'none';
+                                  const fallback = e.target.nextElementSibling;
+                                  if (fallback) fallback.style.display = 'flex';
+                                }}
+                              />
+                              <div className="h-10 w-10 rounded-full border-2 border-white/40 items-center justify-center bg-pink-400/30 backdrop-blur-sm text-white font-bold text-sm hidden">
+                                {student.studentName ? student.studentName.trim().charAt(0).toUpperCase() : 'N'}
+                              </div>
+                            </>
+                          ) : (
+                            <div className="h-10 w-10 rounded-full border-2 border-white/40 flex items-center justify-center bg-pink-400/30 backdrop-blur-sm text-white font-bold text-sm">
+                              {student.studentName ? student.studentName.trim().charAt(0).toUpperCase() : 'N'}
+                            </div>
+                          )}
                         </div>
                         <div className="min-w-0">
                           <h3 className="text-sm font-semibold text-white truncate">

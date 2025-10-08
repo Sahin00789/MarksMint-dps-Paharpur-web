@@ -880,6 +880,14 @@ console.log("processedStudents in AdmitCardPanel:", processedStudents);
                 const examConfig = student.examConfig?.[Object.keys(student.examConfig || {})[0]] || {};
                 const subjects = examConfig.subjects || [];
                 const subjectCount = subjects.length;
+                
+                // Debug: Check if student has photoUrl
+                console.log('Student data:', {
+                  id: student._id,
+                  name: student.studentName,
+                  hasPhoto: !!student.photoUrl,
+                  photoUrl: student.photoUrl
+                });
 
                 return (
                   <div
@@ -890,13 +898,27 @@ console.log("processedStudents in AdmitCardPanel:", processedStudents);
                     <div className="bg-gradient-to-r from-teal-500 to-emerald-600 p-3 relative rounded-t-2xl">
                       <div className="absolute top-0 right-0 w-16 h-16 -mr-4 -mt-4 bg-white/10 rounded-full"></div>
                       <div className="relative z-10 flex items-center space-x-3">
-                        <div className="flex-shrink-0">
-                          <div className="h-10 w-10 rounded-md border border-white/30 flex items-center justify-center bg-white/20 text-white font-bold text-sm">
+                        <div className="flex-shrink-0 relative">
+                          {student.photoUrl ? (
+                            <img 
+                              src={student.photoUrl} 
+                              alt={student.studentName || 'Student'}
+                              className="h-10 w-10 rounded-md object-cover border-2 border-white/30"
+                              onError={(e) => {
+                                // Hide the image and show the fallback if it fails to load
+                                e.target.style.display = 'none';
+                                const fallback = e.target.nextElementSibling;
+                                if (fallback) fallback.style.display = 'flex';
+                              }}
+                            />
+                          ) : null}
+                          <div 
+                            className={`h-10 w-10 rounded-md border-2 border-white/30 flex items-center justify-center bg-white/20 text-white font-bold text-sm ${
+                              student.photoUrl ? 'hidden' : 'flex'
+                            }`}
+                          >
                             {student.studentName
-                              ? student.studentName
-                                  .trim()
-                                  .charAt(0)
-                                  .toUpperCase()
+                              ? student.studentName.trim().charAt(0).toUpperCase()
                               : "N"}
                           </div>
                         </div>

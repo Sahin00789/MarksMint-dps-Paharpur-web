@@ -267,10 +267,33 @@ const CoScholasticGradesPanel = () => {
                   {/* Card Header */}
                   <div className="px-5 pt-5 pb-3">
                     <div className="flex items-start">
-                      <div className="h-14 w-14 rounded-full bg-orange-100 dark:bg-orange-900/40 flex-shrink-0 flex items-center justify-center mr-3 ring-2 ring-orange-200 dark:ring-orange-800/50">
-                        <span className="text-xl text-orange-600 dark:text-orange-300 font-medium">
-                          {student.studentName?.charAt(0) || '?'}
-                        </span>
+                      <div className="relative h-14 w-14 flex-shrink-0 mr-3">
+                        {student.photoUrl ? (
+                          <>
+                            <img
+                              src={student.photoUrl}
+                              alt={student.studentName || 'Student'}
+                              className="h-full w-full rounded-full object-cover ring-2 ring-orange-200 dark:ring-orange-800/50"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.style.display = 'none';
+                                const fallback = e.target.nextElementSibling;
+                                if (fallback) fallback.style.display = 'flex';
+                              }}
+                            />
+                            <div className="h-full w-full rounded-full bg-orange-100 dark:bg-orange-900/40 items-center justify-center ring-2 ring-orange-200 dark:ring-orange-800/50 hidden">
+                              <span className="text-xl text-orange-600 dark:text-orange-300 font-medium">
+                                {student.studentName?.charAt(0) || '?'}
+                              </span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="h-full w-full rounded-full bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center ring-2 ring-orange-200 dark:ring-orange-800/50">
+                            <span className="text-xl text-orange-600 dark:text-orange-300 font-medium">
+                              {student.studentName?.charAt(0) || '?'}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <div className="min-w-0">
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white truncate">

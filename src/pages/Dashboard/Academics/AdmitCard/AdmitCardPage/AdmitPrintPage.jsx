@@ -692,18 +692,46 @@ const AdmitPrintPage = ({ student, examConfig, isPrintMode = false, onContentRea
               fontSize: '0.7rem',
               textAlign: 'center'
             }}>
-              {student?.photo ? (
+              {student?.photoUrl ? (
                 <img
-                  src={student.photo}
-                  alt="Student"
+                  src={student.photoUrl}
+                  alt={student.studentName || 'Student'}
                   style={{
                     width: '100%',
                     height: '100%',
-                    objectFit: 'cover'
+                    objectFit: 'cover',
+                    backgroundColor: '#f3f4f6'
+                  }}
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+                      `<svg width='100%' height='100%' viewBox='0 0 100 120' xmlns='http://www.w3.org/2000/svg'>
+                        <rect width='100%' height='100%' fill='#f3f4f6'/>
+                        <text x='50%' y='50%' font-family='Poppins, sans-serif' font-size='40' text-anchor='middle' dominant-baseline='middle' fill='#9ca3af'>
+                          ${student?.studentName ? student.studentName.trim().charAt(0).toUpperCase() : '?'}
+                        </text>
+                      </svg>`
+                    )}`;
                   }}
                 />
               ) : (
-                'Student Photo'
+                <div style={{
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: '#f3f4f6',
+                  color: '#9ca3af',
+                  fontSize: '0.8rem',
+                  fontFamily: 'Poppins, sans-serif',
+                  textAlign: 'center',
+                  padding: '0.5rem'
+                }}>
+                  {student?.studentName ? 
+                    student.studentName.trim().charAt(0).toUpperCase() : 
+                    'No Photo'}
+                </div>
               )}
             </div>
           </div>

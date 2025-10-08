@@ -169,10 +169,29 @@ const MarksheetsPanel = () => {
         <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-3 relative rounded-t-2xl">
           <div className="absolute top-0 right-0 w-16 h-16 -mr-4 -mt-4 bg-white/10 rounded-full"></div>
           <div className="relative z-10 flex items-center space-x-3">
-            <div className="flex-shrink-0">
-              <div className="h-10 w-10 rounded-md border border-white/30 flex items-center justify-center bg-white/20 text-white font-bold text-sm">
-                {(student.studentName || student.name || 'N').charAt(0).toUpperCase()}
-              </div>
+            <div className="flex-shrink-0 relative">
+              {student.photoUrl ? (
+                <>
+                  <img
+                    src={student.photoUrl}
+                    alt={student.studentName || student.name || 'Student'}
+                    className="h-10 w-10 rounded-md object-cover border-2 border-white/30"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.style.display = 'none';
+                      const fallback = e.target.nextElementSibling;
+                      if (fallback) fallback.style.display = 'flex';
+                    }}
+                  />
+                  <div className="h-10 w-10 rounded-md border-2 border-white/30 flex items-center justify-center bg-white/20 text-white font-bold text-sm hidden">
+                    {(student.studentName || student.name || 'N').charAt(0).toUpperCase()}
+                  </div>
+                </>
+              ) : (
+                <div className="h-10 w-10 rounded-md border-2 border-white/30 flex items-center justify-center bg-white/20 text-white font-bold text-sm">
+                  {(student.studentName || student.name || 'N').charAt(0).toUpperCase()}
+                </div>
+              )}
             </div>
             <div className="min-w-0">
               <h3 className="text-sm font-semibold text-white truncate">

@@ -26,7 +26,7 @@ import { format, parseISO, parse, isBefore } from "date-fns";
 import { enIN } from "date-fns/locale/en-IN";
 import { toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
-import { debounce } from "lodash";
+import debounce from 'lodash/debounce';
 import AdmitPrintPage from "@/pages/Dashboard/Academics/AdmitCard/AdmitCardPage/AdmitPrintPage";
 import ExamDependentClassSelectorCard from "@/components/common/ExamDependentClassSelectorCard";
 import { getStudentsByClass } from "@/services/students";

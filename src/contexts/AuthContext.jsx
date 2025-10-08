@@ -1,6 +1,7 @@
-import React,{ createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { toast } from 'react-toastify';
 
 const AuthContext = createContext();
 
@@ -57,7 +58,11 @@ export const AuthProvider = ({ children }) => {
     // Initialize user from localStorage if available
     try {
       const storedUser = safeGetItem('user');
-      if (!storedUser) return null;
+      const token = safeGetItem('token');
+      
+      if (!storedUser || !token) {
+        return null;
+      }
       
       // Basic validation of stored user data
       const parsedUser = JSON.parse(storedUser);
@@ -70,16 +75,18 @@ export const AuthProvider = ({ children }) => {
         throw new Error('Invalid user data: missing required fields');
       }
       
+      // Set the auth header
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
       return parsedUser;
     } catch (error) {
       console.error('Error initializing user:', error);
       // Clean up any invalid data
-      safeRemoveItem('user');
-      safeRemoveItem('token');
+      clearAuthData();
       return null;
     }
   });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Start with true to prevent flash of protected content
   const navigate = useNavigate();
   
   // Make currentUser available for backward compatibility
@@ -88,9 +95,9 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     // Check if user is already logged in
     const checkAuth = async () => {
-      const token = safeGetItem('token');
-      if (token) {
-        try {
+      try {
+        const token = safeGetItem('token');
+        if (token) {
           // Verify token with backend
           const response = await api.get('/auth/verify');
           
@@ -99,23 +106,30 @@ export const AuthProvider = ({ children }) => {
             safeSetItem('user', JSON.stringify(response.data.user));
             setUser(response.data.user);
             api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+            console.log('[Auth] User authenticated from token');
           } else {
             throw new Error('Invalid response from server');
           }
-        } catch (error) {
-          console.error('Token verification failed:', error);
-          // Clear invalid token and show error to user
-          clearAuthData();
-          if (error.response?.status !== 401) {
-            // Only show error if it's not an auth error (which is expected when not logged in)
-            console.error('Auth check failed:', new Error('Session expired. Please log in again.'));
-          }
         }
+      } catch (error) {
+        console.error('Token verification failed:', error);
+        // Clear invalid token
+        clearAuthData();
+        if (error.response?.status !== 401) {
+          console.error('Auth check failed:', error);
+        }
+      } finally {
+        // Always set loading to false when done
+        setLoading(false);
       }
-      setLoading(false);
     };
 
-    checkAuth();
+    // Add a small delay to prevent flash of loading state
+    const timer = setTimeout(() => {
+      checkAuth();
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, []);
 
   const login = async (credentials) => {
@@ -127,25 +141,30 @@ export const AuthProvider = ({ children }) => {
       const response = await api.post('/auth/login', credentials);
       
       if (response.data && response.data.token) {
-        const { token, user } = response.data;
+        const { token, refreshToken, user: userData } = response.data;
+        
+        if (!userData || !userData.id) {
+          throw new Error('Invalid user data received from server');
+        }
         
         // Store user data in localStorage safely
-        if (!safeSetItem('token', token) || !safeSetItem('user', JSON.stringify(user))) {
+        if (!safeSetItem('token', token) || 
+            !safeSetItem('refreshToken', refreshToken) || 
+            !safeSetItem('user', JSON.stringify(userData))) {
           throw new Error('Failed to store authentication data');
         }
         
         // Set the default authorization header
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        console.log('[Auth] Login successful for user:', user.username);
+        console.log('[Auth] Login successful for user:', userData.username);
         
-        // Update state and wait for it to complete
-        await new Promise(resolve => {
-          setUser(user);
-          // Small delay to ensure state is updated
-          setTimeout(resolve, 50);
-        });
+        // Update state with the user data
+        setUser(userData);
         
-        return { success: true, user };
+        // Navigate to dashboard after successful login
+        navigate('/dashboard', { replace: true });
+        
+        return { success: true, user: userData };
       } else {
         throw new Error('Invalid response from server');
       }
@@ -153,13 +172,15 @@ export const AuthProvider = ({ children }) => {
       console.error('Login failed:', error);
       safeRemoveItem('token');
       safeRemoveItem('user');
-      localStorage.removeItem('user');
+      safeRemoveItem('refreshToken');
       setUser(null);
       
       return { 
         success: false, 
-        error: error.message || 'Login failed. Please try again.' 
+        error: error.response?.data?.message || error.message || 'Login failed. Please try again.' 
       };
+    } finally {
+      setLoading(false);
     }
   };
 

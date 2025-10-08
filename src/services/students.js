@@ -26,12 +26,35 @@ export async function getStudentsByClass(cls, exam = null, params = {}) {
     
     // Process each student's marks to ensure consistent format
     students = students.map(student => {
-      if (student.marks && typeof student.marks === 'object') {
-        // Ensure marks is always an object
-        student.marks = student.marks ;
-      } else {
+      // Ensure marks is always an object
+      if (!student.marks || typeof student.marks !== 'object') {
         student.marks = {};
       }
+      
+      // Ensure the exam exists in marks
+      if (exam && !student.marks[exam]) {
+        student.marks[exam] = {};
+      }
+      
+      // Process each subject's marks to ensure they're objects
+      if (student.marks[exam]) {
+        Object.keys(student.marks[exam]).forEach(subject => {
+          // If the mark is a string or number, convert it to { written: value } format
+          if (student.marks[exam][subject] !== null && 
+              typeof student.marks[exam][subject] === 'object' && 
+              !Array.isArray(student.marks[exam][subject])) {
+            // Already in the correct format
+            return;
+          }
+          
+          // Convert legacy format to new format
+          const markValue = student.marks[exam][subject];
+          if (markValue !== undefined && markValue !== null) {
+            student.marks[exam][subject] = { written: String(markValue) };
+          }
+        });
+      }
+      
       return student;
     });
     
@@ -99,67 +122,272 @@ export async function uploadStudentPhotos(file, params = {}) {
   return res.data;
 }
 
-// Upload multiple photos at once. Backend should accept array field 'files'.
-export async function uploadStudentPhotosBatch(files = [], params = {}) {
-  const form = new FormData();
-  (files || []).forEach((f) => {
-    if (f) form.append('files', f);
-  });
-  Object.entries(params || {}).forEach(([k, v]) => form.append(k, v));
-  const res = await api.post('/students/photos/batch', form, { headers: { 'Content-Type': 'multipart/form-data' } });
-  return res.data;
+// Upload multiple photos at once. Backend expects array field 'photos'.
+// progressCallback receives { total, loaded, percent } for upload progress
+export async function uploadStudentPhotosBatch(files = [], params = {}, progressCallback) {
+  try {
+    if (!files || !files.length) {
+      throw new Error('No files provided for upload');
+    }
+
+    const form = new FormData();
+    
+    // Add files to form data
+    files.forEach((fileObj) => {
+      const file = fileObj.file || fileObj;
+      if (file instanceof File) {
+        form.append('photos', file);
+      }
+    });
+    
+    // Add class to form data (required)
+    if (!params.class) {
+      throw new Error('Class is required for photo upload');
+    }
+    form.append('class', params.class);
+    
+    // Add section if provided
+    if (params.section) {
+      form.append('section', params.section);
+    }
+    
+    // Log form data for debugging
+    const formEntries = [];
+    for (let [key, value] of form.entries()) {
+      formEntries.push([key, value instanceof File ? value.name : value]);
+    }
+    
+    console.log('Uploading form data:', {
+      fileCount: files.length,
+      class: params.class,
+      section: params.section || 'not provided',
+      formEntries
+    });
+    
+    // Use the api instance which already has the base URL and auth headers
+    const res = await api.post('/student-photos', form, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      },
+      onUploadProgress: progressCallback ? (progressEvent) => {
+        const { loaded, total } = progressEvent;
+        const percent = Math.round((loaded * 100) / total);
+        progressCallback({ loaded, total, percent });
+      } : undefined
+    });
+    
+    console.log('Upload response:', res.data);
+    return res.data;
+  } catch (error) {
+    const errorDetails = {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message,
+      request: {
+        url: error.config?.url,
+        method: error.config?.method,
+        headers: error.config?.headers,
+        data: error.config?.data
+      }
+    };
+    
+    console.error('Error in uploadStudentPhotosBatch:', errorDetails);
+    
+    // Log the full error object for debugging
+    console.error('Full error object:', error);
+    
+    // Rethrow with more context
+    const errorMessage = error.response?.data?.message || 
+                       error.response?.data?.error || 
+                       'Failed to upload photos';
+    const apiError = new Error(errorMessage);
+    apiError.response = error.response;
+    apiError.details = errorDetails;
+    throw apiError;
+  }
+}
+
+// Map frontend field names to backend field names
+const CO_SCHOLASTIC_FIELD_MAP = {
+  'workEducation': 'workEd',
+  'artEducation': 'artEd',
+  'healthAndPhysical': 'phyEd',
+  'discipline': 'discipline'
+};
+
+/**
+ * Update co-scholastic grades for multiple students in a class
+ * @param {string} className - The class name
+ * @param {Array} grades - Array of { studentId, rollNumber, grades: { [category]: grade } } objects
+ * @returns {Promise<Object>} The API response
+ */
+export async function bulkUpdateCoScholastic(className, grades) {
+  try {
+    // Transform the grades to match the backend schema
+    const transformedGrades = grades.map(studentGrade => ({
+      studentId: studentGrade.studentId,
+      rollNumber: studentGrade.rollNumber,
+      grades: {
+        // Map the grades directly since we're already using the correct field names
+        workEd: studentGrade.grades?.workEd || '-',
+        artEd: studentGrade.grades?.artEd || '-',
+        phyEd: studentGrade.grades?.phyEd || '-',
+        discipline: studentGrade.grades?.discipline || '-'
+      }
+    }));
+
+    const response = await api.post('/students/bulk-update/coscholastic', {
+      class: className,
+      grades: transformedGrades
+    });
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error updating co-scholastic grades:', error);
+    
+    // Add more detailed error information
+    if (error.response) {
+      console.error('Response data:', error.response.data);
+      console.error('Response status:', error.response.status);
+      console.error('Response headers:', error.response.headers);
+    } else if (error.request) {
+      console.error('No response received:', error.request);
+    } else {
+      console.error('Error message:', error.message);
+    }
+    
+    throw error;
+  }
 }
 
 /**
- * Update marks for multiple students in a class for a specific exam
+ * Fetches co-scholastic grades for all students in a class
+ * @param {string} className - The class name to fetch grades for
+ * @returns {Promise<Array>} Array of student objects with co-scholastic grades
+ */
+export async function getCoScholasticGrades(className) {
+  try {
+    console.debug(`[students] Fetching co-scholastic grades for class ${className}`);
+    const response = await api.get('/co-scholastic/grades', {
+      params: { 
+        class: className,
+        _ts: Date.now() // Prevent caching
+      }
+    });
+    
+    // Handle different response formats
+    let data = response?.data;
+    if (data && !Array.isArray(data)) {
+      data = data.data || data.grades || data.results || [];
+    }
+    
+    if (!Array.isArray(data)) {
+      console.warn('Unexpected response format for co-scholastic grades:', data);
+      return [];
+    }
+    
+    console.debug(`[students] Retrieved ${data.length} co-scholastic grade records`);
+    return data.map(grade => ({
+      studentId: grade.studentId || grade._id || grade.id,
+      rollNumber: grade.rollNumber,
+      studentName: grade.studentName,
+      ...grade.grades // Spread the grades object to include all co-scholastic fields
+    }));
+    
+  } catch (error) {
+    console.error('Error fetching co-scholastic grades:', error);
+    throw error;
+  }
+}
+
+/**
+ * Bulk update marks for multiple students
  * @param {string} classId - The class ID
- * @param {string} exam - The exam name/ID
- * @param {Array} marksData - Array of { roll, studentName, marks: { [subject]: mark } } objects
+ * @param {string} exam - The exam name
+ * @param {Array} marksData - Array of student objects with marks
  * @returns {Promise<Object>} The API response
  */
 export async function bulkUpdateMarks(classId, exam, marksData) {
   try {
-    // Transform the data to match server expectations
-    const formattedData = marksData.map(student => {
-      const marks = {};
-      
-      // Process each subject mark
-      if (student.marks && student.marks[exam]) {
-        Object.entries(student.marks[exam]).forEach(([subject, mark]) => {
-          // Convert empty strings to null and ensure 'AB' is uppercase
-          if (mark === '') {
-            marks[subject] = null;
-          } else if (typeof mark === 'string' && mark.toUpperCase() === 'AB') {
-            marks[subject] = 'AB';
-          } else if (!isNaN(mark) && mark !== '') {
-            // Convert numeric strings to numbers
-            marks[subject] = Number(mark);
+    if (!classId || !exam || !Array.isArray(marksData)) {
+      throw new Error('Invalid parameters for bulkUpdateMarks');
+    }
+
+    console.log('Preparing bulk update marks request...');
+    console.log('Class ID:', classId);
+    console.log('Exam:', exam);
+    console.log('Marks data sample:', marksData.length > 0 ? marksData[0] : 'No data');
+
+    // Prepare the request data according to the server's expected format
+    const requestData = {
+      cls: classId,
+      exam: exam,
+      marksdata: marksData.map(student => {
+        // Create a clean student object with only the necessary fields
+        const { roll, studentName, ...marks } = student;
+        
+        // Ensure we have required fields
+        if (!roll) {
+          console.warn('Missing roll number in student data:', student);
+        }
+        
+        // Create the student object with marks directly in the root
+        const studentData = {
+          roll: String(roll), // Ensure roll is a string
+          studentName: studentName || ''
+        };
+
+        // Process each mark and add it to the student data
+        Object.entries(marks).forEach(([subject, value]) => {
+          // Skip non-subject fields
+          if (['_id', 'class', 'id', 'marks'].includes(subject)) return;
+          
+          // If the value is an object (e.g., { written: 20 }), use it as is
+          if (value && typeof value === 'object' && !Array.isArray(value)) {
+            studentData[subject] = value;
           } else {
-            marks[subject] = mark;
+            // If the value is not an object, create a new object with the exam as the key
+            studentData[subject] = { [exam]: value };
           }
         });
-      }
 
-      return {
-        roll: student.roll,
-        studentName: student.studentName,
-        marks: {
-          [exam]: marks
-        }
-      };
-    });
+        return studentData;
+      })
+    };
 
-    const res = await api.post(`/students/bulkupdatemarks`, {
-      cls: classId,
-      exam,
-      marksdata: formattedData
+    console.log('Sending bulk update request to /students/bulkupdatemarks');
+    console.log('Request data structure:', {
+      cls: typeof requestData.cls,
+      exam: typeof requestData.exam,
+      marksdata: Array.isArray(requestData.marksdata) ? 
+        `${requestData.marksdata.length} items` : 'Invalid format',
+      sampleMark: requestData.marksdata[0] ? 
+        JSON.stringify(requestData.marksdata[0]) : 'No sample data'
     });
     
-    return res.data;
+    const response = await api.post('/students/bulkupdatemarks', requestData, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      timeout: 30000 // 30 seconds timeout
+    });
+    
+    console.log('Received response from server:', {
+      status: response.status,
+      statusText: response.statusText,
+      data: response.data ? 'Received response data' : 'No data in response'
+    });
+    
+    return response.data;
   } catch (error) {
     console.error('Error in bulkUpdateMarks:', error);
-    // Log the exact data that caused the error for debugging
-    
-    throw error;
+    if (error.response) {
+      console.error('Server responded with:', error.response.data);
+      const errorMessage = error.response.data?.message || 'Failed to update marks';
+      const errorDetails = error.response.data?.errors || [];
+      throw new Error(`${errorMessage}${errorDetails.length ? ': ' + errorDetails.join(', ') : ''}`);
+    }
+    throw new Error(error.message || 'Failed to connect to server');
   }
 }

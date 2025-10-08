@@ -4,8 +4,10 @@ import tailwindcss from 'tailwindcss';
 import autoprefixer from 'autoprefixer';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -15,20 +17,18 @@ export default defineConfig({
     open: true,
     strictPort: true,
     hmr: {
-      protocol: 'ws',
       host: 'localhost',
     },
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': path.resolve(__dirname, 'src'),
       '@components': path.resolve(__dirname, './src/components'),
       '@layouts': path.resolve(__dirname, './src/layouts'),
       '@pages': path.resolve(__dirname, './src/pages'),
       '@services': path.resolve(__dirname, './src/services'),
       '@utils': path.resolve(__dirname, './src/utils'),
       '@contexts': path.resolve(__dirname, './src/contexts'),
-      '@assets': path.resolve(__dirname, './src/assets')
     },
     extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json']
   },

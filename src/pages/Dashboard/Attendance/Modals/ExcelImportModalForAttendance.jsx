@@ -1,0 +1,598 @@
+import React, { useState, useEffect, useCallback } from "react";
+import * as XLSX from "xlsx";
+import { FiUpload, FiFileText, FiCheck, FiAlertCircle, FiX, FiDownload } from "react-icons/fi";
+import { AnimatePresence, motion, usePresenceData, wrap } from "framer-motion";
+
+const ExcelImportModalForAttendance = ({
+  isOpen,
+  onClose,
+  selectedColumns,
+  onImport,
+  selectedClass,
+  title,
+}) => {
+  const [data, setData] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [previewData, setPreviewData] = useState(null);
+  const [isMounted, setIsMounted] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const [file, setFile] = useState(null);
+
+  // Handle animation states
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsMounted(true);
+      const timer = setTimeout(() => setIsVisible(true), 10);
+      return () => clearTimeout(timer);
+    } else {
+      setIsVisible(false);
+      const timer = setTimeout(() => setIsMounted(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  const downloadTemplate = () => {
+    if (!selectedColumns || selectedColumns.length === 0) {
+      setError('No columns selected for the template');
+      return;
+    }
+
+    // Create an object with empty strings for all selected columns
+    const headerRow = selectedColumns.reduce((acc, col) => {
+      // Set default values for certain fields
+      switch(col) {
+        case 'Gender':
+          acc[col] = 'Male/Female/Other';
+          break;
+        case 'Blood Group':
+          acc[col] = 'A+/A-/B+/B-/AB+/AB-/O+/O-';
+          break;
+        case 'Date of Birth':
+          acc[col] = 'DD/MM/YYYY';
+          break;
+        case 'Attendance':
+          acc[col] = '0';
+          break;
+        default:
+          acc[col] = '';
+      }
+      return acc;
+    }, {});
+
+    // Add example data row
+    const exampleRow = selectedColumns.reduce((acc, col) => {
+      switch(col) {
+        case 'Roll':
+          acc[col] = '1';
+          break;
+        case 'Student Name':
+          acc[col] = 'John Doe';
+          break;
+        case 'Father Name':
+          acc[col] = 'Mr. John Doe Sr.';
+          break;
+        case 'Mother Name':
+          acc[col] = 'Mrs. Jane Doe';
+          break;
+        case 'Gender':
+          acc[col] = 'Male';
+          break;
+        case 'Date of Birth':
+          acc[col] = '01/01/2010';
+          break;
+        case 'Religion':
+          acc[col] = 'Hindu';
+          break;
+        case 'Blood Group':
+          acc[col] = 'A+';
+          break;
+        case 'Caste':
+          acc[col] = 'General';
+          break;
+        case 'Category':
+          acc[col] = 'GEN';
+          break;
+        case 'Address':
+          acc[col] = '123 Main St, City';
+          break;
+        case 'Mobile Number':
+          acc[col] = '9876543210';
+          break;
+        case 'Section':
+          acc[col] = 'A';
+          break;
+        case 'Attendance':
+          acc[col] = '85';
+          break;
+        default:
+          acc[col] = '';
+      }
+      return acc;
+    }, {});
+
+    // Add instructions row
+    const instructions = selectedColumns.reduce((acc, col) => {
+      acc[col] = '';
+      return acc;
+    }, {});
+    instructions[selectedColumns[0]] = 'INSTRUCTIONS: Fill in the data below the header row. Do not modify the header row.';
+
+    // Create worksheet with instructions, header, and example
+    const ws = XLSX.utils.json_to_sheet([instructions, headerRow, exampleRow], { skipHeader: true });
+    
+    // Set column widths
+    const colWidths = selectedColumns.map(col => ({
+      wch: Math.max(
+        10, // minimum width
+        col.length + 2, // content width + padding
+        ...(col === 'Address' ? [30] : []), // wider for address
+        ...(col === 'Student Name' || col === 'Father Name' || col === 'Mother Name' ? [20] : []),
+      )
+    }));
+    ws['!cols'] = colWidths;
+    
+    // Add data validation for specific columns
+    const dataValidations = [];
+    
+    // Gender validation
+    const genderCol = selectedColumns.findIndex(col => col === 'Gender');
+    if (genderCol >= 0) {
+      dataValidations.push({
+        ref: XLSX.utils.encode_cell({r: 2, c: genderCol}) + ':' + XLSX.utils.encode_cell({r: 1048575, c: genderCol}),
+        t: 'list',
+        formulae: ['"Male,Female,Other"']
+      });
+    }
+    
+    // Blood Group validation
+    const bloodGroupCol = selectedColumns.findIndex(col => col === 'Blood Group');
+    if (bloodGroupCol >= 0) {
+      dataValidations.push({
+        ref: XLSX.utils.encode_cell({r: 2, c: bloodGroupCol}) + ':' + XLSX.utils.encode_cell({r: 1048575, c: bloodGroupCol}),
+        t: 'list',
+        formulae: ['"A+,A-,B+,B-,AB+,AB-,O+,O-"']
+      });
+    }
+    
+    // Set data validations if any
+    if (dataValidations.length > 0) {
+      ws['!dataValidations'] = dataValidations;
+    }
+    
+    // Create workbook
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Students');
+    
+    // Add instructions sheet
+    const instructionsWs = XLSX.utils.aoa_to_sheet([
+      ['IMPORT INSTRUCTIONS'],
+      [],
+      ['1. Required Fields:', 'All fields are required unless marked as optional'],
+      ['2. Date Format:', 'Use DD/MM/YYYY format for dates'],
+      ['3. Attendance:', 'Enter number of days present (e.g., 85)'],
+      ['4. Mobile Number:', '10-digit number without any spaces or special characters'],
+      ['5. Blood Group:', 'Select from the dropdown list'],
+      ['6. Gender:', 'Select from the dropdown list'],
+      [],
+      ['DO NOT modify the header row or column order in the Students sheet.']
+    ]);
+    
+    // Style the instructions sheet
+    instructionsWs['!cols'] = [{wch: 25}, {wch: 50}];
+    XLSX.utils.book_append_sheet(wb, instructionsWs, 'Instructions');
+    
+    // Generate file and trigger download
+    XLSX.writeFile(wb, `${selectedClass || 'Students'}_Import_Template.xlsx`);
+  };
+
+  const handleFileUpload = (e) => {
+    const uploadedFile = e.target.files?.[0];
+    if (!uploadedFile) return;
+
+    // Clear previous data and error
+    setError("");
+    setPreviewData(null);
+    setFile(uploadedFile);
+
+    // Process the file
+    processFile(uploadedFile);
+  };
+
+  const processFile = (file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet, {
+          header: 1,
+          raw: false,
+        });
+        if (jsonData.length < 2) {
+          setError("The file is empty or has no data");
+          return;
+        }
+
+        const headers = jsonData[0];
+
+        const rows = jsonData
+          .slice(1)
+          .filter((row) =>
+            row.some((cell) => cell !== undefined && cell !== "")
+          );
+
+        // Filter data based on selected columns
+        const columnIndices = selectedColumns.map((col) =>
+          headers.findIndex(
+            (h) => h && col && h.toString().toLowerCase() === col.toLowerCase()
+          )
+        );
+        const filteredData = rows.map((row) => {
+          const obj = {};
+          columnIndices.forEach((colIndex, i) => {
+            if (colIndex >= 0 && colIndex < row.length) {
+              obj[selectedColumns[i]] = row[colIndex];
+              obj["class"] = selectedClass;
+            } else {
+              obj[selectedColumns[i]] = "";
+            }
+          });
+          return obj;
+        });
+
+        setPreviewData({
+          headers: selectedColumns,
+          rows: filteredData,
+        });
+        setData(filteredData);
+      } catch (error) {
+        console.error("Error processing file:", error);
+        setError("Invalid file format. Please upload a valid Excel file.");
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const handleImport = async () => {
+    if (!previewData) {
+      setError("No data to import");
+      return;
+    }
+
+    if (!selectedClass) {
+      setError("Please select a class first");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      await onImport({ ...previewData, class: selectedClass });
+      onClose();
+    } catch (error) {
+      console.error("Import error:", error);
+      setError(error.message || "Failed to import data. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setFile(null);
+    setPreviewData(null);
+    setError("");
+  };
+
+  // Optimized animation variants for better performance
+  const backdropVariants = {
+    hidden: { opacity: 0 },
+    visible: { 
+      opacity: 1,
+      transition: { 
+        duration: 0.15,
+        ease: [0.4, 0, 0.2, 1]
+      }
+    },
+    exit: { 
+      opacity: 0,
+      transition: { 
+        duration: 0.1,
+        ease: [0.4, 0, 0.2, 1]
+      }
+    }
+  };
+
+  const modalVariants = {
+    hidden: { 
+      opacity: 0,
+      y: 10
+    },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { 
+        duration: 0.2,
+        ease: [0.4, 0, 0.2, 1],
+        when: 'beforeChildren',
+        staggerChildren: 0.03
+      }
+    },
+    exit: {
+      opacity: 0,
+      y: 10,
+      transition: { 
+        duration: 0.15,
+        ease: [0.4, 0, 0.2, 1]
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 5 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.2,
+        ease: [0.4, 0, 0.2, 1]
+      }
+    }
+  };
+
+  if (!isMounted) return null;
+
+  if (isOpen)
+    return (
+      <AnimatePresence>
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto"
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          variants={backdropVariants}
+        >
+          <motion.div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={onClose}
+            variants={backdropVariants}
+          />
+          <motion.div
+            className="relative z-10 w-full max-w-5xl max-h-[90vh] bg-white dark:bg-gray-800 rounded-xl shadow-2xl overflow-hidden"
+            variants={modalVariants}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+                <div>
+                  <motion.h3
+                    className="text-xl font-semibold text-gray-900 dark:text-white"
+                    variants={itemVariants}
+                    custom={0}
+                  >
+                    Import Students from Excel
+                  </motion.h3>
+                  <motion.p
+                    className="mt-1 text-sm text-gray-500 dark:text-gray-400"
+                    variants={itemVariants}
+                    custom={0.1}
+                  >
+                    Upload an Excel file with student data
+                  </motion.p>
+                </div>
+                <motion.button
+                  type="button"
+                  onClick={onClose}
+                  className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  variants={itemVariants}
+                  custom={0.1}
+                >
+                  <span className="sr-only">Close</span>
+                  <FiX className="h-6 w-6" />
+                </motion.button>
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                    <FiFileText className="w-7 h-7 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {title} - {selectedClass}
+                  </h2>
+                </div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 pl-1">
+                  Upload an Excel file with {title.toLowerCase()} data.
+                  Supported formats: .xlsx, .xls, .csv
+                </p>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-1 space-y-4">
+                <div className="bg-blue-50 dark:bg-blue-900/10 p-3 rounded-lg border border-blue-200 dark:border-blue-800/50">
+                  <div className="mb-4 flex justify-between items-center">
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+                      {title || 'Import Student Data'}
+                    </h3>
+                  </div>
+                  <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+                    Required Columns:
+                  </h3>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedColumns.map((col, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center px-2.5 py-1 bg-blue-100 dark:bg-blue-800/50 text-blue-800 dark:text-blue-200 rounded-full text-xs font-medium"
+                      >
+                        {col}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="w-full">
+                <input
+                  id="file-upload"
+                  type="file"
+                  className="hidden"
+                  accept=".xlsx, .xls, .csv"
+                  onChange={handleFileUpload}
+                />
+                <div className="flex flex-col sm:flex-row gap-4">
+                  {/* Upload Button */}
+                  <div className="flex-1">
+                    <div 
+                      onClick={() => document.getElementById("file-upload")?.click()}
+                      className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800/70 cursor-pointer transition-colors p-6 text-center"
+                    >
+                      <FiUpload className="w-10 h-10 text-gray-400 mb-3" />
+                      <p className="font-medium text-gray-700 dark:text-gray-200 mb-1">
+                        {file ? 'Change File' : 'Upload Student Data'}
+                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Drag & drop or click to browse
+                      </p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                        XLSX, XLS, or CSV (MAX. 10MB)
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Divider */}
+                  <div className="flex items-center justify-center">
+                    <div className="h-20 w-px bg-gray-200 dark:bg-gray-700"></div>
+                  </div>
+                  
+                  {/* Download Template Button */}
+                  <div className="flex-1">
+                    <div 
+                      onClick={downloadTemplate}
+                      className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-indigo-200 dark:border-indigo-900 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 cursor-pointer transition-colors p-6 text-center"
+                    >
+                      <FiDownload className="w-10 h-10 text-indigo-500 dark:text-indigo-400 mb-3" />
+                      <p className="font-medium text-indigo-700 dark:text-indigo-200 mb-1">
+                        Download Template
+                      </p>
+                      <p className="text-sm text-indigo-600 dark:text-indigo-400">
+                        Get the Student template
+                      </p>
+                      <p className="text-xs text-indigo-500/80 dark:text-indigo-500 mt-1">
+                        Pre-formatted with required fields
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                {file && (
+                  <div className="mt-4 flex justify-between items-center">
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-sm font-medium rounded-full border border-green-200 dark:border-green-800">
+                      <FiFileText className="w-4 h-4 flex-shrink-0" />
+                      <span className="truncate max-w-[200px] sm:max-w-md">
+                        {file.name}
+                      </span>
+                      <span className="text-xs text-green-600 dark:text-green-400 whitespace-nowrap">
+                        ({(file.size / 1024).toFixed(1)} KB)
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveFile}
+                      className="inline-flex items-center px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                    >
+                      <FiX className="mr-1.5 h-4 w-4" />
+                      Remove File
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {error && (
+                <div className="mt-2 p-4 text-sm text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800/50 flex items-start space-x-2">
+                  <FiAlertCircle className="flex-shrink-0 h-5 w-5 mt-0.5 text-red-500" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              {previewData && (
+                <div className="mt-4 overflow-hidden border rounded-lg shadow-sm dark:border-gray-700 transition-all duration-300 hover:shadow-md flex-1 flex flex-col">
+                  <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 border-b dark:border-gray-700">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                        Preview ({previewData.rows.length} rows)
+                      </h3>
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                        <FiCheck className="mr-1 h-3 w-3" />
+                        {previewData.rows.length} rows ready
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex-1 overflow-auto max-h-96">
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                      <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
+                        <tr>
+                          {previewData.headers.map((header, index) => (
+                            <th
+                              key={index}
+                              className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                            >
+                              {header}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        {previewData.rows.map((row, rowIndex) => (
+                          <tr
+                            key={rowIndex}
+                            className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
+                          >
+                            {previewData.headers.map((header, cellIndex) => (
+                              <td
+                                key={cellIndex}
+                                className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap"
+                              >
+                                {row[header] || "-"}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 border-t dark:border-gray-700 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleImport}
+                      disabled={!previewData || isLoading}
+                      className={`relative px-6 py-2 text-sm font-medium text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 border border-transparent rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200 ${
+                        !previewData || isLoading ? 'opacity-70 cursor-not-allowed' : 'hover:shadow-md transform hover:-translate-y-0.5'
+                      }`}
+                    >
+                      {isLoading ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Importing...
+                        </span>
+                      ) : (
+                        <span className="flex items-center justify-center gap-2">
+                          <FiUpload className="w-4 h-4" />
+                          Import Data
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </motion.div>
+      </AnimatePresence>
+    );
+};
+
+export default ExcelImportModalForAttendance;

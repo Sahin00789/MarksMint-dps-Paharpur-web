@@ -1,13 +1,74 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { getStudentsByClass } from "@/services/students";
 
-export default function BulkPhotoUpload({ isOpen, onClose, onUpload }) {
+export default function BulkPhotoUpload({ isOpen, onClose, onUpload, selectedClass }) {
   const [photosPreview, setPhotosPreview] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [students, setStudents] = useState([]);
+  const [isLoadingStudents, setIsLoadingStudents] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({
+    show: false,
+    percent: 0,
+    loaded: 0,
+    total: 0
+  });
+  
+  // Format file size to human readable format
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  // Fetch students when selected class changes
+  useEffect(() => {
+    const fetchStudents = async () => {
+      if (!selectedClass) return;
+      
+      setIsLoadingStudents(true);
+      try {
+        const data = await getStudentsByClass(selectedClass);
+        setStudents(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error('Error fetching students:', err);
+        setError('Failed to load student data');
+      } finally {
+        setIsLoadingStudents(false);
+      }
+    };
+
+    fetchStudents();
+  }, [selectedClass]);
+
+  // Match photos with student data when either photos or students change
+  useEffect(() => {
+    if (photosPreview.length === 0 || students.length === 0) return;
+
+    const updatedPhotos = photosPreview.map(photo => {
+      if (!photo.roll) return photo;
+      
+      // Find student with matching roll number
+      const matchedStudent = students.find(student => 
+        student.roll && student.roll.toString() === photo.roll.toString()
+      );
+
+      return {
+        ...photo,
+        studentName: matchedStudent ? matchedStudent.studentName : null,
+        matched: !!matchedStudent
+      };
+    });
+
+    setPhotosPreview(updatedPhotos);
+  }, [photosPreview.length, students.length]);
 
   const handlePhotosFilesChange = useCallback((e) => {
     const files = Array.from(e.target.files);
+    if (files.length === 0) return;
 
     const newPhotos = files.map((file) => {
       const url = URL.createObjectURL(file);
@@ -15,43 +76,127 @@ export default function BulkPhotoUpload({ isOpen, onClose, onUpload }) {
       const rollMatch = file.name.match(/^(\d+)/);
       const roll = rollMatch ? rollMatch[1] : null;
 
+      // Find matching student if students are loaded
+      let studentName = null;
+      let matched = false;
+      
+      if (roll && students.length > 0) {
+        const matchedStudent = students.find(student => 
+          student.roll && student.roll.toString() === roll.toString()
+        );
+        if (matchedStudent) {
+          studentName = matchedStudent.studentName;
+          matched = true;
+        }
+      }
+
       return {
         file,
         url,
         roll,
-        matched: null, // Will be set when matching with students
+        studentName,
+        matched
       };
     });
 
-    setPhotosPreview(newPhotos);
-  }, []);
+    setPhotosPreview(prev => [...prev, ...newPhotos]);
+  }, [students]);
 
   const handlePhotosUpload = async (e) => {
     e.preventDefault();
-    if (photosPreview.length === 0 || !onUpload) return;
+    
+    if (photosPreview.length === 0) {
+      setError('Please select at least one photo to upload');
+      return;
+    }
+    
+    if (!onUpload) {
+      console.error('No upload handler provided');
+      return;
+    }
 
+    if (!selectedClass) {
+      setError('Please select a class first');
+      return;
+    }
+    
     try {
       setIsSubmitting(true);
       setError(null);
-
-      // Create FormData to send files
-      const formData = new FormData();
-      photosPreview.forEach((photo) => {
-        formData.append("photos", photo.file);
+      
+      // Reset and show upload progress
+      setUploadProgress({
+        show: true,
+        percent: 0,
+        loaded: 0,
+        total: 0
       });
 
-      await onUpload(formData);
+      // Extract just the files from photosPreview
+      const files = photosPreview
+        .filter(photo => photo && photo.file instanceof File)
+        .map(photo => ({
+          file: photo.file,
+          name: photo.file.name,
+          roll: photo.roll,
+          studentName: photo.studentName
+        }));
 
+      if (files.length === 0) {
+        throw new Error('No valid files found for upload');
+      }
+
+      // Log files being uploaded
+      console.log('Uploading files:', files.map(f => ({
+        name: f.name,
+        size: f.file.size,
+        type: f.file.type,
+        roll: f.roll,
+        studentName: f.studentName
+      })));
+      
+      // Call the parent's upload handler with progress callback
+      await onUpload(files, (progressEvent) => {
+        const { loaded, total, percent } = progressEvent || {};
+        setUploadProgress({
+          show: true,
+          percent: percent || (total ? Math.round((loaded * 100) / total) : 0),
+          loaded: loaded || 0,
+          total: total || 0
+        });
+      });
+      
       // Clean up object URLs
       photosPreview.forEach((photo) => {
-        URL.revokeObjectURL(photo.url);
+        if (photo?.url) {
+          URL.revokeObjectURL(photo.url);
+        }
       });
-
+      
       // Reset form
       setPhotosPreview([]);
-      onClose();
-    } catch (err) {
-      setError(err.message || "Failed to upload photos. Please try again.");
+      
+      // Hide progress bar after a short delay to show 100%
+      setTimeout(() => {
+        setUploadProgress(prev => ({ ...prev, show: false }));
+        onClose();
+      }, 1000);
+      
+    } catch (error) {
+      console.error('Error in handlePhotosUpload:', {
+        message: error.message,
+        stack: error.stack,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      
+      const errorMessage = error.response?.data?.message || 
+                         error.response?.data?.error ||
+                         error.message || 
+                         'Failed to upload photos. Please try again.';
+      
+      setError(errorMessage);
+      throw err; // Re-throw to propagate to the parent component
     } finally {
       setIsSubmitting(false);
     }
@@ -178,14 +323,28 @@ export default function BulkPhotoUpload({ isOpen, onClose, onUpload }) {
                 </div>
 
                 <form onSubmit={handlePhotosUpload} className="space-y-6">
+                  {/* Always show selected class info */}
+                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+                    <p className="text-sm text-gray-700 dark:text-gray-300">
+                      <span className="font-medium">Selected Class:</span> {selectedClass || 'None'}
+                    </p>
+                    {!selectedClass && (
+                      <p className="text-amber-600 text-sm mt-1">
+                        Please select a class before uploading photos
+                      </p>
+                    )}
+                  </div>
+                  
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                         Select Photos
                       </label>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {photosPreview.length} selected
-                      </span>
+                      {photosPreview.length > 0 && (
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {photosPreview.length} selected
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-3">
                       <label className="flex-1 cursor-pointer group">
@@ -239,9 +398,36 @@ export default function BulkPhotoUpload({ isOpen, onClose, onUpload }) {
                   {photosPreview.length > 0 && (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                          {photosPreview.length} {photosPreview.length === 1 ? 'Photo' : 'Photos'} Ready to Upload
-                        </h4>
+                        <div className="p-6">
+                          <h2 className="text-2xl font-bold text-gray-800 mb-4">Upload Student Photos</h2>
+                          {error && (
+                            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
+                              {error}
+                            </div>
+                          )}
+                          
+                          {/* Upload Progress Bar */}
+                          {uploadProgress.show && (
+                            <div className="w-full mb-4">
+                              <div className="flex justify-between text-sm text-gray-600 mb-1">
+                                <span>Uploading...</span>
+                                <span>{uploadProgress.percent}%</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                                <div 
+                                  className="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out"
+                                  style={{ width: `${uploadProgress.percent}%` }}
+                                ></div>
+                              </div>
+                              <div className="text-xs text-gray-500 text-right mt-1">
+                                {formatFileSize(uploadProgress.loaded)} / {formatFileSize(uploadProgress.total)}
+                              </div>
+                            </div>
+                          )}
+                          <p className="text-gray-600 text-sm mb-4">
+                            Review the selected photos. Photos should be named with the student's roll number (e.g., 1.jpg, 2.png).
+                          </p>
+                        </div>
                         <button
                           type="button"
                           onClick={() => setPhotosPreview([])}
@@ -267,15 +453,24 @@ export default function BulkPhotoUpload({ isOpen, onClose, onUpload }) {
                                 </div>
                                 <div className="min-w-0 flex-1">
                                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                                    {photo.studentName || 'Unknown Student'}
+                                  </p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                                     {photo.file.name}
                                   </p>
-                                  <div className="flex items-center gap-2 mt-0.5">
+                                  <div className="flex items-center gap-2 mt-1">
                                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                      photo.roll 
+                                      photo.matched 
                                         ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
-                                        : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                        : photo.roll 
+                                          ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                          : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
                                     }`}>
-                                      {photo.roll ? `Roll: ${photo.roll}` : 'No roll number'}
+                                      {photo.matched 
+                                        ? `Roll: ${photo.roll}` 
+                                        : photo.roll 
+                                          ? 'No matching student'
+                                          : 'No roll number'}
                                     </span>
                                     <span className="text-xs text-gray-500 dark:text-gray-400">
                                       {(photo.file.size / 1024).toFixed(1)} KB

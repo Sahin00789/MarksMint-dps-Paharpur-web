@@ -9,9 +9,16 @@ const EditStudentModal = ({ isOpen, onClose, student, onSave }) => {
     roll: '',
     class: '',
     fatherName: '',
+    motherName: '',
+    gender: '',
+    religion: '',
+    bloodGroup: '',
+    caste: '',
+    category: '',
     mobileNumber: '',
     address: '',
-    dob: '', // Changed from dateOfBirth to match backend
+    dob: '',
+    attendance: 0,
     photo: null,
     photoPreview: ''
   });
@@ -64,9 +71,16 @@ const EditStudentModal = ({ isOpen, onClose, student, onSave }) => {
         roll: student.roll || '',
         class: student.class || '',
         fatherName: student.fatherName || '',
+        motherName: student.motherName || '',
+        gender: student.gender || '',
+        religion: student.religion || '',
+        bloodGroup: student.bloodGroup || '',
+        caste: student.caste || '',
+        category: student.category || '',
         mobileNumber: student.mobileNumber || student.contactNumber || '',
         address: student.address || '',
         dob: formatDate(student.dob),
+        attendance: student.attendance || 0,
         photo: null,
         photoPreview: student.photoUrl || student.photo || ''
       });
@@ -305,18 +319,125 @@ const EditStudentModal = ({ isOpen, onClose, student, onSave }) => {
                 />
               </div>
 
-              <div>
+              <div className="space-y-1">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Address *
                 </label>
                 <textarea
                   name="address"
-                  rows="3"
+                  rows="2"
                   value={formData.address}
                   onChange={handleChange}
-                  className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   required
-                ></textarea>
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 col-span-1 sm:col-span-2">
+                <div className="space-y-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Mother's Name
+                  </label>
+                  <input
+                    type="text"
+                    name="motherName"
+                    value={formData.motherName}
+                    onChange={handleChange}
+                    className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Gender
+                  </label>
+                  <select
+                    name="gender"
+                    value={formData.gender}
+                    onChange={handleChange}
+                    className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Religion
+                  </label>
+                  <input
+                    type="text"
+                    name="religion"
+                    value={formData.religion}
+                    onChange={handleChange}
+                    className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Blood Group
+                  </label>
+                  <select
+                    name="bloodGroup"
+                    value={formData.bloodGroup}
+                    onChange={handleChange}
+                    className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select Blood Group</option>
+                    <option value="A+">A+</option>
+                    <option value="A-">A-</option>
+                    <option value="B+">B+</option>
+                    <option value="B-">B-</option>
+                    <option value="AB+">AB+</option>
+                    <option value="AB-">AB-</option>
+                    <option value="O+">O+</option>
+                    <option value="O-">O-</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Caste
+                  </label>
+                  <input
+                    type="text"
+                    name="caste"
+                    value={formData.caste}
+                    onChange={handleChange}
+                    className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Category
+                  </label>
+                  <input
+                    type="text"
+                    name="category"
+                    value={formData.category}
+                    onChange={handleChange}
+                    className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Attendance
+                  </label>
+                  <input
+                    type="number"
+                    name="attendance"
+                    value={formData.attendance}
+                    onChange={handleChange}
+                    min="0"
+                    className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
               </div>
             </div>
 

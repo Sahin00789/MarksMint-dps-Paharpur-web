@@ -11,9 +11,20 @@ export const ThemeProvider = ({ children }) => {
   });
 
   useEffect(() => {
-    // Update the data-theme attribute on the html element
-    document.documentElement.setAttribute('data-theme', theme);
-    document.documentElement.classList.toggle('dark',theme==='dark')
+    const html = document.documentElement;
+    const body = document.body;
+    
+    // Remove all theme classes first
+    html.classList.remove('light', 'dark');
+    body.classList.remove('light', 'dark');
+    
+    // Set the theme class on both html and body for maximum compatibility
+    html.classList.add(theme);
+    body.classList.add(theme);
+    
+    // Also set data-theme attribute for any components that might use it
+    html.setAttribute('data-theme', theme);
+    
     // Save theme preference
     localStorage.setItem('theme', theme);
   }, [theme]);

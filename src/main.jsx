@@ -12,7 +12,7 @@ import { ThemeProvider } from './contexts/ThemeContext'
 const queryClient = new QueryClient()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
+
     <QueryClientProvider client={queryClient}>
       <BrowserRouter
         future={{
@@ -22,9 +22,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       >
       <ThemeProvider>
         <App />
-        </ThemeProvider>
-        <ToastContainer position="top-right" autoClose={3000} />
+      </ThemeProvider>
       </BrowserRouter>
     </QueryClientProvider>
-  </React.StrictMode>,
 )

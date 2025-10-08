@@ -41,22 +41,150 @@ const ExcelImportModal = ({
 
     // Create an object with empty strings for all selected columns
     const headerRow = selectedColumns.reduce((acc, col) => {
-      acc[col] = ''; // Empty value for each column
+      // Set default values for certain fields
+      switch(col) {
+        case 'Gender':
+          acc[col] = 'Male/Female/Other';
+          break;
+        case 'Blood Group':
+          acc[col] = 'A+/A-/B+/B-/AB+/AB-/O+/O-';
+          break;
+        case 'Date of Birth':
+          acc[col] = 'DD/MM/YYYY';
+          break;
+        case 'Attendance':
+          acc[col] = '0';
+          break;
+        default:
+          acc[col] = '';
+      }
       return acc;
     }, {});
 
-    // Single row with just the headers (empty values)
-    const templateData = [headerRow];
+    // Add example data row
+    const exampleRow = selectedColumns.reduce((acc, col) => {
+      switch(col) {
+        case 'Roll':
+          acc[col] = '1';
+          break;
+        case 'Student Name':
+          acc[col] = 'John Doe';
+          break;
+        case 'Father Name':
+          acc[col] = 'Mr. John Doe Sr.';
+          break;
+        case 'Mother Name':
+          acc[col] = 'Mrs. Jane Doe';
+          break;
+        case 'Gender':
+          acc[col] = 'Male';
+          break;
+        case 'Date of Birth':
+          acc[col] = '01/01/2010';
+          break;
+        case 'Religion':
+          acc[col] = 'Hindu';
+          break;
+        case 'Blood Group':
+          acc[col] = 'A+';
+          break;
+        case 'Caste':
+          acc[col] = 'General';
+          break;
+        case 'Category':
+          acc[col] = 'GEN';
+          break;
+        case 'Address':
+          acc[col] = '123 Main St, City';
+          break;
+        case 'Mobile Number':
+          acc[col] = '9876543210';
+          break;
+        case 'Section':
+          acc[col] = 'A';
+          break;
+        case 'Attendance':
+          acc[col] = '85';
+          break;
+        default:
+          acc[col] = '';
+      }
+      return acc;
+    }, {});
 
-    // Create worksheet
-    const ws = XLSX.utils.json_to_sheet(templateData);
+    // Add instructions row
+    const instructions = selectedColumns.reduce((acc, col) => {
+      acc[col] = '';
+      return acc;
+    }, {});
+    instructions[selectedColumns[0]] = 'INSTRUCTIONS: Fill in the data below the header row. Do not modify the header row.';
+
+    // Create worksheet with instructions, header, and example
+    const ws = XLSX.utils.json_to_sheet([instructions, headerRow, exampleRow], { skipHeader: true });
+    
+    // Set column widths
+    const colWidths = selectedColumns.map(col => ({
+      wch: Math.max(
+        10, // minimum width
+        col.length + 2, // content width + padding
+        ...(col === 'Address' ? [30] : []), // wider for address
+        ...(col === 'Student Name' || col === 'Father Name' || col === 'Mother Name' ? [20] : []),
+      )
+    }));
+    ws['!cols'] = colWidths;
+    
+    // Add data validation for specific columns
+    const dataValidations = [];
+    
+    // Gender validation
+    const genderCol = selectedColumns.findIndex(col => col === 'Gender');
+    if (genderCol >= 0) {
+      dataValidations.push({
+        ref: XLSX.utils.encode_cell({r: 2, c: genderCol}) + ':' + XLSX.utils.encode_cell({r: 1048575, c: genderCol}),
+        t: 'list',
+        formulae: ['"Male,Female,Other"']
+      });
+    }
+    
+    // Blood Group validation
+    const bloodGroupCol = selectedColumns.findIndex(col => col === 'Blood Group');
+    if (bloodGroupCol >= 0) {
+      dataValidations.push({
+        ref: XLSX.utils.encode_cell({r: 2, c: bloodGroupCol}) + ':' + XLSX.utils.encode_cell({r: 1048575, c: bloodGroupCol}),
+        t: 'list',
+        formulae: ['"A+,A-,B+,B-,AB+,AB-,O+,O-"']
+      });
+    }
+    
+    // Set data validations if any
+    if (dataValidations.length > 0) {
+      ws['!dataValidations'] = dataValidations;
+    }
     
     // Create workbook
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Students Template');
+    XLSX.utils.book_append_sheet(wb, ws, 'Students');
+    
+    // Add instructions sheet
+    const instructionsWs = XLSX.utils.aoa_to_sheet([
+      ['IMPORT INSTRUCTIONS'],
+      [],
+      ['1. Required Fields:', 'All fields are required unless marked as optional'],
+      ['2. Date Format:', 'Use DD/MM/YYYY format for dates'],
+      ['3. Attendance:', 'Enter number of days present (e.g., 85)'],
+      ['4. Mobile Number:', '10-digit number without any spaces or special characters'],
+      ['5. Blood Group:', 'Select from the dropdown list'],
+      ['6. Gender:', 'Select from the dropdown list'],
+      [],
+      ['DO NOT modify the header row or column order in the Students sheet.']
+    ]);
+    
+    // Style the instructions sheet
+    instructionsWs['!cols'] = [{wch: 25}, {wch: 50}];
+    XLSX.utils.book_append_sheet(wb, instructionsWs, 'Instructions');
     
     // Generate file and trigger download
-    XLSX.writeFile(wb, `${selectedClass || 'Students'}_Template.xlsx`);
+    XLSX.writeFile(wb, `${selectedClass || 'Students'}_Import_Template.xlsx`);
   };
 
   const handleFileUpload = (e) => {

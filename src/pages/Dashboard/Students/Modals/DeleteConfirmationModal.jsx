@@ -19,10 +19,10 @@ export default function DeleteConfirmationModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-0 sm:p-4 overflow-y-auto">
         {/* Backdrop */}
         <motion.div 
-          className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -31,13 +31,21 @@ export default function DeleteConfirmationModal({
         
         {/* Modal */}
         <motion.div 
-          className="relative z-10 w-full max-w-2xl bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden"
+          className="relative z-10 w-full max-h-screen sm:max-h-[90vh] sm:max-w-2xl bg-white dark:bg-gray-800 rounded-none sm:rounded-2xl shadow-xl flex flex-col"
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 20, opacity: 0 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+          style={{
+            minHeight: '100vh',
+            maxHeight: '100vh',
+            ...(window.innerWidth >= 640 && {
+              minHeight: 'auto',
+              maxHeight: '90vh'
+            })
+          }}
         >
-          <div className="p-6">
+          <div className="p-4 sm:p-6 overflow-y-auto flex-1">
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h3 className="text-2xl font-bold text-red-600 dark:text-red-400">
@@ -135,7 +143,7 @@ export default function DeleteConfirmationModal({
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-white dark:bg-gray-800 -mx-4 -mb-4 px-4 py-3 sm:static sm:mx-0 sm:mb-0 sm:px-0 sm:py-0 sm:bg-transparent dark:sm:bg-transparent">
               <button
                 type="button"
                 onClick={onClose}

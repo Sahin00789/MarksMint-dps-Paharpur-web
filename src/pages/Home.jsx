@@ -43,7 +43,10 @@ function Home() {
         setPublicResultStatuses(publishedResults);
       } catch (error) {
         console.error('Error fetching public statuses:', error);
-        setError('Failed to load published results. Please try again later.');
+        // Don't show error for unauthorized access to public results
+        if (!error.message.includes('No authentication token found')) {
+          setError('Failed to load published results. Please try again later.');
+        }
       } finally {
         setLoading(false);
       }
@@ -301,8 +304,8 @@ const SchoolInfoCard = () => {
     branch: schoolinfo?.branch || 'Paharpur',
     address: schoolinfo?.Address || 'Paharpur, Banshihari, Dakshin Dinajpur, 733125',
     regNumber: schoolinfo?.regNumber || 'IV006608/IV',
-    mobileNumber: schoolinfo?.mobileNumber ,
-    email: schoolinfo?.email ,
+    mobileNumber: schoolinfo?.contact?.phone ,
+    email: schoolinfo?.contact?.email ,
     runBy: schoolinfo?.runBy || 'M.M.D.C.T.'
   };
 

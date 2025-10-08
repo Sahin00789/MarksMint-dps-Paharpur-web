@@ -14,13 +14,19 @@ import ExcelImportModal from "./Modals/ExcelImportModalforStudents";
 import BulkPhotoUpload from "./Modals/bulkPhotoUpload";
 import DeleteConfirmationModal from "./Modals/DeleteConfirmationModal";
 import { FaUserPlus, FaFileExcel, FaImages, FaTrash } from "react-icons/fa";
-import { toast, ToastContainer } from 'react-toastify';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import schoolInformation from "@/shared/schoolInformation";
 import { isObject } from "framer-motion";
+import { differenceInYears, parseISO } from 'date-fns';
 
 export default function StudentsPanel() {
-  const [selectedClass, setSelectedClass] = useState(null);
+  const [selectedClass, setSelectedClass] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('ui.selectedClass') || null;
+    }
+    return null;
+  });
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -35,23 +41,18 @@ export default function StudentsPanel() {
   const [studentToDelete, setStudentToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Initialize from persisted selection (do not persist changes here)
-  // Load selected class from localStorage on component mount
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedClass = localStorage.getItem("ui.selected");
-      if (savedClass) {
-        setSelectedClass(savedClass);
-      }
-    }
-  }, []);
 
   // Save selected class to localStorage when it changes
   useEffect(() => {
-    if (selectedClass && typeof window !== "undefined") {
-      localStorage.setItem("ui.selected", selectedClass);
+    if (selectedClass && typeof window !== 'undefined') {
+      localStorage.setItem('ui.selectedClass', selectedClass);
     }
   }, [selectedClass]);
+  
+  // Handle class selection change
+  const handleClassSelect = (className) => {
+    setSelectedClass(className);
+  };
 
   const handleExcelImport = useCallback(
     async (importedData) => {
@@ -79,16 +80,22 @@ export default function StudentsPanel() {
           return {
             studentName: student["Student Name"],
             class: selectedClass,
-            session: "2025",
-            roll: student.Roll,
-            fatherName: student["Father Name"],
+            session: new Date().getFullYear().toString(),
+            roll: student.Roll || student.roll || '',
+            fatherName: student["Father Name"] || student.fatherName || '',
+            motherName: student["Mother Name"] || student.motherName || '',
+            gender: student.Gender || student.gender || '',
             className: selectedClass,
-            mobileNumber: student["Mobile Number"],
-            address: student.Address,
-            dob: student["Date of Birth"],
+            mobileNumber: student["Mobile Number"] || student.mobileNumber || '',
+            address: student.Address || student.address || '',
+            dob: student["Date of Birth"] || student.dob || '',
+            religion: student.Religion || student.religion || '',
+            caste: student.Caste || student.caste || '',
+            category: student.Category || student.category || '',
+            bloodGroup: student["Blood Group"] || student.bloodGroup || '',
+            section: student.Section || student.section || ''
           };
         });
-
         // Filter out any empty rows (where name and roll are empty)
         const validStudents = formattedStudents.filter(
           (s) => s.studentName && s.roll
@@ -121,21 +128,24 @@ export default function StudentsPanel() {
   );
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchStudents = async () => {
       if (!selectedClass) return;
+      
       setLoading(true);
       setError(null);
+      
       try {
         const data = await getStudentsByClass(selectedClass);
-        data.sort((a, b) => a.roll - b.roll);
-        setStudents(Array.isArray(data) ? data : []);
-      } catch (e) {
-        setError("Failed to load students");
+        setStudents(data);
+      } catch (err) {
+        console.error('Error fetching students:', err);
+        setError('Failed to load students. Please try again.');
       } finally {
         setLoading(false);
       }
     };
-    fetchData();
+    
+    fetchStudents();
   }, [selectedClass]);
 
   const refresh = async () => {
@@ -144,7 +154,7 @@ export default function StudentsPanel() {
     setError(null);
     try {
       const data = await getStudentsByClass(selectedClass);
-      setStudents(Array.isArray(data) ? data : []);
+      setStudents(data);
     } catch (e) {
       setError("Failed to load students");
     } finally {
@@ -167,7 +177,7 @@ export default function StudentsPanel() {
     const formData = {
       studentName: form.get("studentName")?.toString().trim(),
       roll: form.get("roll")?.toString().trim(),
-      section: form.get("section")?.toString().trim(),
+      class: selectedClass,
       session: form.get("session")?.toString().trim() || new Date().getFullYear().toString(),
       dob: form.get("dob")?.toString().trim(),
       fatherName: form.get("fatherName")?.toString().trim(),
@@ -252,65 +262,157 @@ export default function StudentsPanel() {
     }
   };
 
-  // Reorder fields to show contact at the bottom
   const renderStudentDetails = (stu) => {
     const details = [];
     
+    // Date of Birth with Age
+    if (stu.dob) {
+      let birthDate;
+      let displayDate = '';
+      let ageDisplay = '';
+      
+      try {
+        // Handle different date formats
+        if (typeof stu.dob === 'string') {
+          // Try parsing ISO string first
+          const parsedDate = new Date(stu.dob);
+          if (!isNaN(parsedDate.getTime())) {
+            birthDate = parsedDate;
+            displayDate = parsedDate.toLocaleDateString('en-IN', { 
+              day: '2-digit', 
+              month: 'short', 
+              year: 'numeric' 
+            });
+          } else {
+            // Try parsing other formats if ISO fails
+            const dateParts = stu.dob.split(/[-/]/);
+            if (dateParts.length === 3) {
+              // Try DD-MM-YYYY or YYYY-MM-DD format
+              const year = dateParts[0].length === 4 ? dateParts[0] : dateParts[2];
+              const month = dateParts[1].length === 1 ? `0${dateParts[1]}` : dateParts[1];
+              const day = dateParts[0].length <= 2 ? dateParts[0] : dateParts[2];
+              const isoDate = `${year}-${month}-${day}`;
+              birthDate = new Date(isoDate);
+              displayDate = birthDate.toLocaleDateString('en-IN', { 
+                day: '2-digit', 
+                month: 'short', 
+                year: 'numeric' 
+              });
+            }
+          }
+        } else if (stu.dob instanceof Date) {
+          birthDate = stu.dob;
+          displayDate = birthDate.toLocaleDateString('en-IN', { 
+            day: '2-digit', 
+            month: 'short', 
+            year: 'numeric' 
+          });
+        }
+        
+        // Calculate age if we have a valid date
+        if (birthDate && !isNaN(birthDate.getTime())) {
+          const today = new Date();
+          let age = today.getFullYear() - birthDate.getFullYear();
+          const monthDiff = today.getMonth() - birthDate.getMonth();
+          
+          if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+          }
+          
+          ageDisplay = `${age} years old`;
+        } else {
+          ageDisplay = 'Age not available';
+          displayDate = 'Invalid date';
+        }
+      } catch (error) {
+        console.error('Error parsing date:', error);
+        displayDate = 'Invalid date';
+        ageDisplay = 'Age not available';
+      }
+      
+      details.push(
+        <div key="dob" className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg border border-gray-100 dark:border-gray-600/30">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span className="text-sm font-medium text-gray-500 dark:text-gray-300">
+                {displayDate}
+              </span>
+            </div>
+            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+              {ageDisplay}
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    // Father's Name
     if (stu.fatherName) {
       details.push(
         <div key="father" className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg border border-gray-100 dark:border-gray-600/30">
           <div className="flex items-center">
-            <span className="w-20 text-sm font-medium text-gray-500 dark:text-gray-300">Father</span>
-            <span className="text-gray-700 dark:text-gray-100 font-medium">{stu.fatherName}</span>
+            <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            <div>
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Father's Name</p>
+              <p className="text-gray-700 dark:text-gray-100 font-medium">{stu.fatherName}</p>
+            </div>
           </div>
         </div>
       );
     }
 
-    if (stu.dob) {
-      details.push(
-        <div key="dob" className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg border border-gray-100 dark:border-gray-600/30">
-          <div className="flex items-center">
-            <span className="w-20 text-sm font-medium text-gray-500 dark:text-gray-300">DOB</span>
-            <span className="text-gray-700 dark:text-gray-100 font-medium">
-              {new Date(stu.dob).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-            </span>
-          </div>
-        </div>
-      );
-    }
-
+    // Address
     if (stu.address) {
       details.push(
         <div key="address" className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg border border-gray-100 dark:border-gray-600/30">
-          <div className="flex items-start">
-            <span className="w-20 text-sm font-medium text-gray-500 dark:text-gray-300 flex-shrink-0">
-              <svg className="w-4 h-4 inline-block mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              Address
-            </span>
-            <p className="text-sm text-gray-700 dark:text-gray-200 line-clamp-2">{stu.address}</p>
+          <div className="flex">
+            <svg className="w-4 h-4 mr-2 mt-0.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <div>
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Address</p>
+              <p className="text-sm text-gray-700 dark:text-gray-200">{stu.address}</p>
+            </div>
           </div>
         </div>
       );
     }
 
-    // Add contact at the end
+    // Mobile Number (as a contact card at the bottom)
     if (stu.mobileNumber) {
       details.push(
-        <div key="contact" className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-100 dark:border-blue-800/50">
-          <div className="flex items-center">
-            <span className="w-20 text-sm font-medium text-blue-600 dark:text-blue-400">Contact</span>
-            <a 
-              href={`tel:${stu.mobileNumber}`} 
-              className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline transition-colors flex items-center font-medium"
-            >
-              <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <div key="contact-card" className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-100 dark:border-blue-800/50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <svg className="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
               </svg>
-              <span className="truncate text-base">{stu.mobileNumber}</span>
+              <div>
+                <p className="text-xs font-medium text-blue-600 dark:text-blue-400">Mobile Number</p>
+                <a 
+                  href={`tel:${stu.mobileNumber}`} 
+                  className="text-blue-700 dark:text-blue-300 hover:underline font-medium"
+                >
+                  {stu.mobileNumber}
+                </a>
+              </div>
+            </div>
+            <a 
+              href={`https://wa.me/+91${stu.mobileNumber}`} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="p-2 rounded-full bg-green-100 text-green-600 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50"
+              title="Message on WhatsApp"
+            >
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.966-.273-.099-.471-.148-.67.15-.197.297-.767.963-.94 1.16-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.795-1.484-1.784-1.66-2.087-.173-.297-.018-.458.13-.606.136-.133.296-.347.445-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.508-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.492.709.306 1.262.489 1.694.625.712.227 1.36.195 1.87.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.885 9.888-9.885 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.55 4.142 1.595 5.945L0 24l6.335-1.652a11.882 11.882 0 005.723 1.47h.005c6.554 0 11.89-5.335 11.89-11.893 0-3.18-1.264-6.17-3.558-8.418z" />
+              </svg>
             </a>
           </div>
         </div>
@@ -329,7 +431,7 @@ export default function StudentsPanel() {
     
     // Get all form fields and add to payload if they exist
     const fields = [
-      'studentName', 'roll', 'section', 'session', 
+      'studentName', 'roll', 'session', 
       'dob', 'fatherName', 'mobileNumber', 'address'
     ];
     
@@ -377,57 +479,159 @@ export default function StudentsPanel() {
     }
   };
 
-  const handleBulkPhotoUpload = async (formData) => {
-    if (!selectedClass) return;
-    setSubmitting(true);
+  const handleBulkPhotoUpload = async (files, onProgress) => {
+    if (!selectedClass) {
+      const error = new Error('No class selected');
+      console.error('Upload failed - no class selected');
+      throw error;
+    }
+    
     try {
-      await uploadStudentPhotosBatch(selectedClass, formData);
-      setShowPhotosModal(false);
-      setPhotosPreview([]);
-      await refresh();
-    } catch (error) {
-      console.error("Error uploading photos:", error);
-      setError("Failed to upload photos");
+      setSubmitting(true);
+      setError(null);
+      
+      // Ensure files is an array
+      const filesArray = Array.isArray(files) ? files : [files];
+      
+      // Extract file objects and include metadata
+      const filesWithMetadata = filesArray.map(fileObj => {
+        const file = fileObj.file || fileObj;
+        if (file instanceof File) {
+          return {
+            file,
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            roll: fileObj.roll || file.name.split('.')[0],
+            studentName: fileObj.studentName || ''
+          };
+        }
+        return null;
+      }).filter(Boolean);
+      
+      console.log('Preparing to upload photos:', {
+        fileCount: filesWithMetadata.length,
+        selectedClass,
+        files: filesWithMetadata.map(f => ({
+          name: f.name,
+          type: f.type,
+          size: f.size,
+          roll: f.roll,
+          studentName: f.studentName
+        }))
+      });
+      
+      if (filesWithMetadata.length === 0) {
+        const error = new Error('No valid files found for upload');
+        console.error('Upload failed - no valid files found', { files });
+        throw error;
+      }
+      
+      // Call uploadStudentPhotosBatch with progress tracking
+      const result = await uploadStudentPhotosBatch(
+        filesWithMetadata, 
+        { class: selectedClass },
+        onProgress // Pass the progress callback through
+      );
+      
+      if (result && result.success) {
+        const uploadedCount = Array.isArray(result.uploaded) ? result.uploaded.length : 0;
+        const failedCount = Array.isArray(result.failed) ? result.failed.length : 0;
+        
+          // Show toast notification
+        if (uploadedCount > 0) {
+          toast.success(`Successfully uploaded ${uploadedCount} photo(s)${failedCount > 0 ? `, ${failedCount} failed` : ''}`, {
+            toastId: 'upload-success',
+            position: 'top-right',
+            autoClose: 3000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true
+          });
+        } else if (failedCount > 0) {
+          toast.error(`Failed to upload ${failedCount} photo(s)`, {
+            toastId: 'upload-error',
+            position: 'top-right',
+            autoClose: 5000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true
+          });
+        } else {
+          toast.info('No photos were uploaded', {
+            toastId: 'upload-info',
+            position: 'top-right',
+            autoClose: 3000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true
+          });
+        }
+        
+        await refresh();
+        return result;
+      } else {
+        const errorMessage = result?.message || 'Failed to upload some photos';
+        console.error('Upload failed:', errorMessage, { result, formEntries });
+        setError(errorMessage);
+        throw new Error(errorMessage);
+      }
+    } catch (err) {
+      console.error('Error uploading photos:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to upload photos. Please try again.';
+      setError(errorMessage);
+      
+      // Show error toast
+      toast.error(errorMessage, {
+        toastId: 'upload-error-message',
+        position: 'top-right',
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true
+      });
+      
+      return { success: false, message: errorMessage };
     } finally {
       setSubmitting(false);
     }
   };
 
+  // Helper function to get initials from full name
+const getInitials = (name) => {
+  if (!name) return '??';
+  const names = name.trim().split(' ');
+  if (names.length === 1) return names[0].charAt(0).toUpperCase();
+  return `${names[0].charAt(0)}${names[names.length - 1].charAt(0)}`.toUpperCase();
+};
+
   return (
-    <div className="p-2">
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="colored"
-      />
-      <div className="flex flex-col space-y-4">
-        <div className="flex md:flex-row flex-col space-y-2 justify-between items-center  mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">Students</h2>
-          <div className="flex space-x-3">
+    <div className="p-2 bg-gray-50 dark:bg-gray-900 min-h-full">
+      <div className="flex flex-col h-full">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 space-y-3 sm:space-y-0">
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Students</h2>
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setShowExcelImport(true)}
-              className="flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+              className="flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 flex-1 sm:flex-none justify-center"
             >
               <FaFileExcel className="mr-2" />
               Import Excel
             </button>
             <button
               onClick={() => setShowPhotosModal(true)}
-              className="flex items-center px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+              className="flex items-center px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 flex-1 sm:flex-none justify-center"
             >
               <FaImages className="mr-2" />
               Upload Photos
             </button>
             <button
               onClick={() => setShowAddModal(true)}
-              className="flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              className="flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 flex-1 sm:flex-none justify-center"
             >
               <FaUserPlus className="mr-2" />
               Add Student
@@ -435,70 +639,83 @@ export default function StudentsPanel() {
           </div>
         </div>
 
-        {/* Class Selector */}
-        <ClassSelecorCard
-          selected={selectedClass}
-          onSelect={setSelectedClass}
-        />
+        <div className="mb-6">
+          <ClassSelecorCard
+            onSelect={handleClassSelect}
+            selectedClass={selectedClass}
+          />
+        </div>
 
         {/* Content */}
         {!selectedClass ? (
-          <p className="text-sm text-gray-600 dark:text-gray-300">
-            Select a class to view students.
-          </p>
+          <div className="flex-1 flex items-center justify-center">
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              Select a class to view students.
+            </p>
+          </div>
         ) : loading ? (
-          <p className="text-sm text-gray-600 dark:text-gray-300">
-            Loading students...
-          </p>
+          <div className="flex-1 flex items-center justify-center">
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              Loading students...
+            </p>
+          </div>
         ) : error ? (
-          <p className="text-sm text-red-600">{error}</p>
+          <div className="flex-1 flex items-center justify-center">
+            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5 p-4">
             {students.length > 0 ? (
               students.map((stu) => (
                 <div 
-                  key={stu._id || stu.roll}
-                  className="bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 dark:border-gray-700 hover:border-blue-100 dark:hover:border-blue-900 overflow-hidden group"
+                  key={stu._id} 
+                  className="flex flex-col h-full overflow-hidden bg-white dark:bg-gray-800 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 dark:border-gray-700 transform hover:-translate-y-0.5 hover:scale-[1.02]"
                 >
-                  {/* Header with Gradient Background */}
-                  <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-5 text-white">
-                    <div className="flex items-center space-x-4">
-                      <div className="relative">
-                        
-                        <div className="h-16 w-16 bg-white/20 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-md overflow-hidden">
-                        {stu.photoUrl || stu.photo ? (
-                          <img 
-                            src={stu.photoUrl || stu.photo} 
-                            alt={stu.studentName} 
-                            className="w-full h-full object-cover"
+                  {/* Card Header */}
+                  <div className="p-4 bg-gradient-to-r from-blue-600 to-indigo-700 dark:from-blue-800 dark:to-indigo-900 rounded-t-2xl">
+                    <div className="flex items-start space-x-4">
+                      {/* Student Photo */}
+                      <div className="relative flex-shrink-0">
+                        {stu.photoUrl ? (
+                          <img
+                            className="h-16 w-16 rounded-lg object-cover border-2 border-white dark:border-gray-200 shadow-sm"
+                            src={stu.photoUrl}
+                            alt={stu.studentName}
                             onError={(e) => {
-                              // If image fails to load, show initials
+                              e.target.onerror = null;
                               e.target.style.display = 'none';
                               e.target.nextElementSibling.style.display = 'flex';
                             }}
                           />
-                        ) : null}
-                        <div className={`absolute inset-0 flex items-center justify-center ${(stu.photoUrl || stu.photo) ? 'hidden' : 'flex'}`}>
-                          {(() => {
-                            const nameParts = stu.studentName?.split(' ') || [];
-                            const firstLetter = nameParts[0]?.charAt(0) || 'S';
-                            const lastLetter = nameParts.length > 1 ? nameParts[nameParts.length - 1].charAt(0) : '';
-                            return `${firstLetter}${lastLetter}`.toUpperCase();
-                          })()}
+                        ) : (
+                          <div 
+                            className="h-16 w-16 rounded-lg border-2 border-white dark:border-gray-200 shadow-sm flex items-center justify-center bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100 font-bold text-xl"
+                          >
+                            {getInitials(stu.studentName)}
+                          </div>
+                        )}
+                        {/* Fallback that shows up if image fails to load */}
+                        <div 
+                          className="h-16 w-16 rounded-lg border-2 border-white dark:border-gray-200 shadow-sm hidden items-center justify-center bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100 font-bold text-xl"
+                        >
+                          {getInitials(stu.studentName)}
                         </div>
                       </div>
-                    </div>
+                      
+                      {/* Student Info */}
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-lg truncate mb-1.5">{stu.studentName || 'N/A'}</h3>
-                        <div className="flex flex-wrap items-center gap-2.5">
-                          <span className="bg-blue-500/90 text-white px-3 py-1.5 rounded-lg text-sm font-semibold shadow-sm">
+                        <h3 className="text-lg font-bold text-white truncate">
+                          {stu.studentName || 'No Name'}
+                        </h3>
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-white/20 text-white border border-white/30">
                             Roll: {stu.roll || 'N/A'}
                           </span>
-                          <span className="bg-indigo-500/90 text-white px-3 py-1.5 rounded-lg text-sm font-semibold shadow-sm">
-                            {stu.class || 'N/A'}
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-white/20 text-white border border-white/30">
+                            Class: {stu.class || 'N/A'}
                           </span>
                           {stu.session && (
-                            <span className="bg-purple-500/90 text-white px-3 py-1.5 rounded-lg text-sm font-semibold shadow-sm">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-white/20 text-white border border-white/30">
                               {stu.session}
                             </span>
                           )}
@@ -507,26 +724,28 @@ export default function StudentsPanel() {
                     </div>
                   </div>
                   
-                  {/* Details Section */}
-                  <div className="p-5">
-                    <div className="space-y-3.5">
+                  {/* Card Body */}
+                  <div className="flex-1 rounded-xl overflow-hidden bg-white dark:bg-gray-800">
+                    <div className="space-y-3">
                       {renderStudentDetails(stu)}
                     </div>
-                    
-                    {/* Action Buttons */}
-                    <div className="mt-5 pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-between">
+                  </div>
+                  
+                  {/* Card Footer */}
+                  <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700 border-t border-gray-100 dark:border-gray-700">
+                    <div className="flex justify-between space-x-3">
                       <button 
                         onClick={() => handleOpenDelete(stu)}
-                        className="flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors duration-200 shadow-sm"
+                        className="flex-1 flex items-center justify-center px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors duration-200 shadow-sm"
                       >
                         <FaTrash className="w-3.5 h-3.5 mr-1.5" />
                         Delete
                       </button>
                       <button 
                         onClick={() => handleOpenEdit(stu)}
-                        className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors duration-200 shadow-sm"
+                        className="flex-1 flex items-center justify-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors duration-200 shadow-sm"
                       >
-                        <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <svg className="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
                         Edit
@@ -534,7 +753,6 @@ export default function StudentsPanel() {
                     </div>
                   </div>
                 </div>
-                // Student profile card ends
               ))
             ) : (
               <p className="text-sm text-gray-600 dark:text-gray-300">
@@ -603,7 +821,7 @@ export default function StudentsPanel() {
       />
 
       {/* Excel Import Modal */}
-      <ExcelImportModal
+       <ExcelImportModal
         isOpen={showExcelImport}
         onClose={() => setShowExcelImport(false)}
         selectedClass={selectedClass}
@@ -612,8 +830,15 @@ export default function StudentsPanel() {
           "Roll",
           "Student Name",
           "Father Name",
-          "Address",
+          "Mother Name",
           "Date of Birth",
+          "Address",
+          "Religion",
+          "Mobile Number",
+          "Gender",
+          "Blood Group",
+          "Caste",
+          "Category",
         ]}
         onImport={handleExcelImport}
       />
@@ -626,6 +851,7 @@ export default function StudentsPanel() {
           setPhotosPreview([]);
         }}
         onUpload={handleBulkPhotoUpload}
+        selectedClass={selectedClass}
       />
 
       {/* Edit Student Modal */}

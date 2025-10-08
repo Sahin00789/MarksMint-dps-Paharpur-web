@@ -575,7 +575,18 @@ export default function StudentsPanel() {
         return result;
       } else {
         const errorMessage = result?.message || 'Failed to upload some photos';
-        console.error('Upload failed:', errorMessage, { result, formEntries });
+        console.error('Upload failed:', errorMessage, { 
+          result, 
+          selectedClass,
+          fileCount: filesWithMetadata.length,
+          files: filesWithMetadata.map(f => ({
+            name: f.name,
+            type: f.type,
+            size: f.size,
+            roll: f.roll,
+            studentName: f.studentName
+          }))
+        });
         setError(errorMessage);
         throw new Error(errorMessage);
       }

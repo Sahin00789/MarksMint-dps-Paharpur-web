@@ -66,39 +66,59 @@ export default function BulkPhotoUpload({ isOpen, onClose, onUpload, selectedCla
     setPhotosPreview(updatedPhotos);
   }, [photosPreview.length, students.length]);
 
+  const extractRollFromFilename = (filename) => {
+    // Extract roll number from filename (e.g., "1.jpg" -> "1")
+    const match = filename.match(/^(\d+)(?:\..*)?$/);
+    return match ? match[1] : null;
+  };
+
   const handlePhotosFilesChange = useCallback((e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
 
     const newPhotos = files.map((file) => {
       const url = URL.createObjectURL(file);
-      // Extract roll number from filename (assumes format: roll.jpg or roll_number.jpg)
-      const rollMatch = file.name.match(/^(\d+)/);
-      const roll = rollMatch ? rollMatch[1] : null;
-
+      
+      // Extract roll number from filename (e.g., "1.jpg" -> "1")
+      const roll = extractRollFromFilename(file.name);
+      
       // Find matching student if students are loaded
-      let studentName = null;
+      let studentName = 'Not matched';
       let matched = false;
       
-      if (roll && students.length > 0) {
+      if (roll) {
         const matchedStudent = students.find(student => 
           student.roll && student.roll.toString() === roll.toString()
         );
+        
         if (matchedStudent) {
-          studentName = matchedStudent.studentName;
+          studentName = matchedStudent.studentName || `Student (Roll: ${roll})`;
           matched = true;
+        } else {
+          studentName = `No student found (Roll: ${roll})`;
         }
+      } else {
+        studentName = `Invalid filename: ${file.name}`;
       }
+
+      console.log('Processing file:', {
+        filename: file.name,
+        roll,
+        studentName,
+        matched
+      });
 
       return {
         file,
         url,
         roll,
         studentName,
-        matched
+        matched,
+        originalName: file.name
       };
     });
 
+    console.log('New photos to add:', newPhotos);
     setPhotosPreview(prev => [...prev, ...newPhotos]);
   }, [students]);
 
@@ -132,21 +152,21 @@ export default function BulkPhotoUpload({ isOpen, onClose, onUpload, selectedCla
         total: 0
       });
 
-      // Extract just the files from photosPreview
+      // Prepare files with metadata
       const files = photosPreview
         .filter(photo => photo && photo.file instanceof File)
         .map(photo => ({
           file: photo.file,
           name: photo.file.name,
-          roll: photo.roll,
-          studentName: photo.studentName
+          roll: photo.roll || photo.file.name.split('.')[0], // Default to filename without extension if no roll
+          studentName: photo.studentName || ''
         }));
 
       if (files.length === 0) {
         throw new Error('No valid files found for upload');
       }
 
-      // Log files being uploaded
+      // Log files being uploaded for debugging
       console.log('Uploading files:', files.map(f => ({
         name: f.name,
         size: f.file.size,
@@ -156,7 +176,7 @@ export default function BulkPhotoUpload({ isOpen, onClose, onUpload, selectedCla
       })));
       
       // Call the parent's upload handler with progress callback
-      await onUpload(files, (progressEvent) => {
+      const result = await onUpload(files, (progressEvent) => {
         const { loaded, total, percent } = progressEvent || {};
         setUploadProgress({
           show: true,
@@ -165,6 +185,9 @@ export default function BulkPhotoUpload({ isOpen, onClose, onUpload, selectedCla
           total: total || 0
         });
       });
+
+      // Log the upload result
+      console.log('Upload result:', result);
       
       // Clean up object URLs
       photosPreview.forEach((photo) => {
@@ -179,8 +202,13 @@ export default function BulkPhotoUpload({ isOpen, onClose, onUpload, selectedCla
       // Hide progress bar after a short delay to show 100%
       setTimeout(() => {
         setUploadProgress(prev => ({ ...prev, show: false }));
-        onClose();
+        // Only close if the upload was successful
+        if (result?.success) {
+          onClose();
+        }
       }, 1000);
+      
+      return result;
       
     } catch (error) {
       console.error('Error in handlePhotosUpload:', {
@@ -196,7 +224,7 @@ export default function BulkPhotoUpload({ isOpen, onClose, onUpload, selectedCla
                          'Failed to upload photos. Please try again.';
       
       setError(errorMessage);
-      throw err; // Re-throw to propagate to the parent component
+      throw error; // Re-throw to propagate to the parent component
     } finally {
       setIsSubmitting(false);
     }

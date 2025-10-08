@@ -129,54 +129,81 @@ export async function uploadStudentPhotosBatch(files = [], params = {}, progress
     if (!files || !files.length) {
       throw new Error('No files provided for upload');
     }
-
+    
     const form = new FormData();
     
-    // Add files to form data
-    files.forEach((fileObj) => {
-      const file = fileObj.file || fileObj;
-      if (file instanceof File) {
-        form.append('photos', file);
-      }
-    });
-    
-    // Add class to form data (required)
+    // Add class and section as form fields
     if (!params.class) {
       throw new Error('Class is required for photo upload');
     }
-    form.append('class', params.class);
+    form.append('className', params.class);
     
-    // Add section if provided
     if (params.section) {
       form.append('section', params.section);
     }
     
-    // Log form data for debugging
-    const formEntries = [];
-    for (let [key, value] of form.entries()) {
-      formEntries.push([key, value instanceof File ? value.name : value]);
-    }
+    // Convert FileList to array if needed
+    const filesArray = Array.isArray(files) ? files : Array.from(files);
     
-    console.log('Uploading form data:', {
-      fileCount: files.length,
-      class: params.class,
-      section: params.section || 'not provided',
-      formEntries
+    // Add files to form data
+    filesArray.forEach((file, index) => {
+      if (file) {
+        // Handle both direct files and file objects with metadata
+        const fileObj = file.file ? file : { file };
+        const fileToUpload = fileObj.file || file;
+        
+        // Add roll number if available
+        if (fileObj.roll) {
+          form.append('rollNumbers', fileObj.roll);
+        }
+        
+        // Append the file with a unique name
+        form.append('photos', fileToUpload, fileToUpload.name || `photo-${Date.now()}-${index}.jpg`);
+      }
     });
     
-    // Use the api instance which already has the base URL and auth headers
-    const res = await api.post('/student-photos', form, {
+    // Debug: Log form data
+    console.log('Uploading form data:', {
+      fileCount: filesArray.length,
+      class: params.class,
+      section: params.section || 'not provided'
+    });
+    
+    // Make the API request
+    const config = {
       headers: {
-        'Content-Type': 'multipart/form-data'
+        'Content-Type': 'multipart/form-data',
+        'x-auth-token': localStorage.getItem('token') || ''
       },
       onUploadProgress: progressCallback ? (progressEvent) => {
         const { loaded, total } = progressEvent;
-        const percent = Math.round((loaded * 100) / total);
-        progressCallback({ loaded, total, percent });
+        const percent = Math.round((loaded * 100) / (total || 1));
+        progressCallback({ 
+          loaded, 
+          total: total || 1, 
+          percent: Math.min(percent, 100)
+        });
       } : undefined
-    });
+    };
     
-    console.log('Upload response:', res.data);
+    const res = await api.post('/student-photos', form, config);
+    
+    // Log detailed results
+    if (res.data.failed && res.data.failed.length > 0) {
+      console.error('Some files failed to upload:', {
+        total: res.data.summary?.total || 0,
+        successful: res.data.summary?.successful || 0,
+        failed: res.data.summary?.failed || 0,
+        errors: res.data.failed.map(f => ({
+          file: f.filename || 'Unknown file',
+          error: f.error || 'Unknown error',
+          details: f.details || 'No details available'
+        }))
+      });
+    } else {
+      console.log('Upload successful:', res.data);
+    }
+    
     return res.data;
   } catch (error) {
     const errorDetails = {

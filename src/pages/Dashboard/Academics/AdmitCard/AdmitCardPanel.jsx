@@ -49,7 +49,7 @@ const AdmitCardPanel = () => {
   const [exams, setExams] = useState([]);
   const [examConfigs, setExamConfigs] = useState({});
   const [classConfig, setClassConfig] = useState({});
-  let [subjects, setSubjects] = useState([]);
+  const [subjects, setSubjects] = useState([]);
   const [selectedExam, setSelectedExam] = useState(null);
   const [selectedExamConfig, setSelectedExamConfig] = useState(null);
   const [rawExamConfig, setRawExamConfig] = useState(null);
@@ -633,7 +633,7 @@ const AdmitCardPanel = () => {
           return include;
         });
         
-        subjects = filtered.map(({ original }) => original);
+        setSubjects(filtered.map(({ original }) => original));
         console.log('Filtered subjects for OTHER:', subjects);
           
       } else if (studentReligion === 'ISLAM') {
@@ -654,7 +654,7 @@ const AdmitCardPanel = () => {
           return matches;
         });
         
-        subjects = filtered.map(({ original }) => original);
+        setSubjects(filtered.map(({ original }) => original));
         console.log('Filtered subjects for ISLAM:', subjects);
       } else {
         console.log(`No specific filter for religion: ${studentReligion}`);

@@ -2,7 +2,7 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 
 // Use environment variables if available, otherwise fallback to defaults
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = 'https://marksmint-dps-paharpur-server.onrender.com/api';
 
 // Create axios instance with default config
 const api = axios.create({

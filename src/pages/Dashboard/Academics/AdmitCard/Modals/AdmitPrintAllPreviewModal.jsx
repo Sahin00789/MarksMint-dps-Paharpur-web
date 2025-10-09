@@ -11,8 +11,9 @@ const AdmitPrintAllPreviewModal = ({
   onClose, 
   students = [], 
   examConfig,
+  selectedExam,
   className: propClassName,
-  academicYear = '2024-2025' 
+  academicYear = '2025' 
 }) => {
   const componentRef = useRef(null); // For current student preview
   const [isPrinting, setIsPrinting] = useState(false);
@@ -152,6 +153,7 @@ const AdmitPrintAllPreviewModal = ({
                     <div className="border-2 border-gray-200 rounded-lg p-4 print:border-2 print:py-3 mb-6 last:mb-0">
                       <AdmitPrintPage 
                         student={student} 
+                        selectedExam={selectedExam}
                         examConfig={examConfig}
                         isPrintMode={true}
                       />

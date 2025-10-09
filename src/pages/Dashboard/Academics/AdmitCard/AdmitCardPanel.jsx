@@ -743,6 +743,7 @@ console.log("processedStudents in AdmitCardPanel:", processedStudents);
       {showPrintAllPreview && (
         <AdmitPrintAllPreviewModal
           isOpen={showPrintAllPreview}
+          selectedExam={selectedExam}
           onClose={handleClosePrintAllPreview}
           students={processedStudents}
           examConfig={selectedExamConfig || exams.find(exam => exam._id === selectedExam) || {}}

@@ -123,26 +123,23 @@ const MarksheetsPanel = () => {
       setIsGenerating(true);
       setError('');
       
-      // Set the print data
-      setPrintData({
-        student: {
-          ...student,
-          name: student.studentName || student.name || '',
-          className: selectedClass,
-          rollNumber: student.rollNumber || student.roll || '',
-        },
-        marks: studentMarks[student._id] || [],
-        academicYear: '2024-2025', // Update this with dynamic value if available
+      // Set the selected student and marks to open the preview modal
+      setSelectedStudent({
+        ...student,
+        name: student.studentName || student.name || '',
+        className: selectedClass,
+        rollNumber: student.rollNumber || student.roll || '',
       });
       
-      // Trigger print after a small delay to allow state to update
-      setTimeout(() => {
-        handlePrint();
-      }, 100);
+      // Set the student marks for the preview
+      setSelectedStudentMarks(studentMarks[student._id] || {});
+      
+      // Open the preview modal
+      setIsPreviewOpen(true);
       
     } catch (error) {
-      console.error('Error generating marksheet:', error);
-      setError('Failed to generate marksheet. Please try again.');
+      console.error('Error preparing marksheet preview:', error);
+      setError('Failed to prepare marksheet preview. Please try again.');
     } finally {
       setIsGenerating(false);
     }
@@ -225,37 +222,27 @@ const MarksheetsPanel = () => {
         </div>
 
         {/* Action Buttons */}
-        <div className="p-3 flex justify-between space-x-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handlePreviewMarksheet(student);
-            }}
-            className="flex-1 flex items-center justify-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-          >
-            <EyeIcon className="h-3.5 w-3.5 mr-1.5" />
-            Preview
-          </button>
+        <div className="p-3">
           <button
             onClick={(e) => {
               e.stopPropagation();
               handlePrintMarksheet(student);
             }}
             disabled={isGenerating || isPrinting}
-            className="flex-1 flex items-center justify-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isPrinting ? (
               <>
-                <svg className="animate-spin -ml-1 mr-1.5 h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Preparing...
+                Preparing Print Preview...
               </>
             ) : (
               <>
-                <PrinterIcon className="h-3.5 w-3.5 mr-1.5" />
-                Print
+                <PrinterIcon className="h-4 w-4 mr-2" />
+                Print Preview
               </>
             )}
           </button>

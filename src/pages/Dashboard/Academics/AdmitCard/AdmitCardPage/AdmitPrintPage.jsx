@@ -887,7 +887,7 @@ const AdmitPrintPage = ({ student, examConfig, isPrintMode = false, onContentRea
 
       {/* Exam Schedule & Marks Distribution */}
       <div style={{ 
-        minHeight: '330px',
+        minHeight: '315px',
         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.06)',
         borderRadius: '12px',
         backgroundColor: '#ffffff',

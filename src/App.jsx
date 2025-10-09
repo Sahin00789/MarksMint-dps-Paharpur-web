@@ -1,149 +1,169 @@
-import { useEffect } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-import { ThemeProvider, useTheme } from "@contexts/ThemeContext";
+import { ThemeProvider } from "@contexts/ThemeContext";
 import { AuthProvider, useAuth } from "@contexts/AuthContext";
+import Loader from "@components/common/Loader";
 
-// Pages
-import Home from "@pages/Home";
-import Login from "@pages/Auth/Login";
-import PublicResultsPage from "@pages/PublicResultsPage";
+// Lazy load pages
+const Home = lazy(() => import("@pages/Home"));
+const Login = lazy(() => import("@pages/Auth/Login"));
+const PublicResultsPage = lazy(() => import("@pages/PublicResultsPage"));
 
-// Import Dashboard Components
-import DashboardHome from "@pages/Dashboard/DashboardHome";
-import StudentsPanel from "@pages/Dashboard/Students/StudentsPanel";
-import AttendancePanel from "./pages/Dashboard/Attendance/AttendancePanel";
-import DashboardLayout from "@/layouts/DashboardLayout";
+// Lazy load dashboard components
+const DashboardHome = lazy(() => import("@pages/Dashboard/DashboardHome"));
+const StudentsPanel = lazy(() => import("@pages/Dashboard/Students/StudentsPanel"));
+const AttendancePanel = lazy(() => import("./pages/Dashboard/Attendance/AttendancePanel"));
+const DashboardLayout = lazy(() => import("@/layouts/DashboardLayout"));
 
-// Academics Components
-import AcademicsLayout from "@/pages/Dashboard/Academics/AcademicsLayout";
-import MarksPanel from "./pages/Dashboard/Academics/Marks/MarksPanel";
-import ExamsPanel from "./pages/Dashboard/Academics/ExamsConfiguration/ExamsConfigurationPanel";
-import ResultPublishPanel from "./pages/Dashboard/Academics/Resultpublish/ResultPublishPanel";
-import AdmitCardPanel from "./pages/Dashboard/Academics/AdmitCard/AdmitCardPanel";
-import CoScholasticGradesPanel from "@/pages/Dashboard/Academics/CoScholasticGrades/CoScholasticGradesPanel";
-import MarksheetsPanel from "@/pages/Dashboard/Academics/Marksheets/MarksheetsPanel";
-import MarksheetPrintPage from "@/pages/Dashboard/Academics/Marksheets/MarksheetPage/MarksheetPrintPage";
+// Lazy load academics components
+const AcademicsLayout = lazy(() => import("@/pages/Dashboard/Academics/AcademicsLayout"));
+const MarksPanel = lazy(() => import("./pages/Dashboard/Academics/Marks/MarksPanel"));
+const ExamsPanel = lazy(() => import("./pages/Dashboard/Academics/ExamsConfiguration/ExamsConfigurationPanel"));
+const ResultPublishPanel = lazy(() => import("./pages/Dashboard/Academics/Resultpublish/ResultPublishPanel"));
+const AdmitCardPanel = lazy(() => import("./pages/Dashboard/Academics/AdmitCard/AdmitCardPanel"));
+const CoScholasticGradesPanel = lazy(() => import("@/pages/Dashboard/Academics/CoScholasticGrades/CoScholasticGradesPanel"));
+const MarksheetsPanel = lazy(() => import("@/pages/Dashboard/Academics/Marksheets/MarksheetsPanel"));
+const MarksheetPrintPage = lazy(() => import("@/pages/Dashboard/Academics/Marksheets/MarksheetPage/MarksheetPrintPage"));
+
+// Full page loading component
+const FullPageLoader = () => (
+  <div className="fixed inset-0 flex items-center justify-center bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm z-50">
+    <Loader size="xl" />
+  </div>
+);
+
+// Route loading wrapper
+const RouteLoader = ({ children }) => {
+  const [isLoading, setIsLoading] = useState(true);
+  const location = useLocation();
+  const { loading: authLoading } = useAuth();
+
+  // Show loading state for initial load or route changes
+  useEffect(() => {
+    setIsLoading(true);
+    const timer = setTimeout(() => setIsLoading(false), 300); // Small delay to prevent flash
+    return () => clearTimeout(timer);
+  }, [location.key, authLoading]);
+
+  return (
+    <>
+      {isLoading && <FullPageLoader />}
+      {children}
+    </>
+  );
+};
 
 // Protected Route Component
 const ProtectedRoute = () => {
   const { user, loading } = useAuth();
   const location = useLocation();
 
-  // Show loading spinner while checking auth state
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="flex flex-col items-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
-        </div>
-      </div>
-    );
+    return <FullPageLoader />;
   }
 
-  // Redirect to login if not authenticated
   if (!user) {
-    // Store the attempted URL for redirecting after login
-    const from =
-      location.pathname !== "/login"
-        ? location.pathname + location.search
-        : "/dashboard";
+    const from = location.pathname !== "/login" ? location.pathname + location.search : "/dashboard";
     return <Navigate to="/login" state={{ from }} replace />;
   }
 
-  // Render the protected route
   return <Outlet />;
 };
 
-// Main App Component
 const AppContent = () => {
-  const { theme } = useTheme();
-  const { user } = useAuth();
-
+  const { loading: authLoading } = useAuth();
+  
   return (
-    <div className="min-h-screen">
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={true}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme={theme}
-      />
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<Home />} />
+    <Suspense fallback={<FullPageLoader />}>
+      <RouteLoader>
+        <>
+          {authLoading ? (
+            <FullPageLoader />
+          ) : (
+            <Routes>
+        {/* Public Routes */}
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/results" element={<PublicResultsPage />}>
+          <Route path="term/:term" element={<PublicResultsPage />} />
+        </Route>
+
+        {/* Protected Routes */}
+        <Route element={<ProtectedRoute />}>
           <Route
-            path="/login"
-            element={user ? <Navigate to="/dashboard" replace /> : <Login />}
-          />
-
-          {/* Public Routes */}
-          <Route path="/results" element={<PublicResultsPage />}>
-            <Route path="term/:term" element={<PublicResultsPage />} />
-          </Route>
-
-          {/* Protected Routes */}
-          <Route element={<ProtectedRoute />}>
-            <Route
-              path="/dashboard"
-              element={
-                <DashboardLayout>
-                  <Outlet />
-                </DashboardLayout>
-              }
-            >
-              <Route index element={<DashboardHome />} />
-              <Route path="students" element={<StudentsPanel />} />
-              <Route path="attendance" element={<AttendancePanel />} />
-              
-              {/* Academics Routes */}
-              <Route path="academics" element={<AcademicsLayout />}>
-                <Route index element={<Navigate to="exams" replace />} />
-                <Route path="exams" element={<ExamsPanel />} />
-                <Route path="admit-cards" element={<AdmitCardPanel />}>
-                  <Route
-                    path="generate"
-                    element={<AdmitCardPanel initialTab="generate" />}
-                  />
-                </Route>
-                <Route path="marks" element={<MarksPanel />} />
-                <Route path="results-publish" element={<ResultPublishPanel />} />
-                <Route path="co-scholastic-grades" element={<CoScholasticGradesPanel />} />
-                <Route path="marksheets">
-                  <Route index element={<MarksheetsPanel />} />
-                  <Route path="print" element={<MarksheetPrintPage />} />
-                </Route>
-                <Route path="*" element={<Navigate to="exams" replace />} />
+            path="/dashboard"
+            element={
+              <DashboardLayout>
+                <Outlet />
+              </DashboardLayout>
+            }
+          >
+            <Route index element={<DashboardHome />} />
+            <Route path="students" element={<StudentsPanel />} />
+            <Route path="attendance" element={<AttendancePanel />} />
+            
+            {/* Academics Routes */}
+            <Route path="academics" element={<AcademicsLayout />}>
+              <Route index element={<Navigate to="exams" replace />} />
+              <Route path="exams" element={<ExamsPanel />} />
+              <Route path="admit-cards" element={<AdmitCardPanel />}>
+                <Route path="generate" element={<AdmitCardPanel initialTab="generate" />} />
               </Route>
-
-              {/* Catch-all for other protected dashboard routes */}
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              <Route path="marks" element={<MarksPanel />} />
+              <Route path="results-publish" element={<ResultPublishPanel />} />
+              <Route path="co-scholastic-grades" element={<CoScholasticGradesPanel />} />
+              <Route path="marksheets">
+                <Route index element={<MarksheetsPanel />} />
+                <Route path="print" element={<MarksheetPrintPage />} />
+              </Route>
+              <Route path="*" element={<Navigate to="exams" replace />} />
             </Route>
-          </Route>
 
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </div>
-    </div>
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Route>
+        </Route>
+
+        <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          )}
+          
+          <ToastContainer
+            position="top-right"
+            autoClose={5000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme="colored"
+          />
+        </>
+      </RouteLoader>
+    </Suspense>
   );
 };
 
-// Wrap the app with ThemeProvider and AuthProvider
+// Main App component with providers
 const App = () => {
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  if (!mounted) {
+    return <FullPageLoader />;
+  }
+
   return (
-    <ThemeProvider>
-      <AuthProvider>
+    <AuthProvider>
+      <ThemeProvider>
         <AppContent />
-      </AuthProvider>
-    </ThemeProvider>
+      </ThemeProvider>
+    </AuthProvider>
   );
 };
 

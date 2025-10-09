@@ -3,22 +3,7 @@ import { toast } from 'react-toastify';
 
 // Use environment variables if available, otherwise fallback to defaults
 const API_URL = 'https://marksmint-dps-paharpur-server.onrender.com/api';
-const API_URL2 ="http://localhost:5000/api/"
-
-// Create axios instance with default config
-const api = axios.create({
-  baseURL: API_URL,
-  withCredentials: true,
-  headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    'X-Requested-With': 'XMLHttpRequest'
-  },
-  timeout: 30000, // 30 seconds
-  validateStatus: function (status) {
-    return status >= 200 && status < 500; // Resolve only if the status code is less than 500
-  }
-});
+const API_URL2 = "http://localhost:5000/api/";
 
 // Request timeout helper
 const TIMEOUT_ERROR_MESSAGE = 'Request took too long. Please check your connection and try again.';
@@ -29,9 +14,30 @@ let isRefreshing = false;
 let failedQueue = [];
 
 /**
+ * Process the queue of requests waiting for token refresh
+ */
+const processQueue = (error, token = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
+/**
  * Handle unauthorized errors by attempting to refresh the token
  */
-const handleUnauthorizedError = async (originalRequest, error) => {
+const handleUnauthorizedError = async (error) => {
+  const originalRequest = error.config;
+  
+  // If error response doesn't exist or the request was already retried, reject
+  if (!error.response || originalRequest._retry) {
+    return Promise.reject(error);
+  }
+
   // Mark the request to prevent infinite retry loops
   originalRequest._retry = true;
   
@@ -116,16 +122,98 @@ const handleUnauthorizedError = async (originalRequest, error) => {
   }
 };
 
-const processQueue = (error, token = null) => {
-  failedQueue.forEach(prom => {
-    if (error) {
-      prom.reject(error);
-    } else {
-      prom.resolve(token);
+// Create axios instance with default config
+// Regular API client for normal requests
+const api = axios.create({
+  baseURL: API_URL,
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest'
+  },
+  validateStatus: function (status) {
+    return status >= 200 && status < 500;
+  }
+});
+
+// Dedicated API client for file uploads with longer timeout
+const uploadApi = axios.create({
+  baseURL: API_URL2,
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'multipart/form-data',
+    'Accept': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest'
+  },
+  timeout: 600000, // 10 minutes for file uploads
+  validateStatus: function (status) {
+    return status >= 200 && status < 500;
+  }
+});
+
+// Request interceptor to include auth token and handle logging
+api.interceptors.request.use(
+  (config) => {
+    // Skip logging for health checks to reduce noise
+    if (!config.url.includes('/health')) {
+      console.log(`[API] ${config.method?.toUpperCase() || 'GET'} ${config.url}`, {
+        data: config.data,
+        params: config.params
+      });
     }
-  });
-  failedQueue = [];
-};
+    
+    // Skip adding token for public and auth endpoints
+    const isPublicEndpoint = config.url.includes('/public/') || 
+                           config.url.includes('/auth/') ||
+                           config.url === '/health';
+    
+    if (isPublicEndpoint && !config.url.includes('/auth/refresh-token')) {
+      return config;
+    }
+    
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+      console.log('[API] Added Authorization header');
+    } else if (!config.url.includes('/auth/')) {
+      console.warn('[API] No auth token found');
+      // Only redirect if not on login page and not an auth request
+      if (window.location.pathname !== '/login') {
+        console.log('[API] Redirecting to login');
+        window.location.href = '/login';
+      }
+      throw new Error('No authentication token found');
+    }
+    
+    return config;
+  },
+  (error) => {
+    console.error('[API] Request interceptor error:', error);
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor to handle common errors and token refresh
+api.interceptors.response.use(
+  (response) => {
+    // Skip logging for health checks to reduce noise
+    if (!response.config.url.includes('/health')) {
+      console.log(`[API] ${response.config.method?.toUpperCase() || 'GET'} ${response.config.url}`, {
+        status: response.status,
+        data: response.data
+      });
+    }
+    return response;
+  },
+  handleUnauthorizedError
+);
+
+// Apply the same interceptors to uploadApi
+uploadApi.interceptors.response.use(
+  (response) => response,
+  handleUnauthorizedError
+);
 
 // Request interceptor to include auth token
 api.interceptors.request.use(

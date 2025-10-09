@@ -1294,10 +1294,10 @@ export default function MarksPanel() {
                     return (
                       <div
                         key={student._id}
-                        className="flex flex-col h-full overflow-hidden bg-white dark:bg-gray-800 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 dark:border-gray-700 transform hover:-translate-y-0.5 hover:scale-[1.02]"
+                        className="flex flex-col h-full overflow-hidden bg-white dark:bg-gray-800 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 dark:border-gray-700 transform hover:-translate-y-0.5 hover:scale-[1.02] p-0"
                       >
                         {/* Header with student info */}
-                        <div className="p-4 bg-gradient-to-r from-purple-600 to-violet-700 dark:from-purple-800 dark:to-violet-900 rounded-t-2xl text-white">
+                        <div className="bg-gradient-to-r from-purple-600 to-violet-700 dark:from-purple-800 dark:to-violet-900 rounded-t-2xl text-white p-4">
                           <div className="flex w-full justify-between items-start">
                             <div className="flex-1 min-w-0">
                               <h3 className="font-bold text-lg break-words whitespace-normal text-white">
@@ -1351,7 +1351,7 @@ export default function MarksPanel() {
                         </div>
 
                         {/* Subject Marks Grid */}
-                        <div className="p-4">
+                        <div className="p-0">
                           <div className="grid grid-cols-2 gap-3">
                             {student.examConfig?.subjects?.map((subject) => {
                               // Get the subject's configuration
@@ -1480,6 +1480,22 @@ export default function MarksPanel() {
                                           /{subjectMax}
                                         </span>
                                       </span>
+                                    </div>
+
+                                    {/* Subject Progress Bar */}
+                                    <div className="w-full mt-1.5 mb-2">
+                                      <div className="w-full bg-gray-200 rounded-full h-1.5 dark:bg-gray-700">
+                                        <div 
+                                          className={`h-1.5 rounded-full ${
+                                            subjectPercentage >= 80
+                                              ? 'bg-green-500'
+                                              : subjectPercentage >= 50
+                                              ? 'bg-blue-500'
+                                              : 'bg-yellow-500'
+                                          }`}
+                                          style={{ width: `${Math.min(100, Math.max(0, subjectPercentage))}%` }}
+                                        ></div>
+                                      </div>
                                     </div>
 
                                     {evaluationTypes.length > 0 && (
@@ -1639,13 +1655,13 @@ export default function MarksPanel() {
                                 </div>
                               </div>
                             </div>
-                            <div className="mt-4">
+                            <div className="mt-4 border-t border-gray-100 dark:border-gray-700 pt-3">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleEditMarks(student);
                                 }}
-                                className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200"
+                                className="w-full py-2 px-4 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200"
                               >
                                 Edit Marks
                               </button>

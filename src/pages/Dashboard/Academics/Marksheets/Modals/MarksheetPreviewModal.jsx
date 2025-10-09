@@ -14,6 +14,7 @@ const MarksheetPreviewModal = ({
   academicYear = '2024-2025' 
 }) => {
   const componentRef = useRef();
+  const printContentRef = useRef();
   const navigate = useNavigate();
   // Initialize state with props
   const [studentData, setStudentData] = useState(propStudent);
@@ -178,50 +179,48 @@ const MarksheetPreviewModal = ({
 
   // Handle print functionality
   const handlePrint = useReactToPrint({
-    content: () => {
-      // Find the print container
-      const printContainer = document.getElementById('marksheet-print-container');
-      if (!printContainer) {
-        console.error('Print container not found');
-        return null;
-      }
-      
-      // Create a clone of the print container
-      const content = printContainer.cloneNode(true);
-      
-      // Create a temporary container
-      const tempContainer = document.createElement('div');
-      tempContainer.appendChild(content);
-      
-      return tempContainer;
-    },
-    documentTitle: `${studentData?.studentName || studentData?.name || 'Marksheet'}-${className || studentData?.class || 'Class'}-${academicYear}`,
+    contentRef: printContentRef,
     removeAfterPrint: true,
-    onBeforeGetContent: () => {
-      // Ensure all data is loaded before printing
-      if (isLoading) {
-        console.warn('Data still loading when trying to print');
-        return Promise.reject('Data still loading');
+    documentTitle: `Marksheet-${studentData?.rollNumber || studentData?.roll || 'student'}`,
+    pageStyle: `
+      @page { 
+        size: A4;
+        margin: 1.5cm;
       }
-      return Promise.resolve();
+      @media print {
+        body { 
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          margin: 0;
+          padding: 0;
+        }
+        .no-print { 
+          display: none !important; 
+        }
+      }
+    `,
+    onBeforeGetContent: () => {
+      return new Promise((resolve) => {
+        if (printContentRef.current) {
+          resolve();
+          return;
+        }
+
+        const interval = setInterval(() => {
+          if (printContentRef.current) {
+            clearInterval(interval);
+            resolve();
+          }
+        }, 50);
+      });
     },
     onPrintError: (error) => {
       console.error('Print error:', error);
       setError('Failed to generate print preview. Please try again.');
-    },
-    pageStyle: `
-      @page { size: A4; margin: 0; }
-      @media print { 
-        body { -webkit-print-color-adjust: exact; } 
-        .print-actions { display: none; }
-      }
-    `
+    }
   });
 
-  // Handle download functionality
-  const handleDownload = useCallback(() => {
-    handlePrint();
-  }, [handlePrint]);
+
 
   // Close modal when clicking outside or pressing Escape
   useEffect(() => {
@@ -316,8 +315,8 @@ console.log("studentData",studentData,"examConfig",examConfig,"className",classN
       />
 
       {/* Modal container */}
-      <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-6xl sm:w-full h-[90vh] flex flex-col">
+      <div className="flex items-center justify-center min-h-screen p-4 sm:p-6">
+        <div className="relative w-full max-w-4xl bg-white dark:bg-gray-800 rounded-lg shadow-xl flex flex-col h-[90vh] max-h-[90vh] overflow-hidden">
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                   <div className="flex items-center space-x-3">
@@ -338,14 +337,6 @@ console.log("studentData",studentData,"examConfig",examConfig,"className",classN
                     </div>
                   </div>
                   <div className="flex space-x-3">
-                    <button
-                      type="button"
-                      onClick={handleDownload}
-                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
-                    >
-                      <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
-                      Download PDF
-                    </button>
                     <button
                       type="button"
                       onClick={handlePrint}
@@ -389,71 +380,62 @@ console.log("studentData",studentData,"examConfig",examConfig,"className",classN
                             }
                           `
                         }} />
-                        <div id="marksheet-print-container" className="w-full">
-                          {examConfig?.length > 0 && propStudent ? (
-                            <MarksheetPrintPage 
-                              student={{
-                                ...propStudent,
-                                name: propStudent?.name || propStudent?.studentName || 'Student Name',
-                                studentName: propStudent?.studentName || propStudent?.name || 'Student Name',
-                                rollNumber: propStudent?.rollNumber || propStudent?.roll || 'N/A',
-                                Class: className || propStudent?.className || propStudent?.class || 'N/A',
-                                className: className || propStudent?.className || propStudent?.class || 'N/A',
-                                admissionNo: propStudent?.admissionNo || 'N/A',
-                                fatherName: propStudent?.fatherName || 'N/A',
-                                motherName: propStudent?.motherName || 'N/A',
-                              }}
-                              marks={propMarks || []}
-                              examConfig={examConfig}
-                              academicYear={academicYear || '2024-2025'}
-                              className={className}
-                              coScholastic={propStudent?.coScholastic || {}}
-                              attendanceConfig={attendanceConfig || {}}
-                              calculateMarks={(subjectMarks) => {
-                                let obtainedMarks = 0;
-                                if (typeof subjectMarks === 'object' && subjectMarks !== null) {
-                                  obtainedMarks = subjectMarks.SubjectTotal || 
-                                    Object.values(subjectMarks).reduce((sum, val) => 
-                                      typeof val === 'number' ? sum + val : sum, 0);
-                                } else {
-                                  obtainedMarks = parseFloat(subjectMarks) || 0;
-                                }
-                                
-                                const maxMarks = subjectMarks?.maxMarks || 100;
-                                const percentage = maxMarks > 0 ? (obtainedMarks / maxMarks) * 100 : 0;
-                                const grade = calculateGrade(obtainedMarks, maxMarks);
-                                
+                        <div ref={printContentRef} className="w-full">
+                          <MarksheetPrintPage 
+                            student={{
+                              ...(propStudent || {}),
+                              name: propStudent?.name || propStudent?.studentName || 'Student Name',
+                              studentName: propStudent?.studentName || propStudent?.name || 'Student Name',
+                              rollNumber: propStudent?.rollNumber || propStudent?.roll || 'N/A',
+                              Class: className || propStudent?.className || propStudent?.class || 'N/A',
+                              className: className || propStudent?.className || propStudent?.class || 'N/A',
+                              admissionNo: propStudent?.admissionNo || 'N/A',
+                              fatherName: propStudent?.fatherName || 'N/A',
+                              motherName: propStudent?.motherName || 'N/A',
+                            }}
+                            marks={propMarks || []}
+                            examConfig={examConfig || []}
+                            academicYear={academicYear || '2024-2025'}
+                            className={className}
+                            coScholastic={propStudent?.coScholastic || {}}
+                            attendanceConfig={attendanceConfig || {}}
+                            calculateMarks={(subjectMarks) => {
+                              if (!subjectMarks) {
                                 return {
-                                  subject: subjectMarks?.subject || 'Subject',
-                                  obtainedMarks: Number(obtainedMarks.toFixed(2)),
-                                  maxMarks: Number(maxMarks.toFixed(2)),
-                                  percentage: Math.round(percentage),
-                                  grade: grade || 'N/A'
+                                  subject: 'Subject',
+                                  obtainedMarks: 0,
+                                  maxMarks: 100,
+                                  percentage: 0,
+                                  grade: 'N/A'
                                 };
-                              }}
-                            />
-                          ) : (
-                            <div className="text-center py-10">
-                              <p className="text-lg font-medium text-gray-600 dark:text-gray-300">
-                                No exam data available for this student.
-                              </p>
-                            </div>
-                          )}
+                              }
+                              
+                              let obtainedMarks = 0;
+                              if (typeof subjectMarks === 'object' && subjectMarks !== null) {
+                                obtainedMarks = subjectMarks.SubjectTotal || 
+                                  Object.values(subjectMarks).reduce((sum, val) => 
+                                    typeof val === 'number' ? sum + val : sum, 0);
+                              } else {
+                                obtainedMarks = parseFloat(subjectMarks) || 0;
+                              }
+                              
+                              const maxMarks = subjectMarks?.maxMarks || 100;
+                              const percentage = maxMarks > 0 ? (obtainedMarks / maxMarks) * 100 : 0;
+                              const grade = calculateGrade(obtainedMarks, maxMarks);
+                              
+                              return {
+                                subject: subjectMarks?.subject || 'Subject',
+                                obtainedMarks: Number(obtainedMarks.toFixed(2)),
+                                maxMarks: Number(maxMarks.toFixed(2)),
+                                percentage: Math.round(percentage),
+                                grade: grade || 'N/A'
+                              };
+                            }}
+                          />
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-                
-                {/* Footer */}
-                <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex justify-end space-x-3">
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600"
-                  >
-                    Close
-                  </button>
                 </div>
               </div>
             </div>

@@ -392,9 +392,52 @@ function ExamConfigurationPanel() {
       cleaned.fullMarks = {};
     }
     
-    // Ensure schedule is an object
+    // Ensure schedule is an object and clean it
     if (!cleaned.schedule || typeof cleaned.schedule !== 'object' || Array.isArray(cleaned.schedule)) {
       cleaned.schedule = {};
+    } else {
+      // Clean the schedule data
+      const cleanedSchedule = {};
+      
+      // Process each subject in the schedule
+      Object.entries(cleaned.schedule).forEach(([subject, evalTypes]) => {
+        // Skip internal properties and invalid subjects
+        if (!subject || typeof subject !== 'string' || 
+            subject.startsWith('$') || subject.startsWith('_') || 
+            !cleaned.subjects.includes(subject)) {
+          return;
+        }
+        
+        // Initialize subject in cleaned schedule
+        cleanedSchedule[subject] = {};
+        
+        // If evalTypes is not an object, skip to next subject
+        if (!evalTypes || typeof evalTypes !== 'object' || Array.isArray(evalTypes)) {
+          return;
+        }
+        
+        // Process each evaluation type
+        Object.entries(evalTypes).forEach(([evalType, data]) => {
+          // Skip internal properties and invalid evaluation types
+          if (!evalType || typeof evalType !== 'string' || 
+              evalType.startsWith('$') || evalType.startsWith('_') ||
+              !cleaned.evaluationTypes.includes(evalType)) {
+            return;
+          }
+          
+          // Ensure data is an object with the required fields
+          if (data && typeof data === 'object' && !Array.isArray(data)) {
+            cleanedSchedule[subject][evalType] = {
+              examDate: data.examDate || '',
+              startTime: data.startTime || '',
+              endTime: data.endTime || ''
+            };
+          }
+        });
+      });
+      
+      // Replace the schedule with the cleaned version
+      cleaned.schedule = cleanedSchedule;
     }
 
     // Clean fullMarks to match subjects and evaluation types
@@ -466,90 +509,72 @@ function ExamConfigurationPanel() {
   // Handle save operation for exam configuration
   const handleSaveExamConfig = async (examName, config) => {
     try {
-      // Ensure selectedExam is a string (not an array of characters)
-      let examNameToUse = Array.isArray(examName || selectedExam) ? 
+      // Normalize exam name
+      const examNameToUse = Array.isArray(examName || selectedExam) ? 
         (examName || selectedExam).join('') : 
         String(examName || selectedExam || '');
       
-      // If examName is still an array (shouldn't happen with the above check, but just in case)
-      if (Array.isArray(examNameToUse)) {
-        console.warn('Exam name was still an array after conversion, forcing to string');
-        examNameToUse = examNameToUse.join('');
-      }
-      
       if (!selectedClass || !examNameToUse) {
-        const errorMsg = 'Missing required fields: selectedClass or examName';
-        console.warn(errorMsg, { selectedClass, examName, selectedExam, examNameToUse });
-        toast.error(errorMsg);
+        toast.error('Missing required fields: Class or Exam Name');
         return;
       }
-
-      console.log('=== RAW CONFIG FROM FORM ===');
-      console.log('Exam name:', examNameToUse);
-      console.log('Config from form:', config);
       
-      // Initialize configToSave with default structure
-      let configToSave = {
+      // Initialize config with default structure
+      const configToSave = {
         subjects: [],
         evaluationTypes: [],
         fullMarks: {},
-        schedule: {}
+        schedule: {},
+        examName: examNameToUse,
+        _examName: examNameToUse,
+        _timestamp: new Date().toISOString()
       };
 
-      // If config is defined, use it to populate configToSave
-      if (config && typeof config === 'object') {
-        // Handle subjects
-        if (Array.isArray(config.subjects)) {
-          configToSave.subjects = [...new Set(config.subjects)]
-            .filter(subject => subject && String(subject).trim() !== '')
-            .map(subject => String(subject).trim());
-        }
+      // Process subjects
+      if (Array.isArray(config?.subjects)) {
+        configToSave.subjects = [...new Set(config.subjects)]
+          .filter(subject => subject && String(subject).trim() !== '')
+          .map(subject => String(subject).trim());
+      }
+      
+      // Process evaluation types
+      if (Array.isArray(config?.evaluationTypes)) {
+        configToSave.evaluationTypes = [...new Set(config.evaluationTypes)]
+          .filter(type => type && String(type).trim() !== '')
+          .map(type => String(type).trim());
+      }
+      
+      // Process fullMarks
+      if (config?.fullMarks && typeof config.fullMarks === 'object') {
+        configToSave.fullMarks = {};
         
-        // Handle evaluation types
-        if (Array.isArray(config.evaluationTypes)) {
-          configToSave.evaluationTypes = [...new Set(config.evaluationTypes)]
-            .filter(type => type && String(type).trim() !== '')
-            .map(type => String(type).trim());
-        }
-        
-        // Handle fullMarks if it's an object
-        if (config.fullMarks && typeof config.fullMarks === 'object') {
-          // Initialize fullMarks as an empty object
-          configToSave.fullMarks = {};
-          
-          // Only process if we have subjects and evaluation types
-          if (configToSave.subjects.length > 0 && configToSave.evaluationTypes.length > 0) {
-            configToSave.subjects.forEach(subject => {
-              // Only include subjects that exist in our cleaned subjects list
-              configToSave.fullMarks[subject] = {};
-              
-              configToSave.evaluationTypes.forEach(type => {
-                // Try to get the value from the config, default to 0 if not found or invalid
-                const existingValue = config.fullMarks[subject]?.[type];
-                const numericValue = Number(existingValue);
-                configToSave.fullMarks[subject][type] = !isNaN(numericValue) ? Math.max(0, numericValue) : 0;
-              });
+        if (configToSave.subjects.length > 0 && configToSave.evaluationTypes.length > 0) {
+          configToSave.subjects.forEach(subject => {
+            configToSave.fullMarks[subject] = {};
+            
+            configToSave.evaluationTypes.forEach(type => {
+              const existingValue = config.fullMarks[subject]?.[type];
+              const numericValue = Number(existingValue);
+              configToSave.fullMarks[subject][type] = !isNaN(numericValue) ? Math.max(0, numericValue) : 0;
             });
-          }
-        }
-        
-        // Handle schedule if it exists
-        if (config.schedule && typeof config.schedule === 'object') {
-          configToSave.schedule = { ...config.schedule };
+          });
         }
       }
       
-      // Add metadata
-      configToSave.examName = examNameToUse;
-      configToSave._examName = examNameToUse;
-      configToSave._timestamp = new Date().toISOString();
-
-      console.log("=== PROCESSED CONFIG BEFORE VALIDATION ===");
-      console.log({
-        examName: examNameToUse,
-        selectedClass,
-        config: configToSave
-      });
+      // Process schedule
+      if (config?.schedule && typeof config.schedule === 'object') {
+        configToSave.schedule = { ...config.schedule };
+      }
+      
+      // Log only the data being sent to the backend
+      console.log('=== SENDING TO BACKEND ===');
+      console.log(JSON.stringify({
+        className: selectedClass,
+        academicYear: '2024-2025',
+        examConfig: {
+          [examNameToUse]: configToSave
+        }
+      }, null, 2));
       
       setSaving(true);
       
@@ -795,8 +820,8 @@ function ExamConfigurationPanel() {
   
     
     return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="space-y-4 sm:space-y-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
           {/* Marks Configuration Card */}
           <div className={`rounded-lg shadow-sm border p-6 hover:shadow-md transition-all ${
             hasSubjects 
@@ -956,7 +981,7 @@ function ExamConfigurationPanel() {
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Exam Details</h3>
           
           {/* Subject Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {subjects.map((subject) => {
                 const subjectSchedule = schedule[subject] || {};
                 const totalMarks = subjectTotals[subject] || 0;
@@ -1072,12 +1097,12 @@ function ExamConfigurationPanel() {
   );
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">Exam Configuration</h1>
+    <div className="w-full">
+      <h1 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white mb-4 sm:mb-6">Exam Configuration</h1>
       
       {/* Class Selection */}
-      <div className="mb-8">
-        <h2 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-3">Select Class</h2>
+      <div className="mb-6 sm:mb-8">
+        <h2 className="text-base sm:text-lg font-medium text-gray-700 dark:text-gray-300 mb-2 sm:mb-3">Select Class</h2>
         <ExamDependentClassSelectorCard
           selectedClass={selectedClass}
           onSelect={setSelectedClass}
@@ -1090,9 +1115,9 @@ function ExamConfigurationPanel() {
           
           {/* Configuration Cards */}
           {selectedExam && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-lg font-medium text-gray-800 dark:text-white mb-2">
+            <div className="space-y-4 sm:space-y-6">
+              <div className="px-0 sm:px-2">
+                <h2 className="text-lg font-medium text-gray-800 dark:text-white mb-1">
                   {selectedClass} - {selectedExam} Configuration
                 </h2>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -1101,10 +1126,12 @@ function ExamConfigurationPanel() {
               </div>
               
               {/* Render configuration cards */}
-              {renderConfigCards(examConfigs[selectedClass] || {})}
+              <div className="px-0 sm:px-2">
+                {renderConfigCards(examConfigs[selectedClass] || {})}
+              </div>
               
               {/* Exam Configuration Details */}
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+              <div className="bg-white dark:bg-gray-800 rounded-none sm:rounded-lg shadow-sm border-0 sm:border border-gray-200 dark:border-gray-700 p-0 sm:p-4 md:p-6">
                 {statusLoading ? (
                   <div className="flex justify-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500"></div>

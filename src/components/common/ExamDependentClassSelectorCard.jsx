@@ -87,7 +87,7 @@ export default function ExamDependentClassSelectorCard({
           <div className="flex items-center gap-2 mb-1">
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">{title}:</span>
             {selectedClass && (
-              <span className="text-xs bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-200 px-2 py-0.5 rounded-full font-medium sm:hidden">
+              <span className="text-xs bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-200 px-2 py-0.5 rounded-full font-medium hidden md:block">
                 {statusMap[selectedClass]?.isConfigured ? 'Configured' : 'Not Configured'}
               </span>
             )}

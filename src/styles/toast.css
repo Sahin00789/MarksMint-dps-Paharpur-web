@@ -1,0 +1,28 @@
+/* Import react-toastify styles */
+@import '~react-toastify/dist/ReactToastify.css';
+
+/* You can add custom toast styles here if needed */
+.Toastify__toast-container {
+  font-size: 14px;
+}
+
+.Toastify__toast {
+  border-radius: 4px;
+  padding: 12px 16px;
+}
+
+.Toastify__toast--success {
+  background: #10B981;
+}
+
+.Toastify__toast--error {
+  background: #EF4444;
+}
+
+.Toastify__toast--warning {
+  background: #F59E0B;
+}
+
+.Toastify__toast--info {
+  background: #3B82F6;
+}

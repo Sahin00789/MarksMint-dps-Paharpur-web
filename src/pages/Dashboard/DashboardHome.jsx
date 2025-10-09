@@ -3,13 +3,10 @@ import {
   FiUsers, 
   FiBookOpen, 
   FiFileText, 
-  FiClock, 
-  FiCalendar, 
-  FiUserPlus, 
+  FiUserPlus,
   FiEdit3,
-  FiFileText as FiFileTextAlt,
+  FiCalendar,
   FiCheckCircle,
-  FiActivity,
   FiTrendingUp,
   FiPieChart,
   FiBarChart2
@@ -37,7 +34,6 @@ import {
 } from 'chart.js';
 import { 
   getDashboardStats, 
-  getDashboardActivities, 
   getDashboardCharts 
 } from '@services/dashboard';
 
@@ -56,39 +52,6 @@ ChartJS.register(
 
 
 
-const ActivityItem = ({ activity }) => {
-  const getActivityIcon = (type) => {
-    switch (type) {
-      case 'exam':
-        return <FiBookOpen className="h-5 w-5 text-blue-600 dark:text-blue-400" />;
-      case 'result':
-        return <FiFileText className="h-5 w-5 text-green-600 dark:text-green-400" />;
-      case 'student':
-        return <FiUsers className="h-5 w-5 text-purple-600 dark:text-purple-400" />;
-      default:
-        return <FiActivity className="h-5 w-5 text-gray-600 dark:text-gray-400" />;
-    }
-  };
-
-  return (
-    <div className="flex items-start">
-      <div className="flex-shrink-0 mt-1">
-        {getActivityIcon(activity.type)}
-      </div>
-      <div className="ml-4">
-        <p className="text-sm font-medium text-gray-900 dark:text-white">
-          {activity.title}
-        </p>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          {activity.description}
-        </p>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-          {activity.date}
-        </p>
-      </div>
-    </div>
-  );
-};
 
 
 const DashboardHome = () => {
@@ -99,28 +62,21 @@ const DashboardHome = () => {
     resultsPublished: 0,
     pendingTasks: 0
   });
-  const [activities, setActivities] = useState([]);
+  
+  // Separate loading states for better granularity
   const [loading, setLoading] = useState({
-    stats: true,
-    activities: true,
-    charts: true
+    stats: false, // Start with false to prevent blocking initial render
+    charts: false
   });
+  
   const [error, setError] = useState(null);
   const [selectedClass, setSelectedClass] = useState('');
+  const [mounted, setMounted] = useState(false);
   
   // Fetch dashboard data
   const fetchDashboardData = async () => {
     try {
-      setLoading(prev => ({ ...prev, activities: true }));
       setError(null);
-      
-      // Fetch activities
-      const activitiesResponse = await getDashboardActivities();
-      if (activitiesResponse.success) {
-        setActivities(activitiesResponse.data);
-      } else {
-        throw new Error(activitiesResponse.error || 'Failed to load activities');
-      }
       
       // Fetch stats if not already loaded
       if (loading.stats) {
@@ -142,10 +98,23 @@ const DashboardHome = () => {
     }
   };
   
-  // Initial data fetch
+  // Initial data fetch - only after component is mounted
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    setMounted(true);
+    
+    // Load data after a small delay to prevent blocking initial render
+    const timer = setTimeout(() => {
+      if (mounted) {
+        setLoading(prev => ({ ...prev, stats: true }));
+        fetchDashboardData();
+      }
+    }, 100);
+    
+    return () => {
+      setMounted(false);
+      clearTimeout(timer);
+    };
+  }, [mounted]);
   
   // Handle class selection
   const handleClassSelect = (selectedClass) => {
@@ -193,7 +162,7 @@ const DashboardHome = () => {
     {
       title: 'Generate Admit Cards',
       description: 'Create admit cards for upcoming exams',
-      icon: FiFileTextAlt,
+      icon: FiFileText,
       href: '/dashboard/admit-cards/generate',
       color: 'amber'
     },
@@ -237,34 +206,6 @@ const DashboardHome = () => {
     fetchStats();
   }, []);
 
-  // Fetch recent activities
-  useEffect(() => {
-    const fetchActivities = async () => {
-      console.log('Fetching activities...');
-      try {
-        const result = await getDashboardActivities();
-        console.log('Activities response:', result);
-        
-        if (result.success) {
-          // Ensure we have an array and limit to 5 items
-          const activities = Array.isArray(result.data) ? result.data : [];
-          console.log('Setting activities:', activities.slice(0, 5));
-          setRecentActivities(activities.slice(0, 5));
-        } else {
-          console.error('Error in activities response:', result.error);
-          toast.error(result.error || 'Failed to load recent activities');
-        }
-      } catch (error) {
-        console.error('Exception in fetchActivities:', error);
-        toast.error('An error occurred while loading activities');
-      } finally {
-        console.log('Finished loading activities');
-        setLoading(prev => ({ ...prev, activities: false }));
-      }
-    };
-
-    fetchActivities();
-  }, []);
 
   // Fetch chart data
   useEffect(() => {
@@ -326,30 +267,36 @@ const DashboardHome = () => {
     fetchCharts();
   }, []);
 
-  // Color palette for 9 distinct classes
+  // Color palette with 9 distinct colors (avoiding red and similar shades)
   const classColors = [
-    'rgba(79, 70, 229, 0.8)',  // indigo
-    'rgba(99, 102, 241, 0.8)', // indigo-500
-    'rgba(129, 140, 248, 0.8)', // indigo-300
-    'rgba(167, 139, 250, 0.8)', // violet-300
-    'rgba(192, 132, 252, 0.8)', // purple-300
-    'rgba(217, 70, 239, 0.8)',  // fuchsia-500
-    'rgba(236, 72, 153, 0.8)',  // pink-500
-    'rgba(244, 63, 94, 0.8)',   // rose-500
-    'rgba(249, 115, 22, 0.8)'   // orange-500
+    'rgba(70, 70, 229, 0.8)',   // indigo-600
+    'rgba(16, 185, 129, 0.8)',  // emerald-500
+    'rgba(99, 102, 241, 0.8)',  // indigo-500
+    'rgba(245, 158, 11, 0.8)',  // amber-500
+    'rgba(59, 130, 246, 0.8)',  // blue-500
+    'rgba(139, 92, 246, 0.8)',  // violet-500
+    'rgba(6, 182, 212, 0.8)',   // cyan-500
+    'rgba(5, 150, 105, 0.8)',   // emerald-600
+    'rgba(124, 58, 237, 0.8)'   // violet-600
   ];
 
   // Chart configurations
   const studentsByClassChart = {
     labels: chartData.studentsByClass.labels,
     datasets: [{
-      label: 'Students by Class',
+      label: 'Number of Students',
       data: chartData.studentsByClass.data,
       backgroundColor: chartData.studentsByClass.labels.map((_, i) => classColors[i % classColors.length]),
-      borderColor: chartData.studentsByClass.labels.map((_, i) => classColors[i % classColors.length].replace('0.8', '1')),
-      borderWidth: 1,
-      borderRadius: 4,  // Rounded corners on bars
-      borderSkipped: false  // Apply border radius to all corners
+      borderColor: chartData.studentsByClass.labels.map((_, i) => {
+        // Darker version of each color for the border
+        const color = classColors[i % classColors.length];
+        return color.replace('0.8', '1');
+      }),
+      borderWidth: 2,
+      borderRadius: 6,  // More pronounced rounded corners
+      borderSkipped: false,  // Apply border radius to all corners
+      barPercentage: 0.7,  // Slightly thinner bars
+      categoryPercentage: 0.8  // Space between bars
     }]
   };
 
@@ -374,15 +321,14 @@ const DashboardHome = () => {
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        display: false,
-        position: 'bottom',
+        display: false,  // Hide legend since we'll show values on bars
       },
       tooltip: {
         mode: 'index',
         intersect: false,
         callbacks: {
           label: function(context) {
-            return `${context.dataset.label}: ${context.raw}%`;
+            return `${context.dataset.label}: ${context.raw}`;
           }
         }
       },
@@ -427,7 +373,7 @@ const DashboardHome = () => {
   };
 
   // Check if any of the loading states are true
-  const isLoading = loading.stats || loading.activities || loading.charts;
+  const isLoading = loading.stats || loading.charts;
   
   // Show loading spinner if any data is still loading
   if (isLoading) {
@@ -635,69 +581,7 @@ const DashboardHome = () => {
         </div>
 
         {/* Bottom Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Recent Activities */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Activities</h2>
-              <button 
-                onClick={fetchDashboardData} 
-                className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                disabled={loading.activities}
-              >
-                {loading.activities ? 'Refreshing...' : 'Refresh'}
-              </button>
-            </div>
-            <div className="space-y-6">
-              {loading.activities ? (
-                // Loading skeleton
-                <div className="space-y-4">
-                  {[1, 2, 3].map((_, index) => (
-                    <div key={index} className="flex items-start">
-                      <div className="flex-shrink-0 mt-1">
-                        <div className="h-3 w-3 rounded-full bg-gray-300 dark:bg-gray-600 animate-pulse"></div>
-                      </div>
-                      <div className="ml-4">
-                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 animate-pulse"></div>
-                        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mt-2 animate-pulse"></div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : error ? (
-                // Error state
-                <div className="text-center py-4">
-                  <p className="text-red-500 dark:text-red-400">{error}</p>
-                  <button
-                    onClick={fetchDashboardData}
-                    className="mt-2 px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
-                    disabled={loading.activities}
-                  >
-                    Retry
-                  </button>
-                </div>
-              ) : activities.length > 0 ? (
-                // Success state with activities
-                <>
-                  {activities.map((activity, index) => (
-                    <ActivityItem key={index} activity={activity} />
-                  ))}
-                  <div className="text-center mt-4">
-                   
-                  </div>
-                </>
-              ) : (
-                // No activities state
-                <div className="text-center py-8">
-                  <FiActivity className="mx-auto h-12 w-12 text-gray-400" />
-                  <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No activities found</h3>
-                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    Activities will appear here as they happen.
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
+        <div className="grid grid-cols-1 gap-6 mb-8">
 
           {/* Quick Actions */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">

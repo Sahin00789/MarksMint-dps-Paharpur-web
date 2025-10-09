@@ -99,7 +99,7 @@ const AcademicsLayout = () => {
   };
 
   return (
-    <div className="p-4 md:p-6">
+    <div className="px-0 py-2 sm:py-4 md:px-4 lg:px-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Academics Management</h1>
@@ -177,7 +177,7 @@ const AcademicsLayout = () => {
         </div>
       </div>
       
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 md:p-6 transition-colors duration-200">
+      <div className="bg-white dark:bg-gray-800 rounded-none sm:rounded-lg shadow-sm border-0 sm:border border-gray-200 dark:border-gray-700 p-0 sm:p-4 md:p-5 lg:p-6 transition-colors duration-200">
         <Outlet />
       </div>
     </div>

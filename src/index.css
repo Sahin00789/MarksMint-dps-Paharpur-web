@@ -1,3 +1,48 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* React Toastify Styles */
+:root {
+  --toastify-color-light: #fff;
+  --toastify-color-dark: #121212;
+  --toastify-color-info: #3498db;
+  --toastify-color-success: #07bc0c;
+  --toastify-color-warning: #f1c40f;
+  --toastify-color-error: #e74c3c;
+  --toastify-color-transparent: rgba(255, 255, 255, 0.7);
+}
+
+.Toastify__toast-container {
+  width: 320px;
+  padding: 0;
+}
+
+.Toastify__toast {
+  border-radius: 4px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  font-family: inherit;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.Toastify__toast--success {
+  background: #10B981;
+  color: white;
+}
+
+.Toastify__toast--error {
+  background: #EF4444;
+  color: white;
+}
+
+.Toastify__toast--warning {
+  background: #F59E0B;
+  color: white;
+}
+
+.Toastify__toast--info {
+  background: #3B82F6;
+  color: white;
+}

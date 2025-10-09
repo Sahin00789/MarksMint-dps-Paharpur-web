@@ -24,41 +24,119 @@ const GRADE_SCALE = [
   { range: [0, 32], grade: 'E', description: 'Needs Improvement' }
 ];
 
+// Add Google Fonts
+const googleFontsLink = document.createElement('link');
+const bengaliFontLink = document.createElement('link');
+
+// Main fonts (English)
+googleFontsLink.href = 'https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Roboto+Slab:wght@400;500;600;700&display=swap';
+googleFontsLink.rel = 'stylesheet';
+
+// Bengali (Bangla) font - Using Baloo Da 2 for better readability
+bengaliFontLink.href = 'https://fonts.googleapis.com/css2?family=Baloo+Da+2:wght@500;600;700&family=Hind+Siliguri:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap';
+bengaliFontLink.rel = 'stylesheet';
+
+document.head.appendChild(googleFontsLink);
+document.head.appendChild(bengaliFontLink);
+
 const printStyles = `
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Roboto+Slab:wght@400;500;600;700&family=Hind+Siliguri:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap');
+  
+  /* Enhanced Bengali typography */
+  .bengali-text {
+    font-family: 'Baloo Da 2', 'Noto Sans Bengali', 'Hind Siliguri', 'Poppins', sans-serif;
+    line-height: 1.7;
+    letter-spacing: 0.3px;
+    word-spacing: 1px;
+  }
+  
+  .bengali-heading {
+    font-family: 'Baloo Da 2', 'Noto Sans Bengali', sans-serif;
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: 0.5px;
+  }
+
   @media print {
     @page {
       size: A4;
-      margin: 0;
+      margin: 10mm 5mm 15mm 5mm;
     }
-    body {
-      margin: 0;
+    
+    html, body {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0 auto;
       padding: 0;
+      background: #fff;
+      font-family: 'Poppins', sans-serif;
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
     }
+    
     * {
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
+      font-family: 'Poppins', sans-serif;
     }
+    
+    h1, h2, h3, h4, h5, h6 {
+      font-family: 'Roboto Slab', serif;
+    }
+    
     .no-print {
       display: none !important;
     }
+    
     .page-break {
       page-break-after: always;
+      break-after: page;
     }
+    
+    .avoid-break {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    
     img, svg {
       max-width: 100% !important;
+      max-height: 100% !important;
+    }
+    
+    /* Ensure tables don't break across pages */
+    table {
+      page-break-inside: auto;
+    }
+    
+    tr {
+      page-break-inside: avoid;
+      page-break-after: auto;
+    }
+    
+    /* Force a page break after the marksheet */
+    .marksheet-container {
+      page-break-after: always;
+    }
+    
+    /* Last page should not have a page break after */
+    .marksheet-container:last-child {
+      page-break-after: auto;
     }
   }
 `;
 
 // Common styles
 const containerStyle = {
-  maxWidth: '210mm',
+  width: '210mm',
+  minHeight: '297mm',
   margin: '0 auto',
-  padding: '20px',
+  padding: '10mm',
   backgroundColor: '#fff',
-  boxShadow: '0 0 10px rgba(0,0,0,0.1)'
+  boxShadow: '0 0 10px rgba(0,0,0,0.1)',
+  position: 'relative',
+  boxSizing: 'border-box',
+  overflow: 'hidden',
+  fontFamily: '"Poppins", "Arial", sans-serif'
 };
 
 const headerStyle = {
@@ -203,6 +281,14 @@ const MarksheetPrintPage = ({
   academicYear = '2024-2025',
   school = {}
 }) => {
+  // Convert examResults to array if it's an object
+  const normalizedExamResults = Array.isArray(examResults) 
+    ? examResults 
+    : Object.entries(examResults).map(([key, value]) => ({
+        ...value,
+        subject: key,
+        subjectName: value.subjectName || key
+      }));
   const navigate = useNavigate();
   const printRef = useRef();
   const [qrCodeSvg, setQrCodeSvg] = useState('');
@@ -300,22 +386,53 @@ console.log("student data in marksheet print page", student);
   if (!studentData || Object.keys(studentData).length === 0) {
     console.error('No student data available:', { student, location });
     return (
-      <div style={containerStyle}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        flexDirection: 'column',
+        gap: '1rem',
+        padding: '1rem',
+        textAlign: 'center'
+      }}>
         <div style={{
-          textAlign: 'center',
-          padding: '40px 20px',
-          backgroundColor: '#f8fafc',
-          borderRadius: '8px',
-          margin: '20px 0'
+          padding: '1.5rem',
+          backgroundColor: '#f8f9fa',
+          borderRadius: '0.5rem',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+          maxWidth: '500px',
+          width: '100%'
         }}>
-          <h2 style={{ color: '#ef4444', marginBottom: '20px' }}>No student data available</h2>
-          <button 
-            onClick={handleGoBack} 
+          <h3 style={{
+            marginBottom: '1rem',
+            color: '#dc3545',
+            fontSize: '1.25rem',
+            fontWeight: '600'
+          }}>
+            No Student Data Available
+          </h3>
+          <p style={{
+            marginBottom: '1.5rem',
+            color: '#6c757d'
+          }}>
+            The requested student data could not be loaded. Please check the student ID and try again.
+          </p>
+          <button
+            onClick={() => window.history.back()}
             style={{
               ...buttonStyle,
-              backgroundColor: '#6b7280',
+              backgroundColor: '#6c757d',
+              color: 'white',
+              border: 'none',
+              padding: '0.5rem 1rem',
+              borderRadius: '0.25rem',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
               '&:hover': {
-                backgroundColor: '#4b5563'
+                backgroundColor: '#5a6268'
               }
             }}
           >
@@ -327,21 +444,60 @@ console.log("student data in marksheet print page", student);
   }
 
   return (
-    <div>
-      <div ref={printRef} style={{
-        ...containerStyle,
-        margin: '0.5rem auto',
-        padding: '0.5rem',
+    <div className="print-page" style={{
+      width: '210mm',
+      minHeight: '297mm',
+      margin: '0 auto',
+      padding: '6px',
+      background: 'linear-gradient(45deg, #3b82f6, #8b5cf6, #ec4899, #f59e0b)',
+      backgroundSize: '300% 300%',
+      animation: 'gradient 8s ease infinite',
+      borderRadius: '8px',
+      boxSizing: 'border-box',
+      position: 'relative',
+      overflow: 'hidden'
+    }}>
+      <style>
+        {`
+          @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+          }
+          @media print {
+            .print-page {
+              padding: 0 !important;
+              background: none !important;
+              border: none !important;
+            }
+          }
+        `}
+      </style>
+      <div style={{
+        width: '100%',
+        height: '100%',
         backgroundColor: '#fff',
-        boxShadow: '0 0 0 2px #fff, 0 0 0 4px #4CAF50, 0 0 10px 4px rgba(0, 0, 0, 0.1)',
-        borderRadius: '0.5rem',
-        position: 'relative',
-        overflow: 'hidden',
+        padding: '9mm',
         boxSizing: 'border-box',
-        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        lineHeight: '1.4',
+        borderRadius: '4px',
+        fontFamily: '"Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        lineHeight: '1.5',
         color: '#1f2937',
-        fontSize: '13px'
+        fontSize: '12px',
+        position: 'relative',
+        zIndex: 1
+      }}>
+      <div ref={printRef} style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+        position: 'relative',
+        boxSizing: 'border-box',
+        breakInside: 'avoid',
+        pageBreakInside: 'avoid',
+        zIndex: 2
       }}>
         {/* Report Card Title */}
    
@@ -349,19 +505,24 @@ console.log("student data in marksheet print page", student);
         <div style={{
           display: 'flex',
           flexDirection: 'column',
-          gap: '1.25rem',
-          marginBottom: '1.25rem'
+          gap: '12px',
+          flex: '1 1 auto',
+          overflow: 'hidden',
+          pageBreakInside: 'avoid',
+          breakInside: 'avoid'
         }}>
           {/* School Info Card */}
           <div style={{
             width: '100%',
             backgroundColor: '#ffffff',
-            borderRadius: '0.5rem',
+            borderRadius: '4px',
             overflow: 'hidden',
             border: '1px solid #e2e8f0',
             boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-            padding: '1.25rem',
-            
+            padding: '12px',
+            breakInside: 'avoid',
+            pageBreakInside: 'avoid',
+            boxSizing: 'border-box'
           }}>
           {/* School Info */}
           <div style={{
@@ -593,58 +754,97 @@ console.log("student data in marksheet print page", student);
           flexDirection: 'column',
           alignItems: 'center',
           gap: '10px',
-          flex: '0 0 120px'
+          flex: '0 0 120px',
+          position: 'relative'
         }}>
           <div style={{
             width: '100px',
             height: '120px',
-            backgroundColor: '#e2e8f0',
-            borderRadius: '4px',
+            backgroundColor: '#f8fafc',
+            borderRadius: '6px',
             overflow: 'hidden',
-            border: '1px solid #cbd5e1',
+            border: '2px solid #e2e8f0',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             position: 'relative',
-            margin: '0 auto'
+            margin: '0 auto',
+            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)'
           }}>
-            {student.photo ? (
-              <img 
-                src={student.photo} 
-                alt="Student" 
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover'
-                }}
-                onError={(e) => {
-                  e.target.onerror = null;
-                  e.target.style.display = 'none';
-                  e.target.parentElement.innerHTML = (
-                    '<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #f1f5f9;">' +
-                    '<FaUser size="32" color="#94a3b8" />' +
-                    '</div>'
-                  );
-                }}
-              />
+            {student.photoUrl ? (
+              <>
+                <img 
+                  src={student.photoUrl}
+                  alt={student.studentName || 'Student'}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    position: 'relative',
+                    zIndex: 1
+                  }}
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.style.display = 'none';
+                    const fallback = document.getElementById(`photo-fallback-${student._id}`);
+                    if (fallback) fallback.style.display = 'flex';
+                  }}
+                />
+                <div 
+                  id={`photo-fallback-${student._id}`}
+                  style={{
+                    display: 'none',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    backgroundColor: '#f1f5f9',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#64748b',
+                    textAlign: 'center',
+                    fontSize: '12px',
+                    zIndex: 2
+                  }}
+                >
+                  <FaUser size={28} style={{ marginBottom: '6px' }} />
+                  {student.studentName ? student.studentName.charAt(0).toUpperCase() : 'N'}
+                </div>
+              </>
             ) : (
               <div style={{
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#64748b',
-                textAlign: 'center',
-                padding: '8px',
-                fontSize: '11px',
                 width: '100%',
                 height: '100%',
-                boxSizing: 'border-box'
+                backgroundColor: '#f1f5f9',
+                color: '#64748b',
+                textAlign: 'center',
+                fontSize: '12px'
               }}>
-                <FaUser size={24} style={{ marginBottom: '4px' }} />
-                Photo
+                <FaUser size={28} style={{ marginBottom: '6px' }} />
+                {student.studentName ? student.studentName.charAt(0).toUpperCase() : 'N'}
               </div>
             )}
+          </div>
+          <div style={{
+            position: 'absolute',
+            bottom: '0',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: '#1e40af',
+            color: 'white',
+            fontSize: '10px',
+            padding: '2px 8px',
+            borderRadius: '10px',
+            whiteSpace: 'nowrap',
+            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+          }}>
+            Student Photo
           </div>
         </div>
         
@@ -899,7 +1099,7 @@ console.log("student data in marksheet print page", student);
               </thead>
               
               <tbody>
-                {examResults.map((subject, index) => {
+                {normalizedExamResults.map((subject, index) => {
                   const subjectTotal = subject.evaluations ? 
                     subject.evaluations.reduce((sum, evalItem) => sum + (parseFloat(evalItem.obtainedMarks) || 0), 0) :
                     parseFloat(subject.obtainedMarks) || 0;
@@ -1309,6 +1509,7 @@ console.log("student data in marksheet print page", student);
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

@@ -23,8 +23,13 @@ const examConfigKeys = {
  */
 const fetchExamConfig = async (className, academicYear) => {
   try {
+    const timestamp = Date.now();
     const response = await api.get(`/configs/class/${className}`, {
-      params: { academicYear }
+      params: { 
+        academicYear,
+        // Add a timestamp to prevent caching
+        _t: timestamp
+      }
     });
     
     // Handle different response formats
@@ -33,7 +38,7 @@ const fetchExamConfig = async (className, academicYear) => {
     } else if (response?.status === 200) {
       return response;
     } else {
-      console.warn('Unexpected response format in fetchExamConfig');
+      console.warn('Unexpected response format in fetchExamConfig:', response);
       throw new Error('Unexpected response format from server');
     }
   } catch (error) {
@@ -64,24 +69,68 @@ export const useExamConfig = (className, academicYear, options = {}) => {
  * @param {string} [options.academicYear] - The academic year (defaults to '2024-2025')
  */
 const updateExamConfigFn = async ({ className, config, academicYear = '2024-2025' }) => {
+  console.log('=== UPDATE EXAM CONFIG REQUEST ===');
+  console.log('Initial input:', { className, academicYear, config });
+  
   // Validate input parameters
   if (!className) {
-    throw new Error('Class name is required');
+    const error = new Error('Class name is required');
+    console.error('Validation error:', error);
+    throw error;
   }
   
   if (!config || typeof config !== 'object') {
-    throw new Error('Invalid configuration object');
+    const error = new Error('Invalid configuration object');
+    console.error('Validation error:', error);
+    throw error;
   }
   
-  // Extract exam name from the config
-  const examName = config.examName || Object.keys(config.examConfig || {})[0];
-  
-  if (!examName) {
-    throw new Error('No exam name found in the configuration');
+  // If we have examConfig, we'll use that directly
+  if (config.examConfig && typeof config.examConfig === 'object') {
+    // Clone the examConfig to avoid modifying the original
+    const examConfig = { ...config.examConfig };
+    
+    // Prepare the request data with all exams
+    const requestData = {
+      className: className.toUpperCase().trim(),
+      academicYear: academicYear || config.academicYear || '2024-2025',
+      examConfig: {}
+    };
+    
+    // Process each exam in the config
+    Object.entries(examConfig).forEach(([examName, examData]) => {
+      if (!examData || typeof examData !== 'object') return;
+      
+      // Ensure required fields are present
+      requestData.examConfig[examName] = {
+        ...examData,
+        subjects: Array.isArray(examData.subjects) 
+          ? examData.subjects.filter(s => s && s !== 'Default')
+         : [],
+        evaluationTypes: Array.isArray(examData.evaluationTypes)
+          ? [...new Set(examData.evaluationTypes.filter(t => t && t !== 'Default'))]
+          : ['Written'],
+        fullMarks: examData.fullMarks || {},
+        schedule: examData.schedule || {},
+        examName: examName,
+        _examName: examName,
+        _updatedAt: new Date().toISOString(),
+        _createdAt: examData._createdAt || new Date().toISOString()
+      };
+    });
+    
+    console.log('Sending request to server with data:', requestData);
+    // Make the actual API call to save the configuration
+    const response = await api.post('/configs', requestData);
+    console.log('Server response:', response.data);
+    return response.data;
   }
   
-  // Get the exam data
-  const examData = config.examConfig?.[examName] || {};
+  console.log('Processed exam data:', examData);
+  
+  // If we get here, we don't have an examConfig object, so we'll process a single exam
+  const examData = { ...config };
+  delete examData.examConfig; // Remove examConfig to avoid circular references
   
   // Extract subjects
   const subjects = Array.isArray(examData.subjects) 
@@ -128,22 +177,37 @@ const updateExamConfigFn = async ({ className, config, academicYear = '2024-2025
     evaluationTypes.push('Written'); // Default evaluation type
   }
   
+  // Get the exam name from the config or use a default
+  const examName = examData.examName || examData._examName || 'New Exam';
+  
   // Prepare the request data
   const requestData = {
     className: className.toUpperCase().trim(),
-    academicYear: academicYear || config.academicYear || '2024-2025',
+    academicYear: academicYear || examData.academicYear || '2024-2025',
     examConfig: {
       [examName]: {
-        subjects,
-        evaluationTypes,
-        fullMarks: {},
-        schedule: {}
+        // Include the exam data
+        ...examData,
+        // Ensure required fields are set
+        subjects: subjects,
+        evaluationTypes: evaluationTypes,
+        fullMarks: examData.fullMarks || {},
+        schedule: examData.schedule || {},
+        // Ensure exam name is set correctly
+        examName: examName,
+        _examName: examName,
+        // Add timestamps
+        _createdAt: examData._createdAt || new Date().toISOString(),
+        _updatedAt: new Date().toISOString()
       }
     }
   };
   
+  console.log('Initial request data structure:', JSON.stringify(requestData, null, 2));
+  
   // Process fullMarks if available
   if (examData.fullMarks && typeof examData.fullMarks === 'object') {
+    console.log('Processing fullMarks:', JSON.stringify(examData.fullMarks, null, 2));
     // Initialize fullMarks for all subjects and evaluation types
     subjects.forEach(subject => {
       if (!subject || subject === 'Default') return;
@@ -178,46 +242,64 @@ const updateExamConfigFn = async ({ className, config, academicYear = '2024-2025
   }
   
   // Process schedule if available
-  if (examData.schedule && typeof examData.schedule === 'object') {
-    // If only schedule is being updated, preserve existing config
-    if (Object.keys(examData).length === 1 && examData.schedule) {
-      // Get the existing config first
-      const existingConfig = await fetchExamConfig(className, academicYear);
-      if (existingConfig?.examConfig?.[examName]) {
-        requestData.examConfig[examName] = {
-          ...existingConfig.examConfig[examName],
-          schedule: { ...examData.schedule }
+  if (examData.schedule && typeof examData.schedule === 'object' && Object.keys(examData.schedule).length > 0) {
+    console.log('Processing schedule data:', JSON.stringify(examData.schedule, null, 2));
+    
+    // Ensure we have a clean schedule object
+    const cleanSchedule = {};
+    
+    // Process each subject in the schedule
+    Object.entries(examData.schedule).forEach(([subject, scheduleData]) => {
+      if (!subject || !scheduleData || typeof scheduleData !== 'object') return;
+      
+      cleanSchedule[subject] = {};
+      
+      // Process each evaluation type for the subject
+      Object.entries(scheduleData).forEach(([evalType, evalData]) => {
+        if (!evalType || !evalData || typeof evalData !== 'object') return;
+        
+        // Only include the fields we need
+        cleanSchedule[subject][evalType] = {
+          examDate: evalData.examDate || '',
+          startTime: evalData.startTime || '',
+          endTime: evalData.endTime || ''
         };
-      } else {
-        requestData.examConfig[examName].schedule = { ...examData.schedule };
-      }
-    } else {
-      // Regular update with schedule included
-      requestData.examConfig[examName].schedule = { ...examData.schedule };
+      });
+    });
+    
+    console.log('Cleaned schedule data:', JSON.stringify(cleanSchedule, null, 2));
+    requestData.examConfig[examName].schedule = cleanSchedule;
+  } else {
+    // If no schedule provided, ensure we don't override existing schedule
+    const existingConfig = await fetchExamConfig(className, academicYear);
+    if (existingConfig?.examConfig?.[examName]?.schedule) {
+      requestData.examConfig[examName].schedule = { ...existingConfig.examConfig[examName].schedule };
     }
   }
   
   try {
-    // Make the API call - using POST as per server route configuration
+    console.log('Sending request to /configs with data:', JSON.stringify(requestData, null, 2));
     const response = await api.post('/configs', requestData);
+    console.log('Received response from server:', response);
     return response.data;
   } catch (error) {
-    console.error('Error saving exam config:', error);
-    // Provide more detailed error message
-    const errorMessage = error.response?.data?.message || error.message || 'Failed to save exam configuration';
-    throw new Error(errorMessage);
+    console.error('Error updating exam config:', {
+      requestData: requestData
+    });
+    if (error instanceof Error) {
+      throw error;
+    } else {
+      throw new Error('Unknown error');
+    }
   }
 };
-/**
- * Hook to update exam configuration
- */
+
 export const useUpdateExamConfig = (options = {}) => {
   const queryClient = useQueryClient();
   
   return useMutation({
     mutationFn: updateExamConfigFn,
     onSuccess: (data, variables) => {
-      // Invalidate and refetch
       queryClient.invalidateQueries({ 
         queryKey: examConfigKeys.detail(variables.className) 
       });

@@ -68,14 +68,20 @@ const userMenuVariants = {
 
 const Navbar = ({ toggleSidebar }) => {
   const { theme, toggleTheme } = useTheme();
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, loading: authLoading } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const userMenuRef = useRef(null);
   const mobileMenuRef = useRef(null);
+  
+  // Only show auth state after initial render to prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Handle scroll effect for navbar
   useEffect(() => {
@@ -131,6 +137,86 @@ const Navbar = ({ toggleSidebar }) => {
       .join('')
       .toUpperCase()
       .substring(0, 2);
+  };
+
+  // Show loading state for user profile
+  const renderUserProfile = () => {
+    if (!mounted) {
+      return (
+        <div className="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
+      );
+    }
+    
+    if (isAuthenticated) {
+      return (
+        <div className="relative" ref={userMenuRef}>
+          <button
+            onClick={toggleUserDropdown}
+            className="flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 rounded-full"
+            aria-expanded={userDropdownOpen}
+            aria-haspopup="true"
+          >
+            <div className="h-10 w-10 rounded-full bg-primary-100 dark:bg-primary-900/50 flex items-center justify-center text-primary-700 dark:text-primary-200 font-medium">
+              {getInitials(user?.name)}
+            </div>
+            <span className="hidden md:inline-flex items-center text-sm font-medium text-gray-700 dark:text-gray-200">
+              {user?.name?.split(' ')[0]}
+              {userDropdownOpen ? (
+                <FiChevronUp className="ml-1 h-4 w-4" />
+              ) : (
+                <FiChevronDown className="ml-1 h-4 w-4" />
+              )}
+            </span>
+          </button>
+
+          <AnimatePresence>
+            {userDropdownOpen && (
+              <motion.div
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                variants={userMenuVariants}
+                className="absolute right-0 mt-2 w-56 rounded-lg bg-white dark:bg-gray-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50 overflow-hidden"
+                role="menu"
+                aria-orientation="vertical"
+                aria-labelledby="user-menu-button"
+                tabIndex="-1"
+              >
+                <div className="py-1" role="none">
+                  <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {user?.name || 'User'}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      {user?.email || ''}
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors flex items-center space-x-2"
+                    role="menuitem"
+                    tabIndex="-1"
+                  >
+                    <FiLogOut className="h-4 w-4" />
+                    <span>Sign out</span>
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      );
+    }
+    
+    return (
+      <Link
+        to="/login"
+        className="hidden md:flex items-center space-x-1 px-3 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:focus:ring-offset-gray-900"
+      >
+        <FiUser className="h-4 w-4" />
+        <span>Admin Login</span>
+      </Link>
+    );
   };
 
   return (
@@ -195,16 +281,8 @@ const Navbar = ({ toggleSidebar }) => {
               )}
             </button>
 
-            {/* Admin Login Button - Desktop Only */}
-            {!isAuthenticated && (
-              <Link
-                to="/login"
-                className="hidden md:flex items-center space-x-1 px-3 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:focus:ring-offset-gray-900"
-              >
-                <FiUser className="h-4 w-4" />
-                <span>Admin Login</span>
-              </Link>
-            )}
+            {/* User Profile or Login Button */}
+            {renderUserProfile()}
 
             
 

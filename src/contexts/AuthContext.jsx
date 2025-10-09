@@ -54,83 +54,67 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
-  const [user, setUser] = useState(() => {
-    // Initialize user from localStorage if available
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
+  const navigate = useNavigate();
+  
+  // Make currentUser available for backward compatibility
+  const currentUser = user;
+  
+  // Initialize auth state from localStorage and verify with server
+  const initializeAuth = useCallback(async () => {
     try {
       const storedUser = safeGetItem('user');
       const token = safeGetItem('token');
       
       if (!storedUser || !token) {
-        return null;
+        setLoading(false);
+        setInitialized(true);
+        return;
       }
       
-      // Basic validation of stored user data
-      const parsedUser = JSON.parse(storedUser);
-      if (typeof parsedUser !== 'object' || parsedUser === null) {
-        throw new Error('Invalid user data format');
-      }
-      
-      // Ensure required fields exist
-      if (!parsedUser.id || !parsedUser.username) {
-        throw new Error('Invalid user data: missing required fields');
-      }
-      
-      // Set the auth header
+      // Set auth header for subsequent requests
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       
-      return parsedUser;
-    } catch (error) {
-      console.error('Error initializing user:', error);
-      // Clean up any invalid data
-      clearAuthData();
-      return null;
-    }
-  });
-  const [loading, setLoading] = useState(true); // Start with true to prevent flash of protected content
-  const navigate = useNavigate();
-  
-  // Make currentUser available for backward compatibility
-  const currentUser = user;
-
-  useEffect(() => {
-    // Check if user is already logged in
-    const checkAuth = async () => {
+      // Verify token with server in the background
       try {
-        const token = safeGetItem('token');
-        if (token) {
-          // Verify token with backend
-          const response = await api.get('/auth/verify');
-          
-          if (response.data && response.data.user) {
-            // Update user data from the verify endpoint
-            safeSetItem('user', JSON.stringify(response.data.user));
-            setUser(response.data.user);
-            api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-            console.log('[Auth] User authenticated from token');
-          } else {
-            throw new Error('Invalid response from server');
-          }
+        const response = await api.get('/auth/verify');
+        if (response.data && response.data.user) {
+          const userData = response.data.user;
+          safeSetItem('user', JSON.stringify(userData));
+          setUser(userData);
+        } else {
+          clearAuthData();
         }
       } catch (error) {
-        console.error('Token verification failed:', error);
-        // Clear invalid token
+        console.warn('Token verification failed, clearing auth data:', error);
         clearAuthData();
+      }
+    } catch (error) {
+      console.error('Error initializing auth:', error);
+      clearAuthData();
+    } finally {
+      setInitialized(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    const init = async () => {
+      try {
+        await initializeAuth();
+      } catch (error) {
+        console.error('Auth initialization failed:', error);
         if (error.response?.status !== 401) {
           console.error('Auth check failed:', error);
         }
       } finally {
-        // Always set loading to false when done
         setLoading(false);
       }
     };
 
-    // Add a small delay to prevent flash of loading state
-    const timer = setTimeout(() => {
-      checkAuth();
-    }, 100);
-
-    return () => clearTimeout(timer);
-  }, []);
+    init();
+  }, [initializeAuth]);
 
   const login = async (credentials) => {
     try {

@@ -1,5 +1,6 @@
 import React, { Fragment, useEffect, useRef, useState } from 'react';
 import { formatDate, formatDateWithDay } from '@/utils/dateUtils';
+import { parseISO, isBefore } from 'date-fns';
 import { FaCalendarAlt, FaUserGraduate, FaClipboardList, FaMapMarkerAlt } from 'react-icons/fa';
 import { schoolinfo } from "@/shared/schoolInformation";
 import QRCode from 'qrcode-svg';
@@ -251,48 +252,67 @@ const AdmitPrintPage = ({ student, examConfig, isPrintMode = false, onContentRea
   
   // Prepare subjects for display from effectiveExamConfig
   const examSubjects = effectiveExamConfig.subjects?.length > 0 
-    ? effectiveExamConfig.subjects.map(subject => {
-        // Get the subject schedule from the schedule object
-        const subjectSchedule = effectiveExamConfig.schedule?.[subject] || {};
-        console.log(`Subject: ${subject}`, subjectSchedule);
-        
-        // Split the timing into start and end times
-        const [startTime = 'TBA', endTime = 'TBA'] = 
-          (subjectSchedule.timing || 'TBA - TBA').split(' - ').map(t => t.trim());
-        
-        // Initialize subject data with evaluation types
-        const subjectData = {
-          name: subject,
-          code: subject.substring(0, 3).toUpperCase(),
-          totalMarks: 0
-        };
-        
-        // Process each evaluation type
-        evaluationTypes.forEach(type => {
-          const typeLower = type.toLowerCase();
-          const evalData = subjectSchedule[type] || {};
-          const typeMarks = effectiveExamConfig.fullMarks?.[subject]?.[type] || 0;
+    ? effectiveExamConfig.subjects
+        .map(subject => {
+          // Format subject name (remove everything after hyphen)
+          const formattedSubject = subject.split('-')[0].trim();
           
-          console.log(`Processing ${type} for ${subject}:`, {
-            evalData,
-            typeMarks,
-            fullMarks: effectiveExamConfig.fullMarks?.[subject]
+          // Get the subject schedule from the schedule object
+          const subjectSchedule = effectiveExamConfig.schedule?.[subject] || {};
+          
+          // Get the first available exam date for sorting
+          let firstExamDate = null;
+          evaluationTypes.forEach(type => {
+            const evalData = subjectSchedule[type] || {};
+            if (evalData.examDate && !firstExamDate) {
+              firstExamDate = evalData.examDate;
+            }
           });
           
-          // Add evaluation type data
-          subjectData[`${typeLower}Marks`] = typeMarks;
+          // Initialize subject data with evaluation types
+          const subjectData = {
+            name: formattedSubject, // Use formatted subject name
+            originalName: subject,  // Keep original for reference if needed
+            code: formattedSubject.substring(0, 3).toUpperCase(),
+            totalMarks: 0,
+            firstExamDate: firstExamDate
+          };
           
-          // Set date and time from the schedule
-          subjectData[`${typeLower}Date`] = evalData.examDate || 'TBA';
-          subjectData[`${typeLower}StartTime`] = evalData.startTime || 'TBA';
-          subjectData[`${typeLower}EndTime`] = evalData.endTime || 'TBA';
+          // Process each evaluation type
+          evaluationTypes.forEach(type => {
+            const typeLower = type.toLowerCase();
+            const evalData = subjectSchedule[type] || {};
+            const typeMarks = effectiveExamConfig.fullMarks?.[subject]?.[type] || 0;
+            
+            // Add evaluation type data
+            subjectData[`${typeLower}Marks`] = typeMarks;
+            
+            // Set date and time from the schedule
+            subjectData[`${typeLower}Date`] = evalData.examDate || 'TBA';
+            subjectData[`${typeLower}StartTime`] = evalData.startTime || 'TBA';
+            subjectData[`${typeLower}EndTime`] = evalData.endTime || 'TBA';
+            
+            // Update total marks
+            subjectData.totalMarks += typeMarks;
+          });
           
-          // Update total marks
-          subjectData.totalMarks += typeMarks;
-        });
-        
-        return subjectData;
-      })
+          return subjectData;
+        })
+        // Sort subjects by exam date (subjects without dates go last)
+        .sort((a, b) => {
+          if (!a.firstExamDate && !b.firstExamDate) return a.name.localeCompare(b.name);
+          if (!a.firstExamDate) return 1;
+          if (!b.firstExamDate) return -1;
+          
+          try {
+            const dateA = parseISO(a.firstExamDate);
+            const dateB = parseISO(b.firstExamDate);
+            return isBefore(dateA, dateB) ? -1 : isBefore(dateB, dateA) ? 1 : a.name.localeCompare(b.name);
+          } catch (e) {
+            console.error('Error parsing dates for sorting:', e);
+            return a.name.localeCompare(b.name);
+          }
+        })
     : [];
 
   // Format date of birth (using the utility function)

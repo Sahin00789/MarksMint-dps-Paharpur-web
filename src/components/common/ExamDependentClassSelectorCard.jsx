@@ -18,9 +18,13 @@ export default function ExamDependentClassSelectorCard({
     setSelectedClass(propSelectedClass);
   }, [propSelectedClass]);
   
+  // Get the current academic year (current year by default)
+  const currentAcademicYear = String(new Date().getFullYear());
+  
   // Use the React Query hook to fetch exam config status
   const { data: statusData, isLoading, error } = useExamConfigStatus(
     classesInTheSchool,
+    currentAcademicYear,
     { 
       enabled: classesInTheSchool && classesInTheSchool.length > 0,
       onError: (err) => {
@@ -40,6 +44,7 @@ export default function ExamDependentClassSelectorCard({
         hasExams: false,
         examCount: 0,
         className,
+        academicYear: currentAcademicYear,
         hasError: false
       };
     });
@@ -78,7 +83,7 @@ export default function ExamDependentClassSelectorCard({
     
     console.log('Formatted status map:', defaultStatus);
     setStatusMap(defaultStatus);
-  }, [statusData, error]);
+  }, [statusData, error, currentAcademicYear]);
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-3 w-full">

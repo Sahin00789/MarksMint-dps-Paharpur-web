@@ -278,7 +278,7 @@ const MarksheetPrintPage = ({
   examResults = [], 
   coScholastic = {},
   attendanceConfig = {},
-  academicYear = '2024-2025',
+  academicYear = String(new Date().getFullYear() + 1),
   school = {}
 }) => {
   // Convert examResults to array if it's an object
@@ -697,7 +697,7 @@ console.log("student data in marksheet print page", student);
                     <line x1="8" y1="2" x2="8" y2="6"></line>
                     <line x1="3" y1="10" x2="21" y2="10"></line>
                   </svg>
-                  {academicYear || student.session || '2024-2025'}
+                  {academicYear || student.session || String(new Date().getFullYear() + 1)}
                 </span>
               </h2>
               

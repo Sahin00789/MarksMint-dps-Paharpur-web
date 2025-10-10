@@ -32,7 +32,7 @@ import { getStudentsByClass } from "@/services/students";
 import { getExamConfig, listExamConfigs } from "@/services/examConfig";
 import AdmitPrintPreviewModal from "./Modals/AdmitPrintPreviewModal";
 import AdmitPrintAllPreviewModal from "./Modals/AdmitPrintAllPreviewModal";
-import { schoolinfo } from "@/shared/schoolInformation";
+import { schoolinfo, examTermsInTheSchool } from "@/shared/schoolInformation";
 
 const AdmitCardPanel = () => {
   const [selectedClass, setSelectedClass] = useState(() => {
@@ -309,7 +309,26 @@ const AdmitCardPanel = () => {
           }
         }
 
-        setExams(formattedExams);
+        // Sort exams based on the predefined order in examTermsInTheSchool
+        const sortedExams = [...formattedExams].sort((a, b) => {
+          const indexA = examTermsInTheSchool.findIndex(term => 
+            term.toLowerCase() === a.name.toLowerCase()
+          );
+          const indexB = examTermsInTheSchool.findIndex(term => 
+            term.toLowerCase() === b.name.toLowerCase()
+          );
+          
+          // If both are found in the predefined order, sort accordingly
+          if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+          // If only A is in the predefined order, it comes first
+          if (indexA !== -1) return -1;
+          // If only B is in the predefined order, it comes first
+          if (indexB !== -1) return 1;
+          // If neither is in the predefined order, sort alphabetically
+          return a.name.localeCompare(b.name);
+        });
+
+        setExams(sortedExams);
 
         // If no exam is selected, select the first one
         if (formattedExams.length > 0 && !selectedExam) {

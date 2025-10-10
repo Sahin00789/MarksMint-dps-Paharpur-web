@@ -68,7 +68,7 @@ export const useExamConfig = (className, academicYear, options = {}) => {
  * @param {Object} options.config - The exam configuration object to save
  * @param {string} [options.academicYear] - The academic year (defaults to '2024-2025')
  */
-const updateExamConfigFn = async ({ className, config, academicYear = '2024-2025' }) => {
+const updateExamConfigFn = async ({ className, config, academicYear = String(new Date().getFullYear() + 1) }) => {
   console.log('=== UPDATE EXAM CONFIG REQUEST ===');
   console.log('Initial input:', { className, academicYear, config });
   
@@ -93,7 +93,7 @@ const updateExamConfigFn = async ({ className, config, academicYear = '2024-2025
     // Prepare the request data with all exams
     const requestData = {
       className: className.toUpperCase().trim(),
-      academicYear: academicYear || config.academicYear || '2024-2025',
+      academicYear: academicYear || config.academicYear || String(new Date().getFullYear() + 1),
       examConfig: {}
     };
     
@@ -183,7 +183,7 @@ const updateExamConfigFn = async ({ className, config, academicYear = '2024-2025
   // Prepare the request data
   const requestData = {
     className: className.toUpperCase().trim(),
-    academicYear: academicYear || examData.academicYear || '2024-2025',
+    academicYear: academicYear || examData.academicYear || String(new Date().getFullYear() + 1),
     examConfig: {
       [examName]: {
         // Include the exam data
@@ -377,7 +377,7 @@ const fetchExamConfigStatus = async ({ classNames, academicYear }) => {
 export const useExamConfigStatus = (classNames, academicYear, options = {}) => {
   // Extract just the academicYear value if it's an object with enabled/onError
   const academicYearValue = academicYear && typeof academicYear === 'object' && academicYear.enabled !== undefined 
-    ? '2024-2025' // Default value or extract from object if needed
+    ? String(new Date().getFullYear() + 1) // Default to next year
     : academicYear;
     
   return useQuery({

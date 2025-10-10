@@ -336,7 +336,7 @@ const MarksheetsPanel = () => {
         student={selectedStudent}
         marks={selectedStudentMarks}
         className={selectedClass}
-        academicYear="2024-2025" // You might want to make this dynamic based on your app's state
+        academicYear={String(new Date().getFullYear() + 1)} // Default to next year
       />
     </div>
   );

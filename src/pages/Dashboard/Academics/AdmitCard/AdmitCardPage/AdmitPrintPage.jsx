@@ -253,6 +253,11 @@ const AdmitPrintPage = ({ student, examConfig, isPrintMode = false, onContentRea
   // Prepare subjects for display from effectiveExamConfig
   const examSubjects = effectiveExamConfig.subjects?.length > 0 
     ? effectiveExamConfig.subjects
+        .filter(subject => {
+          // Exclude Arabic if student's religion is "OTHER"
+          const subjectName = subject.split('-')[0].trim().toLowerCase();
+          return !(student.religion === 'OTHER' && subjectName === 'arabic');
+        })
         .map(subject => {
           // Format subject name (remove everything after hyphen)
           const formattedSubject = subject.split('-')[0].trim();

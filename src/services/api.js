@@ -139,8 +139,8 @@ const api = axios.create({
 
 // Dedicated API client for file uploads with longer timeout
 const uploadApi = axios.create({
-  baseURL: API_URL2,
-  withCredentials: true,
+  baseURL: API_URL,
+  withCredentials: true,   
   headers: {
     'Content-Type': 'multipart/form-data',
     'Accept': 'application/json',

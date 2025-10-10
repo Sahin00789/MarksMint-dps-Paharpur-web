@@ -137,22 +137,11 @@ export const useExamConfig = (className, options = {}) => {
  * @param {Object} options.config - The exam configuration object to save
  * @returns {Promise<Object>} The updated configuration
  */
-/**
- * Updates or creates exam configuration for a class
- * @param {Object} options - Options for the mutation
- * @param {string} options.className - The class name to update configuration for
- * @param {Object} options.config - The exam configuration object to save
- * @returns {Promise<Object>} The updated configuration
- */
 export const updateExamConfig = async ({ className, config }) => {
   try {
-    // Extract the examConfig from the config object if it exists
-    const examConfig = config.examConfig || config;
-    
-    const response = await api.post('/configs', {
-      className,
+    const response = await api.put(`/configs/class/${className}`, {
       academicYear: '2025',
-      examConfig
+      ...config
     });
     return response.data;
   } catch (error) {
@@ -200,6 +189,52 @@ export const fetchExamConfigStatus = async (classNames) => {
  * Hook to get exam configuration status
  * @param {string|string[]} classNames - The class names to fetch status for
  * @param {string} [academicYear='2025'] - The academic year to fetch status for
+ * @param {Object} [options={}] - Additional options for the query
+ * @returns {Object} The query result
+ */
+/**
+ * Fetches exam configuration for a class (direct API call, not a hook)
+ * @param {string} className - The class name to fetch configuration for
+ * @returns {Promise<Object|null>} Exam configuration object or null if error
+ */
+export const getExamConfig = async (className) => {
+  try {
+    const response = await api.get(`/configs/class/${className}`, {
+      params: { academicYear: '2025' }
+    });
+    return response?.data?.data || null;
+  } catch (error) {
+    console.error(`Error in getExamConfig for ${className}:`, error);
+    return null;
+  }
+};
+
+/**
+ * Fetches a list of exam configurations for multiple classes
+ * @param {Object} [params={}] - Query parameters
+ * @param {string|string[]} [params.classes] - Optional class names to filter by
+ * @param {string} [params.academicYear='2025'] - The academic year to fetch configs for
+ * @returns {Promise<Array>} Array of exam configuration objects
+ */
+export const listExamConfigs = async ({ classes, academicYear = '2025' } = {}) => {
+  try {
+    const response = await api.get('/configs', {
+      params: {
+        classes: Array.isArray(classes) ? classes.join(',') : classes,
+        academicYear
+      }
+    });
+    return response?.data?.data || [];
+  } catch (error) {
+    console.error('Error listing exam configs:', error);
+    throw error;
+  }
+};
+
+/**
+ * Hook to get exam configuration status for multiple classes
+ * @param {string|string[]} classNames - The class names to fetch status for
+ * @param {string} [academicYear='2025'] - The academic year to check
  * @param {Object} [options={}] - Additional options for the query
  * @returns {Object} The query result
  */

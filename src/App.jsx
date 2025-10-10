@@ -58,29 +58,36 @@ const RouteLoader = ({ children }) => {
 const ProtectedRoute = () => {
   const { user, loading } = useAuth();
   const location = useLocation();
+  const [initialCheck, setInitialCheck] = useState(true);
 
-  if (loading) {
+  useEffect(() => {
+    // After the first render, mark that we've completed the initial check
+    const timer = setTimeout(() => {
+      setInitialCheck(false);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Show loading state only if we're still loading and it's not the initial check
+  if (loading && !initialCheck) {
     return <FullPageLoader />;
   }
 
+  // If not authenticated, redirect to login
   if (!user) {
     const from = location.pathname !== "/login" ? location.pathname + location.search : "/dashboard";
     return <Navigate to="/login" state={{ from }} replace />;
   }
 
+  // If authenticated, render the child routes
   return <Outlet />;
 };
 
 const AppContent = () => {
-  const { loading: authLoading } = useAuth();
-  
   return (
     <Suspense fallback={<FullPageLoader />}>
       <RouteLoader>
         <>
-          {authLoading ? (
-            <FullPageLoader />
-          ) : (
             <Routes>
         {/* Public Routes */}
         <Route path="/" element={<Home />} />
@@ -126,8 +133,6 @@ const AppContent = () => {
 
         <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
-          )}
-          
           <ToastContainer
             position="top-right"
             autoClose={5000}

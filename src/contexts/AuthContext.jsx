@@ -51,12 +51,13 @@ export const AuthProvider = ({ children }) => {
     console.log('[Auth] Clearing authentication data');
     safeRemoveItem('user');
     safeRemoveItem('token');
+    safeRemoveItem('lastVerified');
+    delete api.defaults.headers.common['Authorization'];
     setUser(null);
   };
 
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [initialized, setInitialized] = useState(false);
   const navigate = useNavigate();
   
   // Make currentUser available for backward compatibility
@@ -69,20 +70,32 @@ export const AuthProvider = ({ children }) => {
       const token = safeGetItem('token');
       
       if (!storedUser || !token) {
+        setUser(null);
         setLoading(false);
-        setInitialized(true);
         return;
       }
       
       // Set auth header for subsequent requests
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       
-      // Verify token with server in the background
+      // Check if we've verified recently (within 5 minutes)
+      const lastVerified = safeGetItem('lastVerified');
+      const now = new Date().getTime();
+      
+      // If verified recently, just use the stored user data
+      if (lastVerified && (now - parseInt(lastVerified, 10)) < 5 * 60 * 1000) {
+        setUser(JSON.parse(storedUser));
+        setLoading(false);
+        return;
+      }
+      
+      // Verify token with server
       try {
         const response = await api.get('/auth/verify');
-        if (response.data && response.data.user) {
+        if (response.data?.user) {
           const userData = response.data.user;
           safeSetItem('user', JSON.stringify(userData));
+          safeSetItem('lastVerified', now.toString());
           setUser(userData);
         } else {
           clearAuthData();
@@ -95,25 +108,13 @@ export const AuthProvider = ({ children }) => {
       console.error('Error initializing auth:', error);
       clearAuthData();
     } finally {
-      setInitialized(true);
+      setLoading(false);
     }
   }, []);
 
+  // Initialize auth state when component mounts
   useEffect(() => {
-    const init = async () => {
-      try {
-        await initializeAuth();
-      } catch (error) {
-        console.error('Auth initialization failed:', error);
-        if (error.response?.status !== 401) {
-          console.error('Auth check failed:', error);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    init();
+    initializeAuth();
   }, [initializeAuth]);
 
   const login = async (credentials) => {
@@ -145,7 +146,13 @@ export const AuthProvider = ({ children }) => {
         // Update state with the user data
         setUser(userData);
         
-        // Navigate to dashboard after successful login
+        // Ensure state is updated before navigation
+        await new Promise(resolve => setUser(prevUser => {
+          resolve();
+          return userData;
+        }));
+        
+        // Navigate to dashboard after successful login with replace to prevent going back
         navigate('/dashboard', { replace: true });
         
         return { success: true, user: userData };

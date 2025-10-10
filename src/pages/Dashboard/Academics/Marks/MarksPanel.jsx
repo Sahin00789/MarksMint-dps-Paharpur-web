@@ -1300,7 +1300,7 @@ export default function MarksPanel() {
                         <div className="bg-gradient-to-r from-purple-600 to-violet-700 dark:from-purple-800 dark:to-violet-900 rounded-t-2xl text-white p-4">
                           <div className="flex w-full justify-between items-start">
                             <div className="flex-1 min-w-0">
-                              <h3 className="font-bold text-lg break-words whitespace-normal text-white">
+                              <h3 className="font-bold text-base break-words whitespace-normal text-white">
                                 {student.studentName}
                               </h3>
                               <div className="flex items-center gap-3 mt-1">
@@ -1327,11 +1327,6 @@ export default function MarksPanel() {
                                 {student.rank ? (
                                   <>
                                     <span>Rank: {student.rank} of {student.totalStudents || "--"}</span>
-                                    {student.academicRanks?.[selectedExam]?.updatedAt && (
-                                      <span className="text-white/60">
-                                        Updated: {new Date(student.academicRanks[selectedExam].updatedAt).toLocaleDateString()}
-                                      </span>
-                                    )}
                                   </>
                                 ) : (
                                   <span>Calculating rank...</span>
@@ -1552,36 +1547,11 @@ export default function MarksPanel() {
                                       </div>
                                     )}
                                   </div>
-
-                                  {/* Progress bar */}
-                                  {!isAbsent && subjectMax > 0 && (
-                                    <div className="mt-2">
-                                      <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
-                                        <span>Progress</span>
-                                        <span>{subjectPercentage}%</span>
-                                      </div>
-                                      <div className="w-full bg-gray-200 rounded-full h-1.5 dark:bg-gray-600">
-                                        <div
-                                          className={`h-full rounded-full ${
-                                            subjectPercentage >= 80
-                                              ? "bg-green-500"
-                                              : subjectPercentage >= 50
-                                              ? "bg-blue-500"
-                                              : "bg-yellow-500"
-                                          }`}
-                                          style={{
-                                            width: `${subjectPercentage}%`,
-                                          }}
-                                        ></div>
-                                      </div>
-                                    </div>
-                                  )}
                                 </div>
                               );
                             })}
                           </div>
 
-                          {/* Rank Card with Progress */}
                           <div className="mt-4 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-gray-800 dark:to-gray-800 p-4 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm">
                             <div className="grid grid-cols-5 gap-2 items-center">
                               {/* Rank Section */}

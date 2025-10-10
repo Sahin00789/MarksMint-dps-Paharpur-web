@@ -368,7 +368,7 @@ export default function DashboardLayout({ children }) {
 
         {/* Scrollable Content Area */}
         <div className="flex-1 overflow-y-auto">
-          <main className="p-4 md:p-6">{children}</main>
+          <main className="px-0 py-4 md:p-6">{children}</main>
         </div>
       </div>
 

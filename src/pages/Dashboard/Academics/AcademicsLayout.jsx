@@ -101,7 +101,7 @@ const AcademicsLayout = () => {
   return (
     <div className="px-0 py-2 sm:py-4 md:px-4 lg:px-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-        <div>
+        <div className="px-4 sm:px-6">
           <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Academics Management</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage all academic activities in one place</p>
         </div>

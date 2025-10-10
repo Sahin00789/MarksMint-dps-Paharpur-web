@@ -139,7 +139,8 @@ export const useExamConfig = (className, options = {}) => {
  */
 export const updateExamConfig = async ({ className, config }) => {
   try {
-    const response = await api.put(`/configs/class/${className}`, {
+    const response = await api.post('/configs', {
+      className,
       academicYear: '2025',
       ...config
     });

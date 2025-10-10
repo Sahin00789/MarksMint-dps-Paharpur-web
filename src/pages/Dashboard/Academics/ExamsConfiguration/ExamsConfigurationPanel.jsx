@@ -13,7 +13,7 @@ import {
 import { FiPlus, FiTrash2, FiEdit2, FiSave, FiX, FiCheck, FiClock, FiAward } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import ExamDependentClassSelectorCard from '@/components/common/ExamDependentClassSelectorCard';
-import { getExamConfig, updateExamConfig } from '@/services/examConfig';
+import { fetchExamConfig as getExamConfig, updateExamConfig } from '@/services/examConfig';
 import { examTermsInTheSchool } from '@/shared/schoolInformation';
 import ExamScheduleModal from './Modals/ExamScheduleModal';
 import ExamConfigModal from './Modals/ExamConfigModal';
@@ -194,7 +194,7 @@ function ExamConfigurationPanel() {
     if (selectedClass) {
       try {
         console.log(`Loading config for class: ${selectedClass}, exam: ${examTermStr}`);
-        const response = await getExamConfig(selectedClass, '2024-2025');
+        const response = await getExamConfig(selectedClass, '2025');
         console.log('Config response:', response);
         
         if (response?.data?.examConfig?.[examTermStr]) {

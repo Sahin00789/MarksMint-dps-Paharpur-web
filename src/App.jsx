@@ -19,7 +19,7 @@ const DashboardLayout = lazy(() => import("@/layouts/DashboardLayout"));
 // Lazy load academics components
 const AcademicsLayout = lazy(() => import("@/pages/Dashboard/Academics/AcademicsLayout"));
 const MarksPanel = lazy(() => import("./pages/Dashboard/Academics/Marks/MarksPanel"));
-const ExamsPanel = lazy(() => import("./pages/Dashboard/Academics/ExamsConfiguration/ExamsConfigurationPanel"));
+import ExamsPanel from "./pages/Dashboard/Academics/ExamsConfiguration/ExamsConfigurationPanel";
 const ResultPublishPanel = lazy(() => import("./pages/Dashboard/Academics/Resultpublish/ResultPublishPanel"));
 const AdmitCardPanel = lazy(() => import("./pages/Dashboard/Academics/AdmitCard/AdmitCardPanel"));
 const CoScholasticGradesPanel = lazy(() => import("@/pages/Dashboard/Academics/CoScholasticGrades/CoScholasticGradesPanel"));

@@ -3,7 +3,7 @@ import { toast } from 'react-toastify';
 
 // Use environment variables if available, otherwise fallback to defaults
 const API_URL = 'https://marksmint-dps-paharpur-server.onrender.com/api';
-const API_URL2 = "http://localhost:5000/api/";
+const API_URL2 = "http://localhost:5000/api";
 
 // Request timeout helper
 const TIMEOUT_ERROR_MESSAGE = 'Request took too long. Please check your connection and try again.';

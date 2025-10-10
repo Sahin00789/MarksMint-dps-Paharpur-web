@@ -3,6 +3,9 @@ import { classesInTheSchool } from '../../shared/schoolInformation';
 import { useExamConfigStatus } from '../../services/examConfig';
 import { FaBookOpen } from 'react-icons/fa';
 
+// Current academic year
+const CURRENT_YEAR = '2025';
+
 export default function ExamDependentClassSelectorCard({ 
   onSelect, 
   selectedClass: propSelectedClass = '',
@@ -18,14 +21,14 @@ export default function ExamDependentClassSelectorCard({
     setSelectedClass(propSelectedClass);
   }, [propSelectedClass]);
   
-  // Get the current academic year (current year by default)
-  const currentAcademicYear = String(new Date().getFullYear());
+  // Current academic year
+  const currentAcademicYear = CURRENT_YEAR;
   
   // Use the React Query hook to fetch exam config status
   const { data: statusData, isLoading, error } = useExamConfigStatus(
     classesInTheSchool,
     currentAcademicYear,
-    { 
+    {
       enabled: classesInTheSchool && classesInTheSchool.length > 0,
       onError: (err) => {
         console.error('Error fetching exam config status:', err);
@@ -50,18 +53,15 @@ export default function ExamDependentClassSelectorCard({
     });
 
     // If we have valid status data, update the status map
-    if (statusData && Array.isArray(statusData)) {
-      statusData.forEach(item => {
-        if (!item) return;
-        
-        // Handle different possible response formats
-        const className = item.className || item.class;
-        if (!className) return;
+    if (statusData && statusData.success && statusData.data) {
+      // Handle the new response format where data is an object with class names as keys
+      Object.entries(statusData.data).forEach(([className, item]) => {
+        if (!item || !className) return;
         
         // Map the backend response to the expected format
-        const isConfigured = item.configured || item.isConfigured || false;
+        const isConfigured = item.isConfigured || false;
         const hasExams = item.hasExams || (item.examCount > 0) || false;
-        const examCount = item.examCount || (hasExams ? 1 : 0);
+        const examCount = item.examCount || 0;
         
         // Update the status for this class
         defaultStatus[className] = {

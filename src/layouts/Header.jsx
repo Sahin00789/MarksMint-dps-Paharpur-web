@@ -144,8 +144,8 @@ const Navbar = ({ toggleSidebar }) => {
     if (authLoading || !mounted) {
       return (
         <div className="flex items-center space-x-2">
-          <div className="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
-          <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+          <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
+          <div className="h-3 w-16 sm:h-4 sm:w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
         </div>
       );
     }

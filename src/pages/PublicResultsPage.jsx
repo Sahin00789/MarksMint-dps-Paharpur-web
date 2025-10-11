@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   FiAlertCircle, 
   FiCalendar, 
@@ -46,7 +46,8 @@ const getGradeDescription = (grade) => {
 };
 
 function PublicResultsPage() {
-  const { term } = useParams();
+  const [searchParams] = useSearchParams();
+  const term = searchParams.get('term');
   
   const [formData, setFormData] = useState({
     class: '',
@@ -144,6 +145,7 @@ function PublicResultsPage() {
     try {
       setLoading(true);
       setError('');
+      setResult(null); // Reset any previous result
       
       // Format the date for the API
       const formattedDob = formatDateForBackend(formData.dob);
@@ -166,6 +168,11 @@ function PublicResultsPage() {
       
       console.log('Raw API response:', response);
       
+      // Check if the response indicates an error
+      if (response.data && response.data.success === false) {
+        throw new Error(response.data.message || 'Failed to fetch result');
+      }
+      
       if (response.data) {
         console.log('Response data structure:', {
           keys: Object.keys(response.data),
@@ -178,9 +185,10 @@ function PublicResultsPage() {
       }
     } catch (err) {
       console.error('Error fetching result:', err);
-      const errorMessage = err.response?.data?.message || 'Failed to fetch result. Please check your details and try again.';
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch result. Please check your details and try again.';
       setError(errorMessage);
       setResult(null);
+      setPrintModalOpen(false); // Close print modal if open
       toast.error(errorMessage);
     } finally {
       setLoading(false);
@@ -250,19 +258,38 @@ function PublicResultsPage() {
     const fetchClasses = async () => {
       try {
         const response = await api.get('/configs');
-        const configs = response.data.items || [];
-        const classes = configs.map(config => config.class);
-        setAvailableClasses(classes);
-        console.log(response.data);
+        console.log('Configs API Response:', response.data);
         
-        // Store configs for max marks lookup
-        const configsMap = {};
-        configs.forEach(config => {
-          if (config.class && config.fullMarks) {
-            configsMap[config.class] = config.fullMarks;
-          }
-        });
-        setClassConfigs(configsMap);
+        // Check if the response has the expected structure
+        if (response.data && response.data.success && Array.isArray(response.data.data)) {
+          const configs = response.data.data;
+          
+          // Extract unique class names
+          const classSet = new Set();
+          configs.forEach(config => {
+            if (config.className) {
+              classSet.add(config.className);
+            }
+          });
+          
+          const classes = Array.from(classSet).sort();
+          setAvailableClasses(classes);
+          
+          // Store configs for max marks lookup
+          const configsMap = {};
+          configs.forEach(config => {
+            if (config.className) {
+              configsMap[config.className] = config.fullMarks || 100; // Default to 100 if not specified
+            }
+          });
+          setClassConfigs(configsMap);
+          
+          console.log('Available Classes:', classes);
+          console.log('Class Configs:', configsMap);
+        } else {
+          console.error('Unexpected API response format:', response.data);
+          toast.error('Unexpected response format when loading classes');
+        }
       } catch (error) {
         console.error('Error fetching classes:', error);
         toast.error('Failed to load classes');

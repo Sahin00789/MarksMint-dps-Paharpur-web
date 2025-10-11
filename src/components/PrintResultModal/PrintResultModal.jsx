@@ -248,26 +248,30 @@ const PrintResultModal = ({
               </h3>
               <div style={{ display: 'flex', gap: '0.75rem' }}>
                 <span style={{
-                  backgroundColor: '#dbeafe',
-                  color: '#1e40af',
-                  padding: '0.15rem 0.5rem',
-                  borderRadius: '4px',
-                  fontSize: '0.75rem',
-                  fontWeight: 500,
+                  background: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 50%, #7dd3fc 100%)',
+                  color: '#0369a1',
+                  padding: '0.35rem 0.75rem',
+                  borderRadius: '6px',
+                  fontSize: '0.9rem',
+                  fontWeight: 600,
                   display: 'inline-flex',
-                  alignItems: 'center'
+                  alignItems: 'center',
+                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                  border: '1px solid #bae6fd'
                 }}>
                   Class: {studentData.class} {studentData.section ? `- ${studentData.section}` : ''}
                 </span>
                 <span style={{
-                  backgroundColor: '#dbeafe',
-                  color: '#1e40af',
-                  padding: '0.15rem 0.5rem',
-                  borderRadius: '4px',
-                  fontSize: '0.75rem',
-                  fontWeight: 500,
+                  background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #bae6fd 100%)',
+                  color: '#0369a1',
+                  padding: '0.35rem 0.75rem',
+                  borderRadius: '6px',
+                  fontSize: '0.9rem',
+                  fontWeight: 600,
                   display: 'inline-flex',
-                  alignItems: 'center'
+                  alignItems: 'center',
+                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                  border: '1px solid #bae6fd'
                 }}>
                   Roll: {studentData.roll || 'N/A'}
                 </span>
@@ -328,17 +332,18 @@ const PrintResultModal = ({
                       );
                     })}
                     <td style={{ ...styles.td, fontWeight: 'bold' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                        <div style={{ fontWeight: 600 }}>{details.obtainedMarks || details.total || '0'}</div>
-                        <div style={{ 
-                          borderTop: '1px solid #e5e7eb', 
-                          paddingTop: '0.2rem',
-                          fontSize: '0.8rem',
-                          color: '#6b7280'
-                        }}>
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem'
+                      }}>
+                        <span style={{ fontWeight: 600 }}>{details.obtainedMarks || details.total || '0'}</span>
+                        <span style={{ color: '#9ca3af' }}>/</span>
+                        <span style={{ color: '#6b7280', fontSize: '0.95em' }}>
                           {details.maxMarks || details.totalMarks || 
                            (details.evaluations?.reduce((sum, evalItem) => sum + (parseInt(evalItem.maxMarks) || 0), 0) || '0')}
-                        </div>
+                        </span>
                       </div>
                     </td>
                     <td style={styles.td}>

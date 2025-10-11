@@ -280,8 +280,8 @@ const PublicResultsCard = React.memo(({ publicResultStatuses = [], isLoading, is
         <button
           key={result._id || index}
           className={`w-full text-left bg-gradient-to-r ${cardColors[index % cardColors.length]} rounded-lg shadow-md overflow-hidden transform transition-all duration-200 hover:scale-[1.02] hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
-          onClick={() => navigate(`/results?class=${result.class}&term=${result.term}`)}
-          aria-label={`View ${result.class} ${result.term} results`}
+          onClick={() => navigate(`/results?term=${encodeURIComponent(result.term)}`)}
+          aria-label={`View ${result.term} results`}
         >
           <div className="p-4 text-white">
             <div className="flex justify-between items-center">

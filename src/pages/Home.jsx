@@ -21,7 +21,7 @@ import {
   FaExternalLinkAlt as FiExternalLink,
   FaCheckCircle as FiCheckCircle,
 } from 'react-icons/fa';
-import { FiAlertCircle } from 'react-icons/fi';
+import { FiAlertCircle, FiInfo } from 'react-icons/fi';
 import { useAuth } from '@contexts/AuthContext';
 import api from '../services/api';
 import Navbar from '../layouts/Header';
@@ -47,29 +47,44 @@ const LoadingSkeleton = () => (
   </div>
 );
 
-// Custom hook for public results
+// Custom hook for public results with optimized fetching
 const usePublicResults = () => {
   return useQuery({
     queryKey: ['publicResults'],
     queryFn: async () => {
       try {
-        const response = await api.get('/public/results/status');
+        const response = await api.get('/public/results/status', {
+          skipAuth: true, // Skip auth for public endpoint
+          headers: {
+            'Cache-Control': 'public, max-age=300' // 5 minutes cache
+          }
+        });
+        
         if (!response?.data) {
-          throw new Error('No data received from server');
+          console.warn('No data received from public results endpoint');
+          return [];
         }
+        
+        // Only return published results
         return response.data.items?.filter(item => item?.isPublished) || [];
       } catch (error) {
-        // Only log unexpected errors, not the missing token error
-        if (!error?.message?.includes('No authentication token found')) {
-          console.error('Error fetching public statuses:', error);
+        // Don't log 401 errors for public endpoints
+        if (error?.response?.status !== 401) {
+          console.error('Error fetching public results:', error);
         }
         return [];
       }
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000, // 5 minutes before refetching
+    cacheTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
     refetchOnWindowFocus: false,
-    retry: 2, // Retry failed requests twice before giving up
-    retryDelay: 1000, // Wait 1 second between retries
+    refetchOnMount: 'if-stale',
+    retry: 1, // Only retry once on failure
+    retryDelay: 1000,
+    onError: (error) => {
+      // Handle specific error cases if needed
+      console.error('Public results fetch failed:', error);
+    }
   });
 };
 
@@ -186,7 +201,7 @@ const DeveloperCard = React.memo(() => (
   </div>
 ));
 
-const PublicResultsCard = React.memo(({ publicResultStatuses = [], loading, error }) => {
+const PublicResultsCard = React.memo(({ publicResultStatuses = [], isLoading, isError, error }) => {
   const navigate = useNavigate();
   
   const cardColors = useMemo(() => [
@@ -198,80 +213,98 @@ const PublicResultsCard = React.memo(({ publicResultStatuses = [], loading, erro
     'from-pink-500 to-pink-600',
   ], []);
 
-  const handleViewResults = (examId) => {
-    navigate(`/results/${examId}`);
-  };
-
-  if (loading) {
+  // Show loading skeleton
+  if (isLoading) {
     return (
       <div className="space-y-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="animate-pulse bg-gray-100 dark:bg-gray-700 rounded-lg p-4">
-            <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-3/4 mb-2"></div>
-            <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-1/2"></div>
-          </div>
+          <div 
+            key={i} 
+            className="h-24 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"
+            aria-hidden="true"
+          ></div>
         ))}
       </div>
     );
   }
 
-  if (error) {
+  // Show error message
+  if (isError) {
+    // Don't show error for 401 (unauthorized) as it's expected for public endpoints
+    if (error?.response?.status === 401) {
+      return (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6 text-center">
+          <FiInfo className="h-8 w-8 text-blue-500 dark:text-blue-400 mx-auto mb-2" />
+          <p className="text-blue-700 dark:text-blue-300">No published results available at this time.</p>
+        </div>
+      );
+    }
+    
     return (
-      <div className="text-center py-8">
-        <FiAlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-        <p className="text-red-500 dark:text-red-400">
-          Failed to load published results. Please try again later.
+      <div 
+        className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-center"
+        role="alert"
+        aria-live="assertive"
+      >
+        <FiAlertCircle className="h-8 w-8 text-red-500 dark:text-red-400 mx-auto mb-2" />
+        <p className="text-red-700 dark:text-red-300">
+          {error?.response?.status === 404 
+            ? 'Results service is currently unavailable.'
+            : 'Failed to load results. Please check your connection and try again.'
+          }
         </p>
       </div>
     );
   }
 
-  if (publicResultStatuses.length === 0) {
+  // Show empty state
+  if (!publicResultStatuses || publicResultStatuses.length === 0) {
     return (
-      <div className="text-center py-8">
-        <FiCheckCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <p className="text-gray-500 dark:text-gray-400">
-          No published results available at the moment.
+      <div 
+        className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6 text-center"
+        role="status"
+        aria-live="polite"
+      >
+        <FiInfo className="h-8 w-8 text-yellow-500 dark:text-yellow-400 mx-auto mb-2" />
+        <p className="text-yellow-700 dark:text-yellow-300">
+          No published results available at the moment. Please check back later.
         </p>
       </div>
     );
   }
 
+  // Show results
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" role="list" aria-label="Published results">
       {publicResultStatuses.map((result, index) => (
-        <div 
-          key={result.id}
-          className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300 hover:shadow-md"
+        <button
+          key={result._id || index}
+          className={`w-full text-left bg-gradient-to-r ${cardColors[index % cardColors.length]} rounded-lg shadow-md overflow-hidden transform transition-all duration-200 hover:scale-[1.02] hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
+          onClick={() => navigate(`/results?class=${result.class}&term=${result.term}`)}
+          aria-label={`View ${result.class} ${result.term} results`}
         >
-          <div className="p-4">
-            <div className="flex items-start justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {result.examName}
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  Published on: {new Date(result.publishedAt).toLocaleDateString()}
-                </p>
-              </div>
-              <div className="flex-shrink-0 ml-4">
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300`}>
-                  {result.className}
-                </span>
-              </div>
+          <div className="p-4 text-white">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold">{result.class} Results</h3>
+              <FiExternalLink className="h-5 w-5 opacity-75" aria-hidden="true" />
             </div>
-            
+            <p className="text-sm opacity-90 mt-1">
+              {result.term} • {result.section || 'All Sections'}
+            </p>
+            {result.publishedAt && (
+              <div className="mt-2 flex items-center text-xs opacity-80">
+                <FiCheckCircle className="h-4 w-4 mr-1" aria-hidden="true" />
+                <span>Published on {new Date(result.publishedAt).toLocaleDateString()}</span>
+              </div>
+            )}
             <div className="mt-4 flex justify-end">
-              <button
-                onClick={() => handleViewResults(result.examId)}
-                className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-              >
+              <span className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
                 <FiExternalLink className="mr-1.5 h-3.5 w-3.5" />
                 View Results
-              </button>
+              </span>
             </div>
           </div>
-        </div>
+        </button>
       ))}
     </div>
   );

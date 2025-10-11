@@ -153,14 +153,25 @@ const uploadApi = axios.create({
 });
 
 // Request interceptor to include auth token and handle logging
+// Helper to check if endpoint is public
+const isPublicEndpoint = (url) => {
+  const publicPaths = ['/public/', '/auth/verify', '/health'];
+  return publicPaths.some(path => url.includes(path));
+};
+
 api.interceptors.request.use(
   (config) => {
-    // Get token from localStorage
-    const token = localStorage.getItem('token');
-    
-    // Add token to headers if it exists
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Skip auth for public endpoints or when skipAuth is explicitly set
+    if (!isPublicEndpoint(config.url) && !config.skipAuth) {
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+
+    // Add cache control for GET requests to public endpoints
+    if (config.method?.toLowerCase() === 'get' && isPublicEndpoint(config.url)) {
+      config.headers['Cache-Control'] = 'public, max-age=300'; // 5 minutes
     }
 
     // Skip logging for health checks to reduce noise
@@ -185,6 +196,24 @@ api.interceptors.request.use(
     // Only log actual errors, not aborted requests
     if (!axios.isCancel(error)) {
       console.error('[API] Request interceptor error:', error);
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor to handle caching
+api.interceptors.response.use(
+  (response) => {
+    // For public GET requests, add cache timestamp
+    if (response.config.method?.toLowerCase() === 'get' && isPublicEndpoint(response.config.url)) {
+      response.cachedAt = Date.now();
+    }
+    return response;
+  },
+  (error) => {
+    // Don't log 401 errors for public endpoints
+    if (error.response?.status === 401 && isPublicEndpoint(error.config.url)) {
+      return Promise.resolve({ data: { items: [] } });
     }
     return Promise.reject(error);
   }

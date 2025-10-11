@@ -313,30 +313,38 @@ const Navbar = ({ toggleSidebar }) => {
             variants={mobileMenuVariants}
             className="md:hidden bg-white dark:bg-gray-800 shadow-xl border-t border-gray-100 dark:border-gray-700 overflow-hidden"
           >
-            <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                Dina Public School Paharpur
-              </h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {user?.email || ''}
-              </p>
-            </div>
+            {user?.email && (
+              <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {user.email}
+                </p>
+              </div>
+            )}
             
             <nav className="py-2">
-              <Link
-                to="/dashboard/students"
-                className="block px-4 py-3 text-base font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700/50 rounded-lg transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <div className="flex items-center space-x-3">
-                  <FiHome className="h-5 w-5 text-primary-500" />
-                  <span>Dashboard</span>
-                </div>
-              </Link>
-              
-             
-              
-          
+              {isAuthenticated ? (
+                <Link
+                  to="/dashboard/students"
+                  className="block px-4 py-3 text-base font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700/50 rounded-lg transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <div className="flex items-center space-x-3">
+                    <FiHome className="h-5 w-5 text-primary-500" />
+                    <span>Dashboard</span>
+                  </div>
+                </Link>
+              ) : (
+                <Link
+                  to="/login"
+                  className="block px-4 py-3 text-base font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700/50 rounded-lg transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <div className="flex items-center space-x-3">
+                    <FiLogIn className="h-5 w-5 text-primary-500" />
+                    <span>Admin Login</span>
+                  </div>
+                </Link>
+              )}
               
               <div className="px-4 py-3 flex items-center justify-between">
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">

@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState, Fragment } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FaPrint, FaArrowLeft, FaUser, FaQrcode, FaStar } from 'react-icons/fa';
+import { FaPrint, FaArrowLeft, FaUser, FaQrcode, FaStar, FaMapMarkerAlt } from 'react-icons/fa';
 import QRCode from 'qrcode-svg';
 import { schoolinfo } from '@/shared/schoolInformation';
+import { formatDate } from '@/utils/dateUtils';
 
 // Co-scholastic subjects and their labels
 const CO_SCHOLASTIC_SUBJECTS = [
@@ -193,29 +194,64 @@ const valueStyle = {
 const tableContainerStyle = {
   width: '100%',
   overflowX: 'auto',
-  margin: '20px 0'
+  margin: '20px 0',
+  fontSize: '13px',
+  boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+  backgroundColor: '#fff',
+  borderRadius: '8px',
+  overflow: 'hidden'
 };
 
 const tableStyle = {
   width: '100%',
   borderCollapse: 'collapse',
-  margin: '15px 0',
-  fontSize: '14px'
+  margin: '20px 0',
+  fontSize: '13px',
+  boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+  backgroundColor: '#fff',
+  borderRadius: '8px',
+  overflow: 'hidden'
 };
 
 const thStyle = {
-  backgroundColor: '#1e40af',
-  color: 'white',
-  padding: '10px',
+  backgroundColor: '#f3f4f6',
+  color: '#1e40af',
+  fontWeight: '600',
+  padding: '12px',
   textAlign: 'left',
-  border: '1px solid #e2e8f0'
+  border: '1px solid #e5e7eb',
+  whiteSpace: 'nowrap',
+  textTransform: 'uppercase',
+  fontSize: '12px',
+  letterSpacing: '0.5px'
 };
 
 const tdStyle = {
-  padding: '10px',
-  border: '1px solid #e2e8f0',
-  textAlign: 'left'
+  padding: '12px',
+  border: '1px solid #e5e7eb',
+  verticalAlign: 'middle',
+  backgroundColor: '#fff',
+  color: '#374151',
+  fontSize: '13px',
+  lineHeight: '1.5'
 };
+
+const evenRowStyle = {
+  ...tdStyle,
+  backgroundColor: '#f9fafb'
+};
+
+const gradeBadgeStyle = (grade) => ({
+  display: 'inline-block',
+  padding: '4px 10px',
+  borderRadius: '12px',
+  fontWeight: '600',
+  fontSize: '12px',
+  backgroundColor: grade === 'F' ? '#fee2e2' : '#e0f2fe',
+  color: grade === 'F' ? '#b91c1c' : '#0369a1',
+  textAlign: 'center',
+  minWidth: '40px'
+});
 
 const footerStyle = {
   marginTop: '30px',
@@ -291,6 +327,7 @@ const MarksheetPrintPage = ({
       }));
   const navigate = useNavigate();
   const printRef = useRef();
+  const qrContainerRef = useRef(null);
   const [qrCodeSvg, setQrCodeSvg] = useState('');
   
   // Ensure student data exists
@@ -308,30 +345,39 @@ const MarksheetPrintPage = ({
     email: schoolinfo?.email || 'info@school.edu'
   };
   
-  // Generate QR code with student details
+  // Generate QR code with student and exam info
   useEffect(() => {
-    if (studentData.rollNumber || studentData.admissionNo) {
+    if (!student || !qrContainerRef.current) return;
+    
+    try {
       const qrData = JSON.stringify({
-        name: studentData.studentName || studentData.name || '',
-        roll: studentData.rollNumber || '',
-        class: studentData.Class || '',
-        section: studentData.section || '',
-        admissionNo: studentData.admissionNo || ''
+        name: student.studentName || student.name || '',
+        roll: student.rollNumber || '',
+        class: student.Class || '',
+        admissionNo: student.admissionNo || ''
       });
       
+      // Clear previous QR code
+      qrContainerRef.current.innerHTML = '';
+      
+      // Generate and render QR code
       const qr = new QRCode({
         content: qrData,
-        padding: 2,
-        width: 80,
-        height: 80,
+        padding: 1,
+        width: 100,
+        height: 100,
         color: '#000000',
         background: '#ffffff',
         ecl: 'M'
       });
       
+      // Set the QR code SVG to the container
+      qrContainerRef.current.innerHTML = qr.svg();
       setQrCodeSvg(qr.svg());
+    } catch (error) {
+      console.error('Error generating QR code:', error);
     }
-  }, [studentData]);
+  }, [student]);
   
   // Calculate total and percentage
   const totalMarks = Array.isArray(examResults) ? 
@@ -443,6 +489,40 @@ console.log("student data in marksheet print page", student);
     );
   }
 
+  // Generate QR code with student and exam info
+  useEffect(() => {
+    if (!student || !qrContainerRef.current) return;
+    
+    try {
+      const qrData = JSON.stringify({
+        name: student.studentName || student.name || '',
+        roll: student.rollNumber || '',
+        class: student.Class || '',
+        admissionNo: student.admissionNo || ''
+      });
+      
+      // Clear previous QR code
+      qrContainerRef.current.innerHTML = '';
+      
+      // Generate and render QR code
+      const qr = new QRCode({
+        content: qrData,
+        padding: 1,
+        width: 100,
+        height: 100,
+        color: '#000000',
+        background: '#ffffff',
+        ecl: 'M'
+      });
+      
+      // Set the QR code SVG to the container
+      qrContainerRef.current.innerHTML = qr.svg();
+      setQrCodeSvg(qr.svg());
+    } catch (error) {
+      console.error('Error generating QR code:', error);
+    }
+  }, [student]);
+
   return (
     <div className="print-page" style={{
       width: '210mm',
@@ -473,6 +553,8 @@ console.log("student data in marksheet print page", student);
           }
         `}
       </style>
+    
+
       <div style={{
         width: '100%',
         height: '100%',
@@ -487,18 +569,18 @@ console.log("student data in marksheet print page", student);
         position: 'relative',
         zIndex: 1
       }}>
-      <div ref={printRef} style={{
-        width: '100%',
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px',
-        position: 'relative',
-        boxSizing: 'border-box',
-        breakInside: 'avoid',
-        pageBreakInside: 'avoid',
-        zIndex: 2
-      }}>
+        <div ref={printRef} style={{
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+          position: 'relative',
+          boxSizing: 'border-box',
+          breakInside: 'avoid',
+          pageBreakInside: 'avoid',
+          zIndex: 2
+        }}>
         {/* Report Card Title */}
    
         {/* Main Content Container */}
@@ -519,43 +601,32 @@ console.log("student data in marksheet print page", student);
             overflow: 'hidden',
             border: '1px solid #e2e8f0',
             boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-            padding: '12px',
+            padding: '8px 12px',
             breakInside: 'avoid',
             pageBreakInside: 'avoid',
             boxSizing: 'border-box'
           }}>
           {/* School Info */}
           <div style={{
-            flex: 1,
-            height: '100%',
             display: 'flex',
             flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
-            padding: '0.75rem 1.5rem',
-            position: 'relative',
-            '&::after': {
-              content: '""',
-              position: 'absolute',
-              right: 0,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              height: '60%',
-              width: '1px',
-              backgroundColor: '#e2e8f0'
-            }
+            gap: '8px',
+            marginBottom: '12px'
           }}>
+            {/* School Name */}
             <div style={{
-              position: 'relative',
-              width: '100%',
-              marginBottom: '0.5rem',
-              textAlign: 'center'
+              textAlign: 'center',
+              marginBottom: '4px'
             }}>
+              <div style={{
+                position: 'relative',
+                width: '100%',
+                marginBottom: '0.25rem',
+                textAlign: 'center'
+              }}>
               <h1 style={{
                 fontSize: '24px',
                 color: '#1e40af',
-                margin: '0 0 0.25rem 0',
-                padding: 0,
                 fontWeight: 700,
                 letterSpacing: '-0.01em',
                 display: 'block',
@@ -604,11 +675,11 @@ console.log("student data in marksheet print page", student);
               display: 'flex',
               flexWrap: 'wrap',
               justifyContent: 'center',
-              gap: '8px 16px',
-              marginBottom: '6px',
+              gap: '6px 12px',
+              margin: '4px 0',
               fontSize: '11px',
               color: '#4b5563',
-              lineHeight: '1.3'
+              lineHeight: '1.2'
             }}>
               {schoolInfo.regNumber && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -635,7 +706,7 @@ console.log("student data in marksheet print page", student);
               gap: '4px',
               color: '#4b5563',
               fontSize: '11px',
-              marginBottom: '6px',
+              margin: '2px 0',
               flexWrap: 'wrap',
               textAlign: 'center'
             }}>
@@ -656,120 +727,137 @@ console.log("student data in marksheet print page", student);
               <span>{schoolInfo.address}</span>
             </div>
             
-            <div style={{
-              marginTop: '10px',
-              textAlign: 'center',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '20px',
-              flexWrap: 'wrap'
-            }}>
-              <h2 style={{
-                fontSize: '16px',
-                fontWeight: '600',
-                color: '#1e293b',
-                margin: '0',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '16px',
-                flexWrap: 'wrap',
-                justifyContent: 'center'
-              }}>
-                <span>REPORT CARD</span>
-                <span style={{
-                  fontSize: '13px',
-                  fontWeight: '500',
-                  color: '#4b5563',
-                  backgroundColor: '#f8fafc',
-                  padding: '3px 10px',
-                  borderRadius: '10px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  border: '1px solid #e2e8f0'
-                }}>
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                  </svg>
-                  {academicYear || student.session || String(new Date().getFullYear() + 1)}
-                </span>
-              </h2>
-              
-            </div>
-            
           </div>
-          
-         
         </div>
       </div>
+
+      {/* QR Code Section */}
+      <div style={{
+        position: 'absolute',
+        top: '-10px',
+        right: '20px',
+        zIndex: 10,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '4px',
+        backgroundColor: 'white',
+        padding: '8px',
+        borderRadius: '8px',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+      }}>
+        <div style={{
+          width: '100px',
+          height: '100px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: 'white',
+          padding: '4px',
+          borderRadius: '4px',
+          border: '1px solid #e2e8f0'
+        }}>
+          <div 
+            ref={qrContainerRef}
+            style={{
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          ></div>
+        </div>
+        <div style={{
+          fontSize: '10px',
+          color: '#4b5563',
+          textAlign: 'center',
+          maxWidth: '100px',
+          lineHeight: '1.2'
+        }}>
+          Scan to verify
+        </div>
+      </div>
+      
+      {/* Report Card Header */}
       <div style={{
           textAlign: 'center',
-          marginBottom: '1.5rem',
-          padding: '1rem',
-          color: 'white',
+          margin: '0 0 1.5rem 0',
+          padding: '0.5rem 1rem',
+          color: '#1e293b',
           borderRadius: '0.5rem',
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+          backgroundColor: '#f8fafc',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
         }}>
-          <h1 style={{
-            margin: 0,
-            fontSize: '1.5rem',
-            fontWeight: '600',
-            letterSpacing: '0.05em',
-            textTransform: 'uppercase'
-          }}>
-            REPORT CARD
-          </h1>
-          <div style={{
-            marginTop: '0.5rem',
-            fontSize: '1rem',
+        <h2 style={{
+          margin: 0,
+          fontSize: '16px',
+          fontWeight: '600',
+          letterSpacing: '0.5px',
+          textTransform: 'uppercase',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '16px',
+          flexWrap: 'wrap'
+        }}>
+          <span>REPORT CARD</span>
+          <span style={{
+            fontSize: '13px',
             fontWeight: '500',
-            opacity: '0.9'
+            color: '#4b5563',
+            backgroundColor: '#ffffff',
+            padding: '3px 10px',
+            borderRadius: '10px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            border: '1px solid #e2e8f0'
           }}>
-            2024-2025
-          </div>
-        </div>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            {academicYear || student.session || String(new Date().getFullYear() + 1)}
+          </span>
+        </h2>
+      </div>
 
       <div>
-        {/* Student Info with Photo */}
+        {/* Student Info with Photo - Optimized Layout */}
         <div style={{
           display: 'flex',
-          flexWrap: 'wrap',
-          gap: '20px',
-          marginBottom: '25px',
-          padding: '20px',
+          flexWrap: 'nowrap',
+          gap: '15px',
+          marginBottom: '20px',
+          padding: '15px',
           backgroundColor: '#f8fafc',
           borderRadius: '8px',
           borderLeft: '4px solid #1e40af',
           boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)'
         }}>
-        {/* Student Photo */}
+        {/* Student Photo - Made more compact */}
         <div style={{
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '10px',
-          flex: '0 0 120px',
+          flex: '0 0 80px',
           position: 'relative'
         }}>
           <div style={{
-            width: '100px',
-            height: '120px',
+            width: '80px',
+            height: '100px',
             backgroundColor: '#f8fafc',
             borderRadius: '6px',
             overflow: 'hidden',
-            border: '2px solid #e2e8f0',
+            border: '1px solid #e2e8f0',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            position: 'relative',
-            margin: '0 auto',
-            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)'
+            position: 'relative'
           }}>
             {student.photoUrl ? (
               <>
@@ -831,51 +919,43 @@ console.log("student data in marksheet print page", student);
               </div>
             )}
           </div>
-          <div style={{
-            position: 'absolute',
-            bottom: '0',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            backgroundColor: '#1e40af',
-            color: 'white',
-            fontSize: '10px',
-            padding: '2px 8px',
-            borderRadius: '10px',
-            whiteSpace: 'nowrap',
-            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
-          }}>
-            Student Photo
-          </div>
         </div>
         
-        {/* Student Details - 3 Column Layout */}
+        {/* Student Details - Optimized Grid Layout */}
         <div style={{
           flex: '1',
-          minWidth: '400px',
+          minWidth: '0',
           display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',  
-          gap: '12px 20px',
-          alignContent: 'flex-start'
+          gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+          gap: '8px 10px',
+          alignContent: 'flex-start',
+          fontSize: '13px'
         }}>
             {/* Column 1 */}
             <div>
               <div style={{
-                fontSize: '12px',
+                fontSize: '11px',
                 color: '#64748b',
-                marginBottom: '2px',
-                fontWeight: '500'
+                marginBottom: '1px',
+                fontWeight: '500',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
               }}>Student Name</div>
               <div style={{
-                fontSize: '14px',
+                fontSize: '13px',
                 fontWeight: '600',
                 color: '#1e293b',
-                padding: '8px 12px',
+                padding: '6px 8px',
                 backgroundColor: '#fff',
-                borderRadius: '6px',
+                borderRadius: '4px',
                 border: '1px solid #e2e8f0',
-                minHeight: '38px',
+                minHeight: '32px',
                 display: 'flex',
-                alignItems: 'center'
+                alignItems: 'center',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
               }}>
                 {student.studentName || student.name || 'N/A'}
               </div>
@@ -884,21 +964,27 @@ console.log("student data in marksheet print page", student);
             {/* Column 2 */}
             <div>
               <div style={{
-                fontSize: '12px',
+                fontSize: '11px',
                 color: '#64748b',
-                marginBottom: '2px',
-                fontWeight: '500'
+                marginBottom: '1px',
+                fontWeight: '500',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
               }}>Father's Name</div>
               <div style={{
-                fontSize: '14px',
+                fontSize: '13px',
                 color: '#1e293b',
-                padding: '8px 12px',
+                padding: '6px 8px',
                 backgroundColor: '#fff',
-                borderRadius: '6px',
+                borderRadius: '4px',
                 border: '1px solid #e2e8f0',
-                minHeight: '38px',
+                minHeight: '32px',
                 display: 'flex',
-                alignItems: 'center'
+                alignItems: 'center',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
               }}>
                 {student.fatherName || 'N/A'}
               </div>
@@ -907,28 +993,32 @@ console.log("student data in marksheet print page", student);
             {/* Column 3 - Date of Birth */}
             <div>
               <div style={{
-                fontSize: '12px',
+                fontSize: '11px',
                 color: '#64748b',
-                marginBottom: '2px',
-                fontWeight: '500'
+                marginBottom: '1px',
+                fontWeight: '500',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
               }}>Date of Birth</div>
               <div style={{
-                fontSize: '14px',
+                fontSize: '13px',
                 color: '#1e293b',
-                padding: '8px 12px',
+                padding: '6px 8px',
                 backgroundColor: '#fff',
-                borderRadius: '6px',
+                borderRadius: '4px',
                 border: '1px solid #e2e8f0',
-                minHeight: '38px',
+                minHeight: '32px',
                 display: 'flex',
-                alignItems: 'center'
+                alignItems: 'center',
+                whiteSpace: 'nowrap'
               }}>
                 {student.dob ? new Date(student.dob).toLocaleDateString('en-IN') : 'N/A'}
               </div>
             </div>
             
-            {/* Row 2 - Class */}
-            <div>
+            {/* Row 2 - Class, Roll Number, and Address in one row */}
+            <div style={{ gridColumn: '1 / 2' }}>
               <div style={{
                 fontSize: '12px',
                 color: '#64748b',
@@ -950,8 +1040,32 @@ console.log("student data in marksheet print page", student);
               </div>
             </div>
             
-            {/* Row 2 - Address */}
-            <div style={{ gridColumn: '2 / 4' }}>
+            {/* Roll Number */}
+            <div style={{ gridColumn: '2 / 3' }}>
+              <div style={{
+                fontSize: '12px',
+                color: '#64748b',
+                marginBottom: '2px',
+                fontWeight: '500'
+              }}>Roll Number</div>
+              <div style={{
+                fontSize: '14px',
+                color: '#1e293b',
+                padding: '8px 12px',
+                backgroundColor: '#fff',
+                borderRadius: '6px',
+                border: '1px solid #e2e8f0',
+                minHeight: '38px',
+                display: 'flex',
+                alignItems: 'center',
+                fontWeight: '600'
+              }}>
+                {student.rollNumber || student.rollNo || 'N/A'}
+              </div>
+            </div>
+            
+            {/* Address */}
+            <div style={{ gridColumn: '3 / 4' }}>
               <div style={{
                 fontSize: '12px',
                 color: '#64748b',
@@ -1027,18 +1141,19 @@ console.log("student data in marksheet print page", student);
                         borderBottom: '2px solid #e2e8f0',
                         fontWeight: '600',
                         color: '#1e293b',
-                        whiteSpace: 'nowrap',
-                        minWidth: '80px'
+                        whiteSpace: 'nowrap'
                       }}>
+                        {evalItem.type}
                         <div style={{
-                          fontWeight: '600',
-                          marginBottom: '4px'
-                        }}>{evalItem.type || `Exam ${idx + 1}`}</div>
-                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          marginTop: '4px',
                           fontSize: '11px',
-                          color: '#64748b',
                           fontWeight: 'normal'
-                        }}>(Max: {evalItem.maxMarks || 100})</div>
+                        }}>
+                          <span style={{ flex: 1, textAlign: 'center' }}>M.O.</span>
+                          <span style={{ flex: 1, textAlign: 'center' }}>F.M.</span>
+                        </div>
                       </th>
                     ))
                   ) : (
@@ -1049,8 +1164,7 @@ console.log("student data in marksheet print page", student);
                       borderBottom: '2px solid #e2e8f0',
                       fontWeight: '600',
                       color: '#1e293b',
-                      whiteSpace: 'nowrap',
-                      minWidth: '80px'
+                      whiteSpace: 'nowrap'
                     }}>
                       <div style={{
                         fontWeight: '600',
@@ -1510,6 +1624,7 @@ console.log("student data in marksheet print page", student);
           </div>
         </div>
       </div>
+        </div>
       </div>
     </div>
   );

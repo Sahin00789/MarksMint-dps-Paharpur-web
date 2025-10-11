@@ -155,41 +155,37 @@ const uploadApi = axios.create({
 // Request interceptor to include auth token and handle logging
 api.interceptors.request.use(
   (config) => {
-    // Skip logging for health checks to reduce noise
-    if (!config.url.includes('/health')) {
-      console.log(`[API] ${config.method?.toUpperCase() || 'GET'} ${config.url}`, {
-        data: config.data,
-        params: config.params
-      });
-    }
-    
-    // Skip adding token for public and auth endpoints
-    const isPublicEndpoint = config.url.includes('/public/') || 
-                           config.url.includes('/auth/') ||
-                           config.url === '/health';
-    
-    if (isPublicEndpoint && !config.url.includes('/auth/refresh-token')) {
-      return config;
-    }
-    
+    // Get token from localStorage
     const token = localStorage.getItem('token');
+    
+    // Add token to headers if it exists
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log('[API] Added Authorization header');
-    } else if (!config.url.includes('/auth/')) {
-      console.warn('[API] No auth token found');
-      // Only redirect if not on login page and not an auth request
-      if (window.location.pathname !== '/login') {
-        console.log('[API] Redirecting to login');
-        window.location.href = '/login';
+    }
+
+    // Skip logging for health checks to reduce noise
+    if (!config.url.includes('/health')) {
+      const logData = {};
+      
+      // Only add data/params to log if they exist
+      if (config.data) logData.data = config.data;
+      if (config.params) logData.params = config.params;
+      
+      // Only log if we have something to show
+      if (Object.keys(logData).length > 0) {
+        console.log(`[API] ${config.method?.toUpperCase() || 'GET'} ${config.url}`, logData);
+      } else {
+        console.log(`[API] ${config.method?.toUpperCase() || 'GET'} ${config.url}`);
       }
-      throw new Error('No authentication token found');
     }
     
     return config;
   },
   (error) => {
-    console.error('[API] Request interceptor error:', error);
+    // Only log actual errors, not aborted requests
+    if (!axios.isCancel(error)) {
+      console.error('[API] Request interceptor error:', error);
+    }
     return Promise.reject(error);
   }
 );

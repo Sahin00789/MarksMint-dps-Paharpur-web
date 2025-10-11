@@ -54,71 +54,73 @@ const RouteLoader = ({ children }) => {
   );
 };
 
-// Protected Route Component
-const ProtectedRoute = () => {
+// Protected Route Component - Only used for dashboard routes
+const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
-  const [initialCheck, setInitialCheck] = useState(true);
 
-  useEffect(() => {
-    // After the first render, mark that we've completed the initial check
-    const timer = setTimeout(() => {
-      setInitialCheck(false);
-    }, 0);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Show loading state only if we're still loading and it's not the initial check
-  if (loading && !initialCheck) {
+  if (loading) {
     return <FullPageLoader />;
   }
 
-  // If not authenticated, redirect to login
   if (!user) {
-    const from = location.pathname !== "/login" ? location.pathname + location.search : "/dashboard";
-    return <Navigate to="/login" state={{ from }} replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // If authenticated, render the child routes
-  return <Outlet />;
+  return children || <Outlet />;
+};
+
+// Public Route Component - For public pages
+const PublicRoute = ({ children }) => {
+  const { user } = useAuth();
+  
+  // If user is logged in and tries to access login page, redirect to dashboard
+  if (user && window.location.pathname === '/login') {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return children;
 };
 
 const AppContent = () => {
   return (
     <Suspense fallback={<FullPageLoader />}>
       <RouteLoader>
-        <>
-            <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/results" element={<PublicResultsPage />}>
-          <Route path="term/:term" element={<PublicResultsPage />} />
-        </Route>
+        <Routes>
+          {/* Home page - always accessible */}
+          <Route path="/" element={<Home />} />
+          
+          {/* Public routes */}
+          <Route path="/login" element={
+            <PublicRoute>
+              <Login />
+            </PublicRoute>
+          } />
+          
+          <Route path="/results" element={<PublicResultsPage />}>
+            <Route path="term/:term" element={<PublicResultsPage />} />
+          </Route>
 
-        {/* Protected Routes */}
-        <Route element={<ProtectedRoute />}>
+          {/* Dashboard Routes - Protected */}
           <Route
-            path="/dashboard"
+            path="/dashboard/*"
             element={
-              <DashboardLayout>
-                <Outlet />
-              </DashboardLayout>
+              <ProtectedRoute>
+                <DashboardLayout>
+                  <Outlet />
+                </DashboardLayout>
+              </ProtectedRoute>
             }
           >
             <Route index element={<DashboardHome />} />
             <Route path="students" element={<StudentsPanel />} />
             <Route path="attendance" element={<AttendancePanel />} />
-            
-            {/* Academics Routes */}
             <Route path="academics" element={<AcademicsLayout />}>
               <Route index element={<Navigate to="exams" replace />} />
               <Route path="exams" element={<ExamsPanel />} />
-              <Route path="admit-cards" element={<AdmitCardPanel />}>
-                <Route path="generate" element={<AdmitCardPanel initialTab="generate" />} />
-              </Route>
               <Route path="marks" element={<MarksPanel />} />
-              <Route path="results-publish" element={<ResultPublishPanel />} />
+              <Route path="result-publish" element={<ResultPublishPanel />} />
+              <Route path="admit-cards" element={<AdmitCardPanel />} />
               <Route path="co-scholastic-grades" element={<CoScholasticGradesPanel />} />
               <Route path="marksheets">
                 <Route index element={<MarksheetsPanel />} />
@@ -126,25 +128,24 @@ const AppContent = () => {
               </Route>
               <Route path="*" element={<Navigate to="exams" replace />} />
             </Route>
-
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>
-        </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          <ToastContainer
-            position="top-right"
-            autoClose={5000}
-            hideProgressBar={false}
-            newestOnTop={false}
-            closeOnClick
-            pauseOnFocusLoss
-            draggable
-            pauseOnHover
-            theme="colored"
-          />
-        </>
+          {/* Catch-all route - redirect to home */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+
+        <ToastContainer
+          position="top-right"
+          autoClose={5000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="colored"
+        />
       </RouteLoader>
     </Suspense>
   );

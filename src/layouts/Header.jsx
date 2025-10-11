@@ -141,9 +141,12 @@ const Navbar = ({ toggleSidebar }) => {
 
   // Show loading state for user profile
   const renderUserProfile = () => {
-    if (!mounted) {
+    if (authLoading || !mounted) {
       return (
-        <div className="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
+        <div className="flex items-center space-x-2">
+          <div className="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
+          <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+        </div>
       );
     }
     
@@ -229,24 +232,19 @@ const Navbar = ({ toggleSidebar }) => {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
-          {/* Left section - Logo and brand */}
+          {/* Left section - School name and branch */}
           <div className="flex items-center">
             <Link 
               to="/" 
-              className="flex-shrink-0 flex items-center space-x-3 group"
+              className="group flex flex-col"
               aria-label="Home"
             >
-              <div className="bg-gradient-to-br from-primary-500 to-primary-600 p-2 rounded-xl group-hover:scale-105 transition-transform duration-300 shadow-md">
-                <FiAward className="h-6 w-6 text-white" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xl font-bold bg-gradient-to-r from-primary-600 to-primary-700 dark:from-primary-400 dark:to-primary-300 bg-clip-text text-transparent">
-                  {schoolinfo.name}
-                </span>
-                <span className="text-xs px-2 py-0.5 bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-300 rounded-full font-medium">
-                  {schoolinfo.branch}
-                </span>
-              </div>
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white transition-colors duration-200 group-hover:text-primary-600 dark:group-hover:text-primary-400 text-center">
+                {schoolinfo.name}
+              </h1>
+              <span className="inline-block px-2.5 py-0.5 text-xs font-medium rounded-full bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-sm transform transition-all duration-200 group-hover:scale-105 group-hover:shadow-md mx-auto">
+                Paharpur Branch
+              </span>
             </Link>
           </div>
 
@@ -316,9 +314,9 @@ const Navbar = ({ toggleSidebar }) => {
             className="md:hidden bg-white dark:bg-gray-800 shadow-xl border-t border-gray-100 dark:border-gray-700 overflow-hidden"
           >
             <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-              <p className="text-sm font-medium text-gray-900 dark:text-white">
-                {user?.name || 'User'}
-              </p>
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                Dina Public School Paharpur
+              </h1>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {user?.email || ''}
               </p>

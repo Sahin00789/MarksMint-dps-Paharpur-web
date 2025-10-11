@@ -10,10 +10,17 @@ const ResultPublishPanel = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [results, setResults] = useState([]);
   const [publishing, setPublishing] = useState({});
-  const [showPassword, setShowPassword] = useState({});
-  const [passwordInput, setPasswordInput] = useState({});
-  const [expandedCard, setExpandedCard] = useState(null);
+  const [uiState, setUiState] = useState({
+    showPassword: {},
+    passwordInput: {},
+    expandedCard: null
+  });
+  
+  const { showPassword, passwordInput, expandedCard } = uiState;
   const { theme } = useTheme();
+
+  // Memoize filtered results to prevent unnecessary re-renders
+  const filteredResults = React.useMemo(() => results, [results]);
 
   // Animation variants for the result cards
   const cardVariants = {
@@ -30,65 +37,67 @@ const ResultPublishPanel = () => {
   
 
   const fetchResultsStatus = useCallback(async () => {
+    let isMounted = true;
     try {
       setIsLoading(true);
-      // Fetch admin results list via service
-      const serverItems = await getResultsList(); // [{ term, isPublished, publishedAt? }]
-      const byTerm = new Map((serverItems || []).map(item => [item.term, item]));
       
-      // Get all school exam terms
+      // Use Promise.all to fetch both results and stats in parallel
+      const [serverItems, statsPromises] = await Promise.all([
+        getResultsList(),
+        Promise.all((examTermsInTheSchool || []).map(term => 
+          getTermStats(term).catch(e => ({
+            term,
+            error: e.message,
+            stats: null
+          }))
+        ))
+      ]);
+
+      if (!isMounted) return;
+
+      const byTerm = new Map((serverItems || []).map(item => [item.term, item]));
       const termsToShow = examTermsInTheSchool || [];
       
-      // Normalize to show all school exam terms
-      const normalized = termsToShow.map(term => {
-        return byTerm.get(term) || { term, isPublished: false, publishedAt: null };
+      // Process all data in a single state update
+      const processedResults = termsToShow.map((term, index) => {
+        const serverItem = byTerm.get(term) || { term, isPublished: false, publishedAt: null };
+        const statsData = statsPromises[index];
+        
+        return {
+          ...serverItem,
+          stats: statsData?.stats ?? statsData ?? null,
+          className: 'All Classes',
+          error: statsData?.error
+        };
       });
 
-      // Fetch stats for each term in parallel and merge
-      const withStats = await Promise.all(
-        normalized.map(async (item) => {
-          try {
-            const statsData = await getTermStats(item.term);
-            const stats = statsData?.stats ?? statsData ?? null;
-            return { 
-              ...item, 
-              stats,
-              className: 'All Classes' // Since we're not filtering by class
-            };
-          } catch (e) {
-            console.error('Error fetching stats for term', item.term, e);
-            return { 
-              ...item, 
-              stats: null,
-              className: 'All Classes'
-            };
-          }
-        })
-      );
-
-      setResults(withStats);
+      setResults(processedResults);
     } catch (error) {
-      console.error('Error fetching results status:', error);
-      // toast.error('Failed to load results status');
+      console.error('Error in fetchResultsStatus:', error);
     } finally {
-      setIsLoading(false);
+      if (isMounted) {
+        setIsLoading(false);
+      }
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handlePublishToggle = async (term, currentStatus) => {
-    if (!term) return;
+    if (!term || publishing[term]) return;
     
     setPublishing(prev => ({ ...prev, [term]: true }));
     
     try {
       const newStatus = !currentStatus;
-      const password = passwordInput[term] || '';
+      const password = uiState.passwordInput[term] || '';
       
-      // Call the updatePublishStatus function from the results service
       const response = await updatePublishStatus(term, newStatus, password);
       
-      if (response.success) {
-        // Update the local state to reflect the change
+      if (response?.success) {
+        // Update results with a single state update
         setResults(prevResults => 
           prevResults.map(result => 
             result.term === term 
@@ -101,20 +110,19 @@ const ResultPublishPanel = () => {
           )
         );
         
-        // Clear the password input for this term
-        setPasswordInput(prev => {
-          const newInputs = { ...prev };
-          delete newInputs[term];
-          return newInputs;
-        });
-        
-        // Close the expanded card after successful publish/unpublish
-        setExpandedCard(null);
+        // Update UI state with a single update
+        setUiState(prev => ({
+          ...prev,
+          passwordInput: Object.fromEntries(
+            Object.entries(prev.passwordInput).filter(([t]) => t !== term)
+          ),
+          expandedCard: null
+        }));
       } else {
-        console.error('Error toggling publish status:', response);
+        console.error('Error toggling publish status:', response?.message || 'Unknown error');
       }
     } catch (error) {
-      console.error('Error toggling publish status:', error);
+      console.error('Error in handlePublishToggle:', error);
     } finally {
       setPublishing(prev => ({
         ...prev,
@@ -124,37 +132,70 @@ const ResultPublishPanel = () => {
   };
 
   const handleCardClick = (term, e) => {
-    // Don't toggle if the click was on a button or input
-    if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.closest('button, input')) {
+    if (e.target.closest('button, input, a, [role="button"]')) {
       return;
     }
-    setExpandedCard(expandedCard === term ? null : term);
+    setUiState(prev => ({
+      ...prev,
+      expandedCard: prev.expandedCard === term ? null : term
+    }));
   };
 
-  // Set up effects after all functions are defined
-  // Initial data loading
+  const handlePasswordChange = (term, value) => {
+    setUiState(prev => ({
+      ...prev,
+      passwordInput: {
+        ...prev.passwordInput,
+        [term]: value
+      }
+    }));
+  };
+
+  const togglePasswordVisibility = (term) => {
+    setUiState(prev => ({
+      ...prev,
+      showPassword: {
+        ...prev.showPassword,
+        [term]: !prev.showPassword[term]
+      }
+    }));
+  };
+
+  // Initial data loading with cleanup
   useEffect(() => {
+    let isMounted = true;
+    
     const fetchInitialData = async () => {
-      await fetchResultsStatus();
+      try {
+        await fetchResultsStatus();
+      } catch (error) {
+        console.error('Error in initial data fetch:', error);
+      }
     };
     
-    fetchInitialData();
+    if (isMounted) {
+      fetchInitialData();
+    }
+    
+    return () => {
+      isMounted = false;
+    };
   }, [fetchResultsStatus]);
+
+  // Memoize the loading spinner to prevent re-renders
+  const loadingSpinner = React.useMemo(() => (
+    <div className="flex items-center justify-center h-64">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-gray-600 dark:text-gray-400">Loading results...</p>
+      </div>
+    </div>
+  ), []);
 
   // Handle loading state
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading results...</p>
-        </div>
-      </div>
-    );
+    return loadingSpinner;
   }
-
-  // Use all results directly since we're not filtering anymore
-  const filteredResults = results;
 
   return (
     <div className="p-4 md:p-6">
@@ -192,7 +233,7 @@ const ResultPublishPanel = () => {
               animate="visible"
               variants={cardVariants}
               className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow ${
-                expandedCard === result.term ? 'ring-2 ring-indigo-500/20' : ''
+                uiState.expandedCard === result.term ? 'ring-2 ring-indigo-500/20' : ''
               }`}
               onClick={(e) => handleCardClick(result.term, e)}
             >
@@ -246,10 +287,13 @@ const ResultPublishPanel = () => {
                     className="ml-4 p-1.5 rounded-full text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setExpandedCard(expandedCard === result.term ? null : result.term);
+                      setUiState(prev => ({
+                        ...prev,
+                        expandedCard: prev.expandedCard === result.term ? null : result.term
+                      }));
                     }}
                   >
-                    {expandedCard === result.term ? (
+                    {uiState.expandedCard === result.term ? (
                       <FiChevronUp className="h-5 w-5" />
                     ) : (
                       <FiChevronDown className="h-5 w-5" />
@@ -259,7 +303,7 @@ const ResultPublishPanel = () => {
               </div>
 
               <AnimatePresence>
-                {expandedCard === result.term && (
+                {uiState.expandedCard === result.term && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
@@ -365,9 +409,12 @@ const ResultPublishPanel = () => {
                                     className="block w-full pr-10 py-2 border-0 bg-transparent text-gray-900 dark:text-white placeholder-gray-400 focus:ring-0 sm:text-sm"
                                     placeholder="••••••••"
                                     value={passwordInput[result.term] || ''}
-                                    onChange={(e) => setPasswordInput(prev => ({
+                                    onChange={(e) => setUiState(prev => ({
                                       ...prev,
-                                      [result.term]: e.target.value
+                                      passwordInput: {
+                                        ...prev.passwordInput,
+                                        [result.term]: e.target.value
+                                      }
                                     }))}
                                     onClick={(e) => e.stopPropagation()}
                                     autoComplete="current-password"
@@ -378,9 +425,12 @@ const ResultPublishPanel = () => {
                                       className="text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-400 focus:outline-none"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        setShowPassword(prev => ({
+                                        setUiState(prev => ({
                                           ...prev,
-                                          [result.term]: !prev[result.term]
+                                          showPassword: {
+                                            ...prev.showPassword,
+                                            [result.term]: !prev.showPassword[result.term]
+                                          }
                                         }));
                                       }}
                                       aria-label={showPassword[result.term] ? 'Hide password' : 'Show password'}

@@ -39,35 +39,79 @@ const RouteLoader = ({ children }) => {
   const location = useLocation();
   const { loading: authLoading } = useAuth();
 
-  // Show loading state for initial load or route changes
+  // Only show loading for path changes, not for search/hash changes
   useEffect(() => {
     setIsLoading(true);
-    const timer = setTimeout(() => setIsLoading(false), 300); // Small delay to prevent flash
+    const timer = setTimeout(() => setIsLoading(false), 100); // Reduced delay
     return () => clearTimeout(timer);
-  }, [location.key, authLoading]);
+  }, [location.pathname]); // Only run on pathname changes
 
-  return (
-    <>
-      {isLoading && <FullPageLoader />}
-      {children}
-    </>
-  );
+  if (isLoading || authLoading) {
+    return <FullPageLoader />;
+  }
+
+  return children;
+};
+
+// Error boundary component for catching navigation errors
+const ErrorBoundary = ({ children }) => {
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    const errorHandler = (error) => {
+      console.error('Navigation error:', error);
+      setHasError(true);
+    };
+
+    window.addEventListener('error', errorHandler);
+    return () => window.removeEventListener('error', errorHandler);
+  }, []);
+
+  if (hasError) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="p-8 bg-white rounded-lg shadow-md text-center">
+          <h2 className="text-2xl font-bold text-red-600 mb-4">Something went wrong</h2>
+          <p className="mb-4">There was an issue with page navigation. Please try again.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+          >
+            Reload Page
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return children;
 };
 
 // Protected Route Component - Only used for dashboard routes
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  useEffect(() => {
+    if (!loading && !user && !isNavigating) {
+      setIsNavigating(true);
+    }
+  }, [user, loading, isNavigating]);
 
   if (loading) {
     return <FullPageLoader />;
   }
 
-  if (!user) {
+  if (!user && isNavigating) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  return children || <Outlet />;
+  if (!user) {
+    return null; // or a loading state
+  }
+
+  return <ErrorBoundary>{children || <Outlet />}</ErrorBoundary>;
 };
 
 // Public Route Component - For public pages
@@ -117,14 +161,21 @@ const AppContent = () => {
             <Route path="attendance" element={<AttendancePanel />} />
             <Route path="academics" element={<AcademicsLayout />}>
               <Route index element={<Navigate to="exams" replace />} />
-              <Route path="exams" element={<ExamsPanel />} />
+              <Route path="exams" element={<ExamsPanel />}>
+                <Route path="*" element={<Navigate to="" replace />} />
+              </Route>
               <Route path="marks" element={<MarksPanel />} />
-              <Route path="result-publish" element={<ResultPublishPanel />} />
+              <Route path="results-publish">
+                <Route index element={<ResultPublishPanel />} />
+                <Route path="*" element={<Navigate to="" replace />} />
+              </Route>
+              <Route path="result-publish" element={<Navigate to="../results-publish" replace />} />
               <Route path="admit-cards" element={<AdmitCardPanel />} />
               <Route path="co-scholastic-grades" element={<CoScholasticGradesPanel />} />
               <Route path="marksheets">
                 <Route index element={<MarksheetsPanel />} />
                 <Route path="print" element={<MarksheetPrintPage />} />
+                <Route path="*" element={<Navigate to="" replace />} />
               </Route>
               <Route path="*" element={<Navigate to="exams" replace />} />
             </Route>
@@ -165,11 +216,13 @@ const App = () => {
   }
 
   return (
-    <AuthProvider>
-      <ThemeProvider>
-        <AppContent />
-      </ThemeProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <ThemeProvider>
+          <AppContent />
+        </ThemeProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 };
 

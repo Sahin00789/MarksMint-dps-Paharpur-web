@@ -1,31 +1,10 @@
 import api from './api';
 
 // Public endpoints
-export const getPublishedStatuses = async () => {
-  try {
-    const response = await api.get('/results/public/statuses');
-    const data = response?.data;
-    // Support both array and object payloads
-    const items = Array.isArray(data)
-      ? data
-      : Array.isArray(data?.items)
-        ? data.items
-        : Array.isArray(data?.data?.items)
-          ? data.data.items
-          : Array.isArray(data?.data)
-            ? data.data
-            : [];
-    return { success: true, data: items };
-  } catch (error) {
-    console.error('getPublishedStatuses error:', error);
-    const message = error?.response?.data?.message || error.message || 'Failed to load published statuses';
-    return { success: false, data: [], message };
-  }
-};
 
-export const getPublishedStatus = async (term) => {
+export const getPublishedStatusForPublic = async (term) => {
   try {
-    const response = await api.get(`/results/public/status/${encodeURIComponent(term)}`);
+    const response = await api.get(`/publicresults/status/term/${encodeURIComponent(term)}`);
     const payload = response?.data;
     const data = payload?.data ?? payload ?? null;
     return { success: true, data };
@@ -36,37 +15,66 @@ export const getPublishedStatus = async (term) => {
   }
 };
 
-// Protected endpoints (handled by api interceptor)
-export const getResultsList = async () => {
+
+// Admin endpoints
+
+
+export const getPublishedStatusForAdmin = async (term) => {
   try {
-    const response = await api.get('/results');
-    const data = response?.data;
-    const items = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : []);
-    return items;
+    const response = await api.get(`/publishresults/admin/term/${encodeURIComponent(term)}`);
+    const data = response?.data?.data ?? response?.data ?? null;
+    return { success: true, data };
   } catch (error) {
-    console.error('getResultsList error:', error);
-    return [];
+    console.error('getPublishedStatusForAdmin error:', error);
+    const message = error?.response?.data?.message || error.message || 'Failed to load admin publish status for term';
+    return { success: false, data: null, message };
   }
 };
 
-export const updatePublishStatus = async (term, isPublished, adminPassword) => {
+export const publishResults = async (term, classes = [], adminPassword, totalStudents) => {
   try {
-    const response = await api.post('/results', { term, isPublished, adminPassword, publishedAt: new Date().toISOString() });
+    const response = await api.post('/publishresults/publish', { term, classes, adminPassword, totalStudents });
     return { success: true, data: response?.data };
   } catch (error) {
-    console.error('updatePublishStatus error:', error);
-    const message = error?.response?.data?.message || error.message || 'Failed to update publish status';
-    // Throw so callers can present error feedback
+    console.error('publishResults error:', error);
+    const message = error?.response?.data?.message || error.message || 'Failed to publish results';
     throw new Error(message);
   }
 };
 
-export const getTermStats = async (term) => {
+export const unpublishResults = async (term, adminPassword) => {
   try {
-    const response = await api.get(`/results/stats/${encodeURIComponent(term)}`);
-    return response?.data ?? null;
+    const response = await api.post('/publishresults/unpublish', { term, adminPassword });
+    return { success: true, data: response?.data };
   } catch (error) {
-    console.error('getTermStats error:', error);
-    return null;
+    console.error('unpublishResults error:', error);
+    const message = error?.response?.data?.message || error.message || 'Failed to unpublish results';
+    throw new Error(message);
+  }
+};
+
+export const getResult = async (session, term, className, roll, dob) => {
+  try {
+    // Use the existing api instance which already handles public endpoints correctly
+    const response = await api.post('/publicresults/getresult', {
+      class: className,
+      roll,
+      dob,
+      session
+    }, {
+      params: {
+        term
+      }
+    });
+
+    if (response.data && response.data.success === false) {
+      throw new Error(response.data.message || 'Failed to fetch result');
+    }
+
+    return { success: true, data: response.data };
+  } catch (error) {
+    console.error('getResult error:', error);
+    const message = error?.response?.data?.message || error.message || 'Failed to fetch result';
+    return { success: false, data: null, message };
   }
 };

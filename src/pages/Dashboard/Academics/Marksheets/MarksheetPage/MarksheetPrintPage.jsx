@@ -2,8 +2,10 @@ import React, { useEffect, useRef, useState, Fragment } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { FaPrint, FaArrowLeft, FaUser, FaQrcode, FaStar, FaMapMarkerAlt } from 'react-icons/fa';
 import QRCode from 'qrcode-svg';
-import { schoolinfo } from '@/shared/schoolInformation';
 import { formatDate } from '@/utils/dateUtils';
+import { format } from 'date-fns';
+import { examTermsInTheSchool } from '@/shared/schoolInformation';
+import { schoolinfo } from '@/shared/schoolInformation';
 
 // Co-scholastic subjects and their labels
 const CO_SCHOLASTIC_SUBJECTS = [
@@ -13,17 +15,7 @@ const CO_SCHOLASTIC_SUBJECTS = [
   { key: 'discipline', label: 'Discipline' }
 ];
 
-// Grading scale for co-scholastic subjects
-const GRADE_SCALE = [
-  { range: [91, 100], grade: 'A1', description: 'Outstanding' },
-  { range: [81, 90], grade: 'A2', description: 'Excellent' },
-  { range: [71, 80], grade: 'B1', description: 'Good' },
-  { range: [61, 70], grade: 'B2', description: 'Very Good' },
-  { range: [51, 60], grade: 'C1', description: 'Fair' },
-  { range: [41, 50], grade: 'C2', description: 'Average' },
-  { range: [33, 40], grade: 'D', description: 'Below Average' },
-  { range: [0, 32], grade: 'E', description: 'Needs Improvement' }
-];
+
 
 // Add Google Fonts
 const googleFontsLink = document.createElement('link');
@@ -310,28 +302,34 @@ const buttonStyle = {
 };
 
 const MarksheetPrintPage = ({
-  student = {}, 
-  examResults = [], 
-  coScholastic = {},
-  attendanceConfig = {},
-  academicYear = String(new Date().getFullYear() + 1),
-  school = {}
+  processedStudent, // Single prop containing all required data
+  academicYear = '2025'
 }) => {
-  // Convert examResults to array if it's an object
-  const normalizedExamResults = Array.isArray(examResults) 
-    ? examResults 
-    : Object.entries(examResults).map(([key, value]) => ({
-        ...value,
-        subject: key,
-        subjectName: value.subjectName || key
-      }));
+  // Use examResults directly - no processing needed
+  const processedExamResults = processedStudent?.marks ? Object.entries(processedStudent.marks).map(([examTerm, examData]) => ({
+    term: examTerm,
+    subjectDetails: Object.entries(examData.subjectDetails).reduce((acc, [subjectName, subjectData]) => {
+      acc[subjectName] = {
+        total: subjectData.total,
+        max: subjectData.max,
+        percentage: subjectData.percentage,
+        grade: subjectData.grade,
+        evaluations: subjectData.evaluations
+      };
+      return acc;
+    }, {})
+  })) : [];
+
   const navigate = useNavigate();
   const printRef = useRef();
   const qrContainerRef = useRef(null);
   const [qrCodeSvg, setQrCodeSvg] = useState('');
-  
-  // Ensure student data exists
-  const studentData = student || {};
+
+  // Extract data from processedStudent
+  const studentData = processedStudent?.student || {};
+  const coScholastic = processedStudent?.coScholastic || {};
+  const attendanceConfig = processedStudent?.attendanceSummary || {};
+  const className = processedStudent?.student?.class || '';
   
   // School information
   const schoolInfo = {
@@ -347,14 +345,14 @@ const MarksheetPrintPage = ({
   
   // Generate QR code with student and exam info
   useEffect(() => {
-    if (!student || !qrContainerRef.current) return;
+    if (!studentData || !qrContainerRef.current) return;
     
     try {
       const qrData = JSON.stringify({
-        name: student.studentName || student.name || '',
-        roll: student.rollNumber || '',
-        class: student.Class || '',
-        admissionNo: student.admissionNo || ''
+        name: studentData.studentName || studentData.name || '',
+        roll: studentData.rollNumber || '',
+        class: studentData.Class || '',
+        admissionNo: studentData.admissionNo || ''
       });
       
       // Clear previous QR code
@@ -377,38 +375,7 @@ const MarksheetPrintPage = ({
     } catch (error) {
       console.error('Error generating QR code:', error);
     }
-  }, [student]);
-  
-  // Calculate total and percentage
-  const totalMarks = Array.isArray(examResults) ? 
-    examResults.reduce((sum, result) => sum + (parseFloat(result.obtainedMarks) || 0), 0) : 0;
-    
-  const maxMarks = Array.isArray(examResults) ? 
-    examResults.reduce((sum, result) => sum + (parseFloat(result.maxMarks) || 0), 0) : 0;
-    
-  const percentage = maxMarks > 0 ? Math.round((totalMarks / maxMarks) * 100) : 0;
-  
-  // Get grade from percentage
-  const getGrade = (percentage) => {
-    if (percentage === undefined || percentage === null) return 'N/A';
-    const gradeObj = GRADE_SCALE.find(
-      ({ range }) => percentage >= range[0] && percentage <= range[1]
-    );
-    return gradeObj ? gradeObj.grade : 'N/A';
-  };
-  
-  // Helper function to generate remarks based on percentage
-  const getRemarks = (percentage) => {
-    if (percentage >= 90) {
-      return 'Excellent performance! Keep up the good work and continue to challenge yourself.';
-    } else if (percentage >= 75) {
-      return 'Very good performance. With a little more effort, you can achieve even better results.';
-    } else if (percentage >= 50) {
-      return 'Satisfactory performance. Focus on your weak areas to improve your grades.';
-    } else {
-      return 'Needs improvement. Please work harder and seek help from your teachers if needed.';
-    }
-  };
+  }, [studentData]);
 
   const handlePrint = () => {
     window.print();
@@ -427,10 +394,11 @@ const MarksheetPrintPage = ({
       }, 1000); // Increased timeout to ensure all data is loaded
     }
   }, [location.search, studentData]);
-console.log("student data in marksheet print page", student);
+
+  console.log("student data in marksheet print page", studentData);
 
   if (!studentData || Object.keys(studentData).length === 0) {
-    console.error('No student data available:', { student, location });
+    console.error('No student data available:', { studentData, location });
     return (
       <div style={{
         display: 'flex',
@@ -488,40 +456,6 @@ console.log("student data in marksheet print page", student);
       </div>
     );
   }
-
-  // Generate QR code with student and exam info
-  useEffect(() => {
-    if (!student || !qrContainerRef.current) return;
-    
-    try {
-      const qrData = JSON.stringify({
-        name: student.studentName || student.name || '',
-        roll: student.rollNumber || '',
-        class: student.Class || '',
-        admissionNo: student.admissionNo || ''
-      });
-      
-      // Clear previous QR code
-      qrContainerRef.current.innerHTML = '';
-      
-      // Generate and render QR code
-      const qr = new QRCode({
-        content: qrData,
-        padding: 1,
-        width: 100,
-        height: 100,
-        color: '#000000',
-        background: '#ffffff',
-        ecl: 'M'
-      });
-      
-      // Set the QR code SVG to the container
-      qrContainerRef.current.innerHTML = qr.svg();
-      setQrCodeSvg(qr.svg());
-    } catch (error) {
-      console.error('Error generating QR code:', error);
-    }
-  }, [student]);
 
   return (
     <div className="print-page" style={{
@@ -604,181 +538,173 @@ console.log("student data in marksheet print page", student);
             padding: '8px 12px',
             breakInside: 'avoid',
             pageBreakInside: 'avoid',
-            boxSizing: 'border-box'
-          }}>
-          {/* School Info */}
-          <div style={{
+            boxSizing: 'border-box',
             display: 'flex',
-            flexDirection: 'column',
-            gap: '8px',
-            marginBottom: '12px'
+            gap: '12px',
+            alignItems: 'flex-start'
           }}>
-            {/* School Name */}
+            {/* School Information */}
             <div style={{
-              textAlign: 'center',
-              marginBottom: '4px'
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+              marginBottom: '12px'
             }}>
+              {/* School Name */}
               <div style={{
-                position: 'relative',
-                width: '100%',
-                marginBottom: '0.25rem',
-                textAlign: 'center'
-              }}>
-              <h1 style={{
-                fontSize: '24px',
-                color: '#1e40af',
-                fontWeight: 700,
-                letterSpacing: '-0.01em',
-                display: 'block',
                 textAlign: 'center',
-                position: 'relative',
+                marginBottom: '4px'
+              }}>
+                <div style={{
+                  position: 'relative',
+                  width: '100%',
+                  marginBottom: '0.25rem',
+                  textAlign: 'center'
+                }}>
+                <h1 style={{
+                  fontSize: '24px',
+                  color: '#1e40af',
+                  fontWeight: 700,
+                  letterSpacing: '-0.01em',
+                  display: 'block',
+                  textAlign: 'center',
+                  position: 'relative',
+                  lineHeight: '1.2'
+                }}>
+                    {schoolInfo.name}
+                    {schoolInfo.branch && (
+                      <span style={{
+                        marginLeft: '12px',
+                        position: 'relative',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '2px 12px',
+                        borderRadius: '20px',
+                        fontSize: '16px',
+                        fontWeight: 600,
+                        color: '#ffffff',
+                        background: 'linear-gradient(135deg, #4CAF50, #2196F3)',
+                        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                        transform: 'translateY(-2px)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.8px',
+                        lineHeight: 1.4
+                      }}>
+                        {schoolInfo.branch}
+                      </span>
+                    )}
+                  </h1>
+                </div>
+              </div>
+
+              <div style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                justifyContent: 'center',
+                gap: '6px 12px',
+                margin: '4px 0',
+                fontSize: '11px',
+                color: '#4b5563',
                 lineHeight: '1.2'
               }}>
-                  {schoolInfo.name}
-                  {schoolInfo.branch && (
-                    <span style={{
-                      marginLeft: '12px',
-                      position: 'relative',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: '2px 12px',
-                      borderRadius: '20px',
-                      fontSize: '16px',
-                      fontWeight: 600,
-                      color: '#ffffff',
-                      background: 'linear-gradient(135deg, #4CAF50, #2196F3)',
-                      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-                      transform: 'translateY(-2px)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.8px',
-                      lineHeight: 1.4
-                    }}>
-                      {schoolInfo.branch}
-                    </span>
-                  )}
-                  <div style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    width: '80px',
-                    height: '3px',
-                    background: 'linear-gradient(90deg, #4CAF50, #2196F3)',
-                    borderRadius: '3px'
-                  }}></div>
-                </h1>
-              </div>
-            </div>
-            
-            <div style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              justifyContent: 'center',
-              gap: '6px 12px',
-              margin: '4px 0',
-              fontSize: '11px',
-              color: '#4b5563',
-              lineHeight: '1.2'
-            }}>
-              {schoolInfo.regNumber && (
+                {schoolInfo.regNumber && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ fontWeight: '500' }}>Reg. No:</span>
+                    <span>{schoolInfo.regNumber}</span>
+                  </div>
+                )}
+                {schoolInfo.estd && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ fontWeight: '500' }}>Established:</span>
+                    <span>{schoolInfo.estd}</span>
+                  </div>
+                )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span style={{ fontWeight: '500' }}>Reg. No:</span>
-                  <span>{schoolInfo.regNumber}</span>
+                  <span style={{ fontWeight: '500' }}>Run by:</span>
+                  <span>{schoolInfo.runBy}</span>
                 </div>
-              )}
-              {schoolInfo.estd && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span style={{ fontWeight: '500' }}>Established:</span>
-                  <span>{schoolInfo.estd}</span>
-                </div>
-              )}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span style={{ fontWeight: '500' }}>Run by:</span>
-                <span>{schoolInfo.runBy}</span>
               </div>
+
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '4px',
+                color: '#4b5563',
+                fontSize: '11px',
+                margin: '2px 0',
+                flexWrap: 'wrap',
+                textAlign: 'center'
+              }}>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+                <span>{schoolInfo.address}</span>
+              </div>
+
             </div>
-            
+
+            {/* QR Code */}
             <div style={{
+              width: '120px',
+              height: '120px',
+              backgroundColor: 'white',
+              padding: '8px',
+              borderRadius: '8px',
+              border: '2px solid #e5e7eb',
+              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '4px',
-              color: '#4b5563',
-              fontSize: '11px',
-              margin: '2px 0',
-              flexWrap: 'wrap',
-              textAlign: 'center'
+              flexShrink: 0
             }}>
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                width="12" 
-                height="12" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                strokeWidth="2" 
-                strokeLinecap="round" 
-                strokeLinejoin="round"
-              >
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                <circle cx="12" cy="10" r="3"></circle>
-              </svg>
-              <span>{schoolInfo.address}</span>
+              <div style={{
+                width: '90px',
+                height: '90px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'white',
+                borderRadius: '4px'
+              }}>
+                <div
+                  ref={qrContainerRef}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                ></div>
+              </div>
+              <div style={{
+                fontSize: '8px',
+                color: '#4b5563',
+                textAlign: 'center',
+                marginTop: '4px',
+                lineHeight: '1.2'
+              }}>
+                Scan to verify
+              </div>
             </div>
-            
           </div>
-        </div>
       </div>
 
-      {/* QR Code Section */}
-      <div style={{
-        position: 'absolute',
-        top: '-10px',
-        right: '20px',
-        zIndex: 10,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '4px',
-        backgroundColor: 'white',
-        padding: '8px',
-        borderRadius: '8px',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-      }}>
-        <div style={{
-          width: '100px',
-          height: '100px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: 'white',
-          padding: '4px',
-          borderRadius: '4px',
-          border: '1px solid #e2e8f0'
-        }}>
-          <div 
-            ref={qrContainerRef}
-            style={{
-              width: '100%',
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          ></div>
-        </div>
-        <div style={{
-          fontSize: '10px',
-          color: '#4b5563',
-          textAlign: 'center',
-          maxWidth: '100px',
-          lineHeight: '1.2'
-        }}>
-          Scan to verify
-        </div>
-      </div>
-      
       {/* Report Card Header */}
       <div style={{
           textAlign: 'center',
@@ -821,7 +747,7 @@ console.log("student data in marksheet print page", student);
               <line x1="8" y1="2" x2="8" y2="6"></line>
               <line x1="3" y1="10" x2="21" y2="10"></line>
             </svg>
-            {academicYear || student.session || String(new Date().getFullYear() + 1)}
+            {academicYear || String(new Date().getFullYear() + 1)}
           </span>
         </h2>
       </div>
@@ -859,11 +785,11 @@ console.log("student data in marksheet print page", student);
             justifyContent: 'center',
             position: 'relative'
           }}>
-            {student.photoUrl ? (
+            {studentData.photoUrl ? (
               <>
                 <img 
-                  src={student.photoUrl}
-                  alt={student.studentName || 'Student'}
+                  src={studentData.photoUrl}
+                  alt={studentData.studentName || 'Student'}
                   style={{
                     width: '100%',
                     height: '100%',
@@ -874,12 +800,12 @@ console.log("student data in marksheet print page", student);
                   onError={(e) => {
                     e.target.onerror = null;
                     e.target.style.display = 'none';
-                    const fallback = document.getElementById(`photo-fallback-${student._id}`);
+                    const fallback = document.getElementById(`photo-fallback-${studentData._id}`);
                     if (fallback) fallback.style.display = 'flex';
                   }}
                 />
                 <div 
-                  id={`photo-fallback-${student._id}`}
+                  id={`photo-fallback-${studentData._id}`}
                   style={{
                     display: 'none',
                     position: 'absolute',
@@ -898,7 +824,7 @@ console.log("student data in marksheet print page", student);
                   }}
                 >
                   <FaUser size={28} style={{ marginBottom: '6px' }} />
-                  {student.studentName ? student.studentName.charAt(0).toUpperCase() : 'N'}
+                  {studentData.studentName ? studentData.studentName.charAt(0).toUpperCase() : 'N'}
                 </div>
               </>
             ) : (
@@ -915,23 +841,29 @@ console.log("student data in marksheet print page", student);
                 fontSize: '12px'
               }}>
                 <FaUser size={28} style={{ marginBottom: '6px' }} />
-                {student.studentName ? student.studentName.charAt(0).toUpperCase() : 'N'}
+                {studentData.studentName ? studentData.studentName.charAt(0).toUpperCase() : 'N'}
               </div>
             )}
           </div>
         </div>
         
-        {/* Student Details - Optimized Grid Layout */}
+        {/* Student Details - Two Row Layout */}
         <div style={{
           flex: '1',
           minWidth: '0',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-          gap: '8px 10px',
-          alignContent: 'flex-start',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
           fontSize: '13px'
         }}>
-            {/* Column 1 */}
+          {/* Upper Row - Student Name, Class, Roll */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+            gap: '8px 10px',
+            alignItems: 'stretch'
+          }}>
+            {/* Student Name */}
             <div>
               <div style={{
                 fontSize: '11px',
@@ -957,11 +889,66 @@ console.log("student data in marksheet print page", student);
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap'
               }}>
-                {student.studentName || student.name || 'N/A'}
+                {studentData.studentName || studentData.name || 'N/A'}
               </div>
             </div>
-            
-            {/* Column 2 */}
+
+            {/* Class */}
+            <div>
+              <div style={{
+                fontSize: '12px',
+                color: '#64748b',
+                marginBottom: '2px',
+                fontWeight: '500'
+              }}>Class</div>
+              <div style={{
+                fontSize: '14px',
+                color: '#1e293b',
+                padding: '8px 12px',
+                backgroundColor: '#fff',
+                borderRadius: '6px',
+                border: '1px solid #e2e8f0',
+                minHeight: '38px',
+                display: 'flex',
+                alignItems: 'center'
+              }}>
+                {studentData.Class || 'N/A'}
+              </div>
+            </div>
+
+            {/* Roll Number */}
+            <div>
+              <div style={{
+                fontSize: '12px',
+                color: '#64748b',
+                marginBottom: '2px',
+                fontWeight: '500'
+              }}>Roll Number</div>
+              <div style={{
+                fontSize: '14px',
+                color: '#1e293b',
+                padding: '8px 12px',
+                backgroundColor: '#fff',
+                borderRadius: '6px',
+                border: '1px solid #e2e8f0',
+                minHeight: '38px',
+                display: 'flex',
+                alignItems: 'center',
+                fontWeight: '600'
+              }}>
+                {studentData.rollNumber || studentData.rollNo || 'N/A'}
+              </div>
+            </div>
+          </div>
+
+          {/* Lower Row - Father's Name, DOB, Address */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+            gap: '8px 10px',
+            alignItems: 'stretch'
+          }}>
+            {/* Father's Name */}
             <div>
               <div style={{
                 fontSize: '11px',
@@ -986,11 +973,11 @@ console.log("student data in marksheet print page", student);
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap'
               }}>
-                {student.fatherName || 'N/A'}
+                {studentData.fatherName || 'N/A'}
               </div>
             </div>
-            
-            {/* Column 3 - Date of Birth */}
+
+            {/* Date of Birth */}
             <div>
               <div style={{
                 fontSize: '11px',
@@ -1013,59 +1000,12 @@ console.log("student data in marksheet print page", student);
                 alignItems: 'center',
                 whiteSpace: 'nowrap'
               }}>
-                {student.dob ? new Date(student.dob).toLocaleDateString('en-IN') : 'N/A'}
+                {studentData.dob ? format(new Date(studentData.dob), 'dd-MMM-yyyy') : 'N/A'}
               </div>
             </div>
-            
-            {/* Row 2 - Class, Roll Number, and Address in one row */}
-            <div style={{ gridColumn: '1 / 2' }}>
-              <div style={{
-                fontSize: '12px',
-                color: '#64748b',
-                marginBottom: '2px',
-                fontWeight: '500'
-              }}>Class</div>
-              <div style={{
-                fontSize: '14px',
-                color: '#1e293b',
-                padding: '8px 12px',
-                backgroundColor: '#fff',
-                borderRadius: '6px',
-                border: '1px solid #e2e8f0',
-                minHeight: '38px',
-                display: 'flex',
-                alignItems: 'center'
-              }}>
-                {student.Class || 'N/A'}
-              </div>
-            </div>
-            
-            {/* Roll Number */}
-            <div style={{ gridColumn: '2 / 3' }}>
-              <div style={{
-                fontSize: '12px',
-                color: '#64748b',
-                marginBottom: '2px',
-                fontWeight: '500'
-              }}>Roll Number</div>
-              <div style={{
-                fontSize: '14px',
-                color: '#1e293b',
-                padding: '8px 12px',
-                backgroundColor: '#fff',
-                borderRadius: '6px',
-                border: '1px solid #e2e8f0',
-                minHeight: '38px',
-                display: 'flex',
-                alignItems: 'center',
-                fontWeight: '600'
-              }}>
-                {student.rollNumber || student.rollNo || 'N/A'}
-              </div>
-            </div>
-            
+
             {/* Address */}
-            <div style={{ gridColumn: '3 / 4' }}>
+            <div>
               <div style={{
                 fontSize: '12px',
                 color: '#64748b',
@@ -1083,10 +1023,11 @@ console.log("student data in marksheet print page", student);
                 display: 'flex',
                 alignItems: 'center'
               }}>
-                {student.address || 'N/A'}
+                {studentData.address || 'N/A'}
               </div>
             </div>
           </div>
+        </div>
         </div>
 
         {/* Scholastic Area */}
@@ -1121,7 +1062,7 @@ console.log("student data in marksheet print page", student);
             }}>
               <thead>
                 <tr>
-                  <th style={{
+                  <th rowSpan="2" style={{
                     padding: '12px',
                     textAlign: 'left',
                     backgroundColor: '#f8fafc',
@@ -1129,56 +1070,33 @@ console.log("student data in marksheet print page", student);
                     fontWeight: '600',
                     color: '#1e293b',
                     whiteSpace: 'nowrap',
-                    minWidth: '150px'
+                    minWidth: '150px',
+                    width: '25%'
                   }}>Subject</th>
-                  
-                  {examResults.length > 0 && examResults[0].evaluations ? (
-                    examResults[0].evaluations.map((evalItem, idx) => (
-                      <th key={idx} style={{
+
+                  {/* Exam Terms from actual data */}
+                  {processedExamResults.map((exam, examIndex) => {
+                    const evaluationTypes = exam.subjectDetails ?
+                      Object.values(exam.subjectDetails).find(subject => subject.evaluations)?.evaluations?.map(e => e.type) || ['Written'] :
+                      ['Written'];
+
+                    return (
+                      <th key={exam.term || examIndex} colSpan={evaluationTypes.length * 2} style={{
                         padding: '12px',
                         textAlign: 'center',
-                        backgroundColor: '#f8fafc',
-                        borderBottom: '2px solid #e2e8f0',
-                        fontWeight: '600',
-                        color: '#1e293b',
+                        backgroundColor: '#f1f5f9',
+                        borderBottom: '1px solid #e2e8f0',
+                        fontWeight: '700',
+                        color: '#1e40af',
+                        fontSize: '14px',
                         whiteSpace: 'nowrap'
                       }}>
-                        {evalItem.type}
-                        <div style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          marginTop: '4px',
-                          fontSize: '11px',
-                          fontWeight: 'normal'
-                        }}>
-                          <span style={{ flex: 1, textAlign: 'center' }}>M.O.</span>
-                          <span style={{ flex: 1, textAlign: 'center' }}>F.M.</span>
-                        </div>
+                        {exam.term || `Exam ${examIndex + 1}`}
                       </th>
-                    ))
-                  ) : (
-                    <th style={{
-                      padding: '12px',
-                      textAlign: 'center',
-                      backgroundColor: '#f8fafc',
-                      borderBottom: '2px solid #e2e8f0',
-                      fontWeight: '600',
-                      color: '#1e293b',
-                      whiteSpace: 'nowrap'
-                    }}>
-                      <div style={{
-                        fontWeight: '600',
-                        marginBottom: '4px'
-                      }}>Marks</div>
-                      <div style={{
-                        fontSize: '11px',
-                        color: '#64748b',
-                        fontWeight: 'normal'
-                      }}>(Max: {examResults[0]?.maxMarks || 100})</div>
-                    </th>
-                  )}
-                  
-                  <th style={{
+                    );
+                  })}
+
+                  <th rowSpan="2" colSpan="2" style={{
                     padding: '12px',
                     textAlign: 'center',
                     backgroundColor: '#f8fafc',
@@ -1188,18 +1106,31 @@ console.log("student data in marksheet print page", student);
                     whiteSpace: 'nowrap',
                     minWidth: '80px'
                   }}>
+                    Total
                     <div style={{
-                      fontWeight: '600',
-                      marginBottom: '4px'
-                    }}>Total</div>
-                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      marginTop: '4px',
                       fontSize: '11px',
-                      color: '#64748b',
                       fontWeight: 'normal'
-                    }}>(Max: {maxMarks})</div>
+                    }}>
+                      <span style={{ flex: 1, textAlign: 'center' }}>M.O.</span>
+                      <span style={{ flex: 1, textAlign: 'center' }}>F.M.</span>
+                    </div>
                   </th>
-                  
-                  <th style={{
+
+                  <th rowSpan="2" style={{
+                    padding: '12px',
+                    textAlign: 'center',
+                    backgroundColor: '#f8fafc',
+                    borderBottom: '2px solid #e2e8f0',
+                    fontWeight: '600',
+                    color: '#1e293b',
+                    whiteSpace: 'nowrap',
+                    minWidth: '80px'
+                  }}>Percentage</th>
+
+                  <th rowSpan="2" style={{
                     padding: '12px',
                     textAlign: 'center',
                     backgroundColor: '#f8fafc',
@@ -1210,69 +1141,114 @@ console.log("student data in marksheet print page", student);
                     minWidth: '80px'
                   }}>Grade</th>
                 </tr>
+
+                <tr>
+                  {/* Sub-columns for each exam term */}
+                  {processedExamResults.map((exam, examIndex) => {
+                    const evaluationTypes = exam.subjectDetails ?
+                      Object.values(exam.subjectDetails).find(subject => subject.evaluations)?.evaluations?.map(e => e.type) || ['Written'] :
+                      ['Written'];
+
+                    return (
+                      <React.Fragment key={`exam-sub-${examIndex}`}>
+                        {evaluationTypes.map((evalType, idx) => (
+                          <th key={`${exam.term || examIndex}-${evalType}`} colSpan="2" style={{
+                            padding: '8px 12px',
+                            textAlign: 'center',
+                            backgroundColor: '#f8fafc',
+                            borderBottom: '2px solid #e2e8f0',
+                            fontWeight: '600',
+                            color: '#1e293b',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {evalType}
+                            <div style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              marginTop: '2px',
+                              fontSize: '10px',
+                              fontWeight: 'normal',
+                              color: '#64748b'
+                            }}>
+                              <span style={{ flex: 1, textAlign: 'center' }}>M.O.</span>
+                              <span style={{ flex: 1, textAlign: 'center' }}>F.M.</span>
+                            </div>
+                          </th>
+                        ))}
+                      </React.Fragment>
+                    );
+                  })}
+                </tr>
               </thead>
-              
+
               <tbody>
-                {normalizedExamResults.map((subject, index) => {
-                  const subjectTotal = subject.evaluations ? 
-                    subject.evaluations.reduce((sum, evalItem) => sum + (parseFloat(evalItem.obtainedMarks) || 0), 0) :
-                    parseFloat(subject.obtainedMarks) || 0;
-                  
-                  const subjectMaxMarks = subject.evaluations ?
-                    subject.evaluations.reduce((sum, evalItem) => sum + (parseFloat(evalItem.maxMarks) || 0), 0) :
-                    parseFloat(subject.maxMarks) || 100;
-                  
+                {processedExamResults.length > 0 && Object.keys(processedExamResults[0].subjectDetails).map((subjectName, index) => {
+                  const subjectData = processedExamResults[0].subjectDetails[subjectName];
+                  const subjectTotal = processedExamResults.reduce((sum, exam) => {
+                    return sum + (exam.subjectDetails[subjectName]?.total || 0);
+                  }, 0);
+
+                  const subjectMaxMarks = processedExamResults.reduce((sum, exam) => {
+                    return sum + (exam.subjectDetails[subjectName]?.max || 0);
+                  }, 0);
+
                   const subjectPercentage = subjectMaxMarks > 0 ? (subjectTotal / subjectMaxMarks) * 100 : 0;
-                  const grade = getGrade(subjectPercentage);
-                  
+                  const grade = subjectData.grade; // Use pre-calculated grade from processed data
+
                   return (
-                    <tr 
-                      key={index} 
-                      style={{
-                        backgroundColor: index % 2 === 0 ? '#fff' : '#f8fafc',
-                        borderBottom: '1px solid #f1f5f9',
-                        '&:hover': {
-                          backgroundColor: '#f1f5f9'
-                        }
-                      }}
-                    >
+                    <tr key={subjectName} style={{
+                      backgroundColor: index % 2 === 0 ? '#fff' : '#f8fafc',
+                      borderBottom: '1px solid #f1f5f9'
+                    }}>
                       <td style={{
                         padding: '12px',
+                        textAlign: 'left',
                         fontWeight: '500',
                         color: '#1e293b',
                         borderBottom: '1px solid #f1f5f9',
                         whiteSpace: 'nowrap'
-                      }}>{subject.subject || `Subject ${index + 1}`}</td>
-                      
-                      {subject.evaluations ? (
-                        subject.evaluations.map((evalItem, idx) => (
-                          <td 
-                            key={idx} 
-                            style={{
-                              padding: '10px 12px',
-                              textAlign: 'center',
-                              borderBottom: '1px solid #f1f5f9',
-                              color: evalItem.obtainedMarks !== undefined ? '#1e293b' : '#94a3b8',
-                              fontWeight: evalItem.obtainedMarks !== undefined ? '500' : 'normal',
-                              whiteSpace: 'nowrap'
-                            }}
-                          >
-                            {evalItem.obtainedMarks !== undefined ? evalItem.obtainedMarks : '-'}
-                          </td>
-                        ))
-                      ) : (
-                        <td style={{
-                          padding: '10px 12px',
-                          textAlign: 'center',
-                          borderBottom: '1px solid #f1f5f9',
-                          color: subject.obtainedMarks !== undefined ? '#1e293b' : '#94a3b8',
-                          fontWeight: subject.obtainedMarks !== undefined ? '500' : 'normal',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          {subject.obtainedMarks !== undefined ? subject.obtainedMarks : '-'}
-                        </td>
-                      )}
-                      
+                      }}>
+                        {subjectName}
+                      </td>
+
+                      {/* Data for each exam term */}
+                      {processedExamResults.map((exam, examIndex) => {
+                        const examSubjectData = exam.subjectDetails[subjectName];
+                        const evaluationTypes = examSubjectData?.evaluations?.map(e => e.type) || ['Written'];
+
+                        return (
+                          <React.Fragment key={`exam-data-${examIndex}`}>
+                            {evaluationTypes.map((evalType, idx) => {
+                              const evaluation = examSubjectData?.evaluations?.find(e => e.type?.toLowerCase() === evalType.toLowerCase());
+                              return (
+                                <React.Fragment key={`${subjectName}-${exam.term}-${evalType}-${idx}`}>
+                                  <td style={{
+                                    padding: '10px 12px',
+                                    textAlign: 'center',
+                                    borderBottom: '1px solid #f1f5f9',
+                                    color: evaluation?.marks !== undefined ? '#1e293b' : '#94a3b8',
+                                    fontWeight: evaluation?.marks !== undefined ? '500' : 'normal',
+                                    whiteSpace: 'nowrap'
+                                  }}>
+                                    {evaluation?.marks !== undefined ? evaluation.marks : '0'}
+                                  </td>
+                                  <td style={{
+                                    padding: '10px 12px',
+                                    textAlign: 'center',
+                                    borderBottom: '1px solid #f1f5f9',
+                                    color: evaluation?.maxMarks !== undefined ? '#1e293b' : '#94a3b8',
+                                    fontWeight: evaluation?.maxMarks !== undefined ? '500' : 'normal',
+                                    whiteSpace: 'nowrap'
+                                  }}>
+                                    {evaluation?.maxMarks !== undefined ? evaluation.maxMarks : '0'}
+                                  </td>
+                                </React.Fragment>
+                              );
+                            })}
+                          </React.Fragment>
+                        );
+                      })}
+
                       <td style={{
                         padding: '10px 12px',
                         textAlign: 'center',
@@ -1281,9 +1257,18 @@ console.log("student data in marksheet print page", student);
                         color: '#1e293b',
                         whiteSpace: 'nowrap'
                       }}>
-                        {subjectTotal.toFixed(2)}
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.5rem'
+                        }}>
+                          <span style={{ fontWeight: 600 }}>{subjectTotal.toFixed(2)}</span>
+                          <span style={{ color: '#9ca3af' }}>/</span>
+                          <span style={{ color: '#6b7280', fontSize: '0.95em' }}>{subjectMaxMarks}</span>
+                        </div>
                       </td>
-                      
+
                       <td style={{
                         padding: '10px 12px',
                         textAlign: 'center',
@@ -1323,7 +1308,7 @@ console.log("student data in marksheet print page", student);
                     </tr>
                   );
                 })}
-                
+
                 {/* Total Row */}
                 <tr style={{
                   backgroundColor: '#f1f5ff',
@@ -1336,46 +1321,19 @@ console.log("student data in marksheet print page", student);
                     color: '#1e40af',
                     whiteSpace: 'nowrap'
                   }}>Total</td>
-                  
-                  {examResults.length > 0 && examResults[0].evaluations && (
-                    examResults[0].evaluations.map((_, idx) => {
-                      const evalTotal = examResults.reduce((sum, subject) => {
-                        const evalItem = subject.evaluations?.[idx];
-                        return sum + (evalItem ? (parseFloat(evalItem.obtainedMarks) || 0) : 0);
-                      }, 0);
-                      
-                      const evalMax = examResults.reduce((sum, subject) => {
-                        const evalItem = subject.evaluations?.[idx];
-                        return sum + (evalItem ? (parseFloat(evalItem.maxMarks) || 0) : 0);
-                      }, 0);
-                      
-                      return (
-                        <td 
-                          key={`total-${idx}`} 
-                          style={{
-                            padding: '10px 12px',
-                            textAlign: 'center',
-                            whiteSpace: 'nowrap'
-                          }}
-                        >
-                          <div style={{
-                            fontWeight: '600',
-                            color: '#1e40af'
-                          }}>
-                            {evalTotal.toFixed(2)}
-                          </div>
-                          <div style={{
-                            fontSize: '11px',
-                            color: '#64748b',
-                            fontWeight: 'normal'
-                          }}>
-                            ({evalMax})
-                          </div>
-                        </td>
-                      );
-                    })
-                  )}
-                  
+
+                  {/* Empty cells for each exam term's marks and max marks */}
+                  {processedExamResults.flatMap((exam, examIndex) => {
+                    const evaluationTypes = exam.subjectDetails ?
+                      Object.values(exam.subjectDetails).find(s => s.evaluations)?.evaluations?.map(e => e.type) || ['Written'] :
+                      ['Written'];
+                    
+                    return Array(evaluationTypes.length * 2).fill().map((_, idx) => (
+                      <td key={`empty-${examIndex}-${idx}`} style={{ padding: '10px 12px' }}></td>
+                    ));
+                  })}
+
+                  {/* Total Marks and Grade */}
                   <td style={{
                     padding: '10px 12px',
                     textAlign: 'center',
@@ -1385,17 +1343,17 @@ console.log("student data in marksheet print page", student);
                       fontWeight: '600',
                       color: '#1e40af'
                     }}>
-                      {totalMarks.toFixed(2)}
+                      {processedStudent?.overallSummary?.obtainedMarks?.toFixed(2) || '0.00'}
                     </div>
                     <div style={{
                       fontSize: '11px',
                       color: '#64748b',
                       fontWeight: 'normal'
                     }}>
-                      ({maxMarks})
+                      ({processedStudent?.overallSummary?.totalMarks || '0'})
                     </div>
                   </td>
-                  
+
                   <td style={{
                     padding: '10px 12px',
                     textAlign: 'center',
@@ -1410,19 +1368,24 @@ console.log("student data in marksheet print page", student);
                       backgroundColor: '#dbeafe',
                       color: '#1e40af'
                     }}>
-                      {getGrade(percentage)}
+                      {processedStudent?.overallSummary?.grade || 'N/A'}
                     </span>
                   </td>
                 </tr>
-                
+
                 {/* Percentage Row */}
                 <tr style={{
                   backgroundColor: '#eff6ff',
                   fontWeight: '600',
                   borderBottom: '2px solid #e2e8f0'
                 }}>
-                  <td 
-                    colSpan={(examResults[0]?.evaluations?.length || 1) + 1} 
+                  <td
+                    colSpan={1 + (processedExamResults.reduce((total, exam) => {
+                      const evaluationTypes = exam.subjectDetails ?
+                        Object.values(exam.subjectDetails).find(s => s.evaluations)?.evaluations?.map(e => e.type) || ['Written'] :
+                        ['Written'];
+                      return total + (evaluationTypes.length * 2);
+                    }, 0)) + 2}
                     style={{
                       padding: '12px',
                       textAlign: 'right',
@@ -1432,9 +1395,9 @@ console.log("student data in marksheet print page", student);
                   >
                     Percentage:
                   </td>
-                  
-                  <td 
-                    colSpan="2" 
+
+                  <td
+                    colSpan="2"
                     style={{
                       padding: '12px',
                       textAlign: 'center',
@@ -1477,8 +1440,7 @@ console.log("student data in marksheet print page", student);
             alignItems: 'center'
           }}>
             {CO_SCHOLASTIC_SUBJECTS.map((subject, index) => {
-              const grade = coScholastic[subject.key] || student[subject.key] || 'N/A';
-              const gradeInfo = GRADE_SCALE.find(g => g.grade === grade) || {};
+              const grade = coScholastic[subject.key] || 'N/A';
               
               return (
                 <div 
@@ -1521,106 +1483,6 @@ console.log("student data in marksheet print page", student);
                 </div>
               );
             })}
-          </div>
-        </div>
-
-        {/* Remarks */}
-        <div style={{
-          marginBottom: '30px',
-          backgroundColor: '#fff',
-          borderRadius: '8px',
-          padding: '20px',
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)'
-        }}>
-          <div style={{
-            marginBottom: '20px'
-          }}>
-            <h4 style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#1e293b',
-              marginBottom: '10px'
-            }}>Class Teacher's Remarks:</h4>
-            
-            <div style={{
-              minHeight: '80px',
-              border: '1px solid #e2e8f0',
-              borderRadius: '6px',
-              padding: '12px',
-              backgroundColor: '#f8fafc',
-              fontSize: '14px',
-              lineHeight: '1.5',
-              color: '#334155'
-            }}>
-              {getRemarks(percentage)}
-            </div>
-          </div>
-          
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            marginTop: '30px',
-            paddingTop: '20px',
-            borderTop: '1px dashed #e2e8f0'
-          }}>
-            <div style={{
-              textAlign: 'center',
-              flex: '1',
-              maxWidth: '200px'
-            }}>
-              <div style={{
-                height: '1px',
-                backgroundColor: '#94a3b8',
-                marginBottom: '8px',
-                position: 'relative'
-              }}>
-                <div style={{
-                  content: '""',
-                  position: 'absolute',
-                  bottom: '-4px',
-                  left: 0,
-                  right: 0,
-                  height: '1px',
-                  backgroundColor: '#94a3b8'
-                }} />
-              </div>
-              <p style={{
-                margin: 0,
-                fontSize: '13px',
-                color: '#475569',
-                fontWeight: '500'
-              }}>Class Teacher</p>
-            </div>
-            
-            <div style={{
-              textAlign: 'center',
-              flex: '1',
-              maxWidth: '200px'
-            }}>
-              <div style={{
-                height: '1px',
-                backgroundColor: '#94a3b8',
-                marginBottom: '8px',
-                position: 'relative'
-              }}>
-                <div style={{
-                  content: '""',
-                  position: 'absolute',
-                  bottom: '-4px',
-                  left: 0,
-                  right: 0,
-                  height: '1px',
-                  backgroundColor: '#94a3b8'
-                }} />
-              </div>
-              <p style={{
-                margin: 0,
-                fontSize: '13px',
-                color: '#475569',
-                fontWeight: '500'
-              }}>Principal</p>
-            </div>
           </div>
         </div>
       </div>

@@ -25,25 +25,9 @@ import api from '../services/api';
 import { toast } from 'react-toastify';
 import PrintResultModal from '../components/PrintResultModal/PrintResultModal';
 import { schoolinfo } from '../shared/schoolInformation';
-import { getPublishedStatuses, getPublishedStatus } from '../services/resultsService';
+import { getResult, getPublishedStatusForPublic} from '../services/resultsService';
 
 // Helper function to get grade description
-const getGradeDescription = (grade) => {
-  const gradeDescriptions = {
-    'A+': 'Outstanding',
-    'A': 'Excellent',
-    'B+': 'Very Good',
-    'B': 'Good',
-    'C+': 'Satisfactory',
-    'C': 'Average',
-    'D': 'Below Average',
-    'E': 'Needs Improvement',
-    'F': 'Fail',
-    'AB': 'Absent',
-    'NA': 'Not Applicable'
-  };
-  return gradeDescriptions[grade] || 'Not Graded';
-};
 
 function PublicResultsPage() {
   const [searchParams] = useSearchParams();
@@ -52,15 +36,15 @@ function PublicResultsPage() {
   const [formData, setFormData] = useState({
     class: '',
     roll: '',
-    dob: ''
+    dob: '',
+    session:2025
   });
   
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [availableExams, setAvailableExams] = useState([]);
-  const [availableClasses, setAvailableClasses] = useState([]);
+  const [availableExams, setAvailableExams] = useState();
+  const [availableClasses, setAvailableClasses] = useState();
   const [classConfigs, setClassConfigs] = useState({});
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isLoadingClasses, setIsLoadingClasses] = useState(true);
   const [result, setResult] = useState(null);
   const [examStats, setExamStats] = useState(null);
@@ -72,78 +56,53 @@ function PublicResultsPage() {
   
   // Fetch available exams on component mount
   useEffect(() => {
-    const fetchAvailableExams = async () => {
+    const loadExamData = async (examTerm) => {
+      if (!examTerm) {
+        setIsLoadingClasses(false); // Set to false if no term
+        return;
+      }
+
+      setIsLoading(true);
+      setError('');
+
       try {
-        setIsLoading(true);
-        const response = await getPublishedStatuses();
-        if (response.success) {
-          setAvailableExams(response.data || []);
-          
-          // If a term is specified in the URL, load its data
-          if (term) {
-            loadExamData(term);
-          }
+        const response = await getPublishedStatusForPublic(examTerm);
+
+        if (response && response.data) {
+          console.log('Published status response:', response.data);
+          setAvailableExams(response.data);
+          setAvailableClasses(response.data.publishedResultsOfClasses);
+          setIsLoadingClasses(false); // Set loading to false after classes are loaded
+          console.log('Available exams and classes set:', {
+            availableExams: response.data,
+            availableClasses: response.data.publishedResultsOfClasses
+          });
         } else {
-          setError('Failed to load available exams');
-          toast.error('Failed to load available exams');
+          setIsLoadingClasses(false); // Set to false if no data
         }
-      } catch (err) {
-        console.error('Error fetching exams:', err);
-        setError('Failed to load available exams');
-        toast.error('Failed to load available exams');
+      } catch (error) {
+        console.error('Error loading exam data:', error);
+        setError('Failed to load exam data');
+        setIsLoadingClasses(false); // Set loading to false even on error
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchAvailableExams();
+    if (term) {
+      loadExamData(term);
+    } else {
+      setIsLoadingClasses(false); // Set to false if no term provided
+    }
   }, [term]);
 
   // Load exam data for a specific term
-  const loadExamData = async (examTerm) => {
-    try {
-      setLoading(true);
-      setError('');
-      
-      const response = await getPublishedStatus(examTerm);
-      if (response.success) {
-        setExamStats(response.data);
-        
-        // Extract available classes from the response
-        if (response.data.stats?.perClass) {
-          const classes = Object.keys(response.data.stats.perClass);
-          setAvailableClasses(classes);
-          
-          // If there's only one class, pre-select it
-          if (classes.length === 1 && !formData.class) {
-            setFormData(prev => ({
-              ...prev,
-              class: classes[0]
-            }));
-          }
-        }
-        
-        // If we have form data, try to fetch the result
-        if (formData.class && formData.roll && formData.dob) {
-          await fetchResult(examTerm);
-        }
-      } else {
-        setError('Failed to load exam data');
-        toast.error('Failed to load exam data');
-      }
-    } catch (err) {
-      console.error('Error loading exam data:', err);
-      setError('Failed to load exam data');
-      toast.error('Failed to load exam data');
-    } finally {
-      setLoading(false);
-    }
-  };
+  
 
   // Fetch result for the selected student
   const fetchResult = async (examTerm) => {
     try {
-      setLoading(true);
+      setIsLoading(true);
       setError('');
       setResult(null); // Reset any previous result
       
@@ -157,14 +116,13 @@ function PublicResultsPage() {
         term: examTerm
       });
       
-      const response = await api.get('/public/results', {
-        params: {
-          class: formData.class,
-          roll: formData.roll,
-          dob: formattedDob,
-          term: examTerm
-        }
-      });
+      const response = await getResult(
+        formData.session, // session
+        examTerm, // term
+        formData.class, // className
+        formData.roll, // roll
+        formattedDob // dob
+      );
       
       console.log('Raw API response:', response);
       
@@ -191,7 +149,7 @@ function PublicResultsPage() {
       setPrintModalOpen(false); // Close print modal if open
       toast.error(errorMessage);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -253,53 +211,6 @@ function PublicResultsPage() {
     }
   };
 
-
-  useEffect(() => {
-    const fetchClasses = async () => {
-      try {
-        const response = await api.get('/configs');
-        console.log('Configs API Response:', response.data);
-        
-        // Check if the response has the expected structure
-        if (response.data && response.data.success && Array.isArray(response.data.data)) {
-          const configs = response.data.data;
-          
-          // Extract unique class names
-          const classSet = new Set();
-          configs.forEach(config => {
-            if (config.className) {
-              classSet.add(config.className);
-            }
-          });
-          
-          const classes = Array.from(classSet).sort();
-          setAvailableClasses(classes);
-          
-          // Store configs for max marks lookup
-          const configsMap = {};
-          configs.forEach(config => {
-            if (config.className) {
-              configsMap[config.className] = config.fullMarks || 100; // Default to 100 if not specified
-            }
-          });
-          setClassConfigs(configsMap);
-          
-          console.log('Available Classes:', classes);
-          console.log('Class Configs:', configsMap);
-        } else {
-          console.error('Unexpected API response format:', response.data);
-          toast.error('Unexpected response format when loading classes');
-        }
-      } catch (error) {
-        console.error('Error fetching classes:', error);
-        toast.error('Failed to load classes');
-      } finally {
-        setIsLoadingClasses(false);
-      }
-    };
-    
-    fetchClasses();
-  }, []);
 
   const formatDateForBackend = (dateString) => {
     try {
@@ -383,7 +294,7 @@ function PublicResultsPage() {
     
   }, [result?.examConfigs, term]);
 
-  // Helper function to get grade from percentage
+  // Helper function to get grade description
   const getGrade = (percentage) => {
     if (percentage >= 80) return 'A+';
     if (percentage >= 70) return 'A';
@@ -392,6 +303,21 @@ function PublicResultsPage() {
     if (percentage >= 40) return 'C';
     if (percentage >= 33) return 'D';
     return 'F';
+  };
+
+  // Helper function to get grade description
+  const getGradeDescription = (grade) => {
+    switch (grade) {
+      case 'A+': return 'Excellent';
+      case 'A': return 'Very Good';
+      case 'A-': return 'Good';
+      case 'B': return 'Satisfactory';
+      case 'C': return 'Average';
+      case 'D': return 'Pass';
+      case 'F': return 'Fail';
+      case 'AB': return 'Absent';
+      default: return 'Not Available';
+    }
   };
 
   const calculateMetrics = () => {
@@ -576,6 +502,128 @@ function PublicResultsPage() {
   const handleBackToResults = () => {
     setResult(null);
   };
+
+  const handlePrint = async () => {
+    if (printRef.current) {
+      try {
+        const options = {
+          margin: 1,
+          filename: `${result?.student?.name || 'student'}_${term}_result.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2 },
+          jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
+
+        await html2pdf().set(options).from(printRef.current).save();
+      } catch (error) {
+        console.error('Error generating PDF:', error);
+        toast.error('Failed to generate PDF');
+      }
+    }
+  };
+
+  // Printable Result Component
+  const PrintableResult = React.forwardRef(({ result, term, onBack, onPrint }, ref) => {
+    const metrics = calculateMetrics();
+    const { student, summary = {} } = result;
+    const displayMetrics = { ...metrics, ...summary };
+    const { totalMarks = 0, maxMarks = 0, percentage = 0, grade = 'N/A' } = displayMetrics;
+    const subjectDetails = metrics.subjectDetails || {};
+
+    return (
+      <div ref={ref} className="max-w-4xl mx-auto p-8 bg-white text-black">
+        {/* Header */}
+        <div className="text-center mb-8 border-b-2 border-gray-400 pb-4">
+          <h1 className="text-3xl font-bold mb-2">
+            {schoolinfo.name || result?.student?.schoolName || 'School Name'}
+          </h1>
+          {schoolinfo.branch && (
+            <p className="text-lg mb-2">{schoolinfo.branch}</p>
+          )}
+          {schoolinfo.Address && (
+            <p className="text-sm mb-2">{schoolinfo.Address}</p>
+          )}
+          <h2 className="text-xl font-semibold">{term} Examination Result</h2>
+        </div>
+
+        {/* Student Information */}
+        <div className="mb-6">
+          <h3 className="text-lg font-bold mb-3 border-b border-gray-300">Student Information</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div><strong>Name:</strong> {student?.name || 'N/A'}</div>
+            <div><strong>Father's Name:</strong> {student?.fatherName || 'N/A'}</div>
+            <div><strong>Class:</strong> {student?.class || 'N/A'}</div>
+            <div><strong>Roll No:</strong> {student?.rollNo || 'N/A'}</div>
+            <div><strong>DOB:</strong> {formatDate(student?.dob) || 'N/A'}</div>
+            <div><strong>Term:</strong> {term || 'N/A'}</div>
+          </div>
+        </div>
+
+        {/* Performance Overview */}
+        <div className="mb-6">
+          <h3 className="text-lg font-bold mb-3 border-b border-gray-300">Performance Overview</h3>
+          <div className="grid grid-cols-4 gap-4 text-center">
+            <div className="p-2 border rounded">
+              <div className="text-sm text-gray-600">Total Marks</div>
+              <div className="text-lg font-bold">{summary.obtainedMarks || 0} / {summary.totalMarks}</div>
+            </div>
+            <div className="p-2 border rounded">
+              <div className="text-sm text-gray-600">Percentage</div>
+              <div className="text-lg font-bold">{percentage}%</div>
+            </div>
+            <div className="p-2 border rounded">
+              <div className="text-sm text-gray-600">Grade</div>
+              <div className="text-lg font-bold">{grade}</div>
+            </div>
+            <div className="p-2 border rounded">
+              <div className="text-sm text-gray-600">Rank</div>
+              <div className="text-lg font-bold">{summary.rank ? `#${summary.rank}` : 'N/A'}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Subject-wise Performance */}
+        <div className="mb-6">
+          <h3 className="text-lg font-bold mb-3 border-b border-gray-300">Subject-wise Performance</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {Object.entries(subjectDetails).map(([subjectName, subject]) => {
+              const { total, max, percentage, grade, isAbsent } = subject;
+              return (
+                <div key={subjectName} className="p-3 border rounded">
+                  <div className="flex justify-between items-center mb-2">
+                    <strong>{subjectName}</strong>
+                    <span className={`px-2 py-1 rounded text-xs ${isAbsent ? 'bg-gray-200' : grade === 'A+' ? 'bg-green-200' : 'bg-blue-200'}`}>
+                      {isAbsent ? 'Absent' : grade}
+                    </span>
+                  </div>
+                  <div className="text-sm">
+                    <div>Marks: {total} / {max}</div>
+                    <div>Percentage: {percentage}%</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Print Controls - Hidden in PDF */}
+        <div className="mt-8 text-center print:hidden">
+          <button
+            onClick={onBack}
+            className="mr-4 px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+          >
+            Back
+          </button>
+          <button
+            onClick={onPrint}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Download PDF
+          </button>
+        </div>
+      </div>
+    );
+  });
 
   // Render the result section if we have a result
   const renderResult = () => {
@@ -918,11 +966,11 @@ function PublicResultsPage() {
                                     : 0;
                                   const isPassing = evalPercentage >= 40;
                                   
-                                  // Get the evaluation type, defaulting to 'written' for backward compatibility
-                                  const evaluationType = evalItem.type || 'written';
+                                  // Get the evaluation type, prioritizing name for better labeling
+                                  const evaluationType = evalItem.name || evalItem.type || 'written';
                                   const displayName = evaluationType === 'written' ? 'Written' :
                                                     evaluationType === 'oral' ? 'Oral' :
-                                                    'Evaluation';
+                                                    evaluationType.charAt(0).toUpperCase() + evaluationType.slice(1);
                                   
                                   return (
                                     <div key={evalIndex} className="space-y-1.5">
@@ -1191,10 +1239,10 @@ function PublicResultsPage() {
                 <div className="space-y-4">
                   <button
                     type="submit"
-                    disabled={loading}
+                    disabled={isLoading}
                     className="w-full flex justify-center items-center py-3 px-6 border border-transparent rounded-lg shadow-sm text-base font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all transform hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed"
                   >
-                    {loading ? (
+                    {isLoading ? (
                       <>
                         <FiLoader className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" />
                         Loading...

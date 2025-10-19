@@ -4,7 +4,7 @@ import { FiChevronDown, FiChevronUp, FiCalendar, FiUsers, FiEye, FiEyeOff, FiChe
 import { FaSpinner } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { examTermsInTheSchool } from '@/shared/schoolInformation';
-import { getResultsList, getTermStats, updatePublishStatus } from '@/services/resultsService';
+import { getPublishedStatusForAdmin, publishResults, unpublishResults } from '@/services/resultsService';
 
 const ResultPublishPanel = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -40,34 +40,97 @@ const ResultPublishPanel = () => {
     let isMounted = true;
     try {
       setIsLoading(true);
-      
-      // Use Promise.all to fetch both results and stats in parallel
-      const [serverItems, statsPromises] = await Promise.all([
-        getResultsList(),
-        Promise.all((examTermsInTheSchool || []).map(term => 
-          getTermStats(term).catch(e => ({
-            term,
-            error: e.message,
-            stats: null
-          }))
-        ))
-      ]);
+
+      // Fetch publish status for each term
+      const termsToShow = examTermsInTheSchool || [];
+      const statusPromises = termsToShow.map(term =>
+        getPublishedStatusForAdmin(term).catch(e => ({
+          term,
+          error: e.message,
+          data: null
+        }))
+      );
+
+      const statusResults = await Promise.all(statusPromises);
 
       if (!isMounted) return;
 
-      const byTerm = new Map((serverItems || []).map(item => [item.term, item]));
-      const termsToShow = examTermsInTheSchool || [];
-      
-      // Process all data in a single state update
+      // Process the results using the new data structure
       const processedResults = termsToShow.map((term, index) => {
-        const serverItem = byTerm.get(term) || { term, isPublished: false, publishedAt: null };
-        const statsData = statsPromises[index];
-        
+        const statusData = statusResults[index];
+
+        if (statusData?.error || !statusData?.data) {
+          return {
+            term,
+            isPublished: false,
+            publishedAt: null,
+            stats: {
+              totalStudents: 0,
+              updated: 0,
+              pendingUpdates: 0,
+              completionPercentage: 0,
+              lastUpdated: new Date(),
+              perClass: {}
+            },
+            className: 'All Classes',
+            error: statusData?.error || 'Failed to load data'
+          };
+        }
+
+        const data = statusData.data;
+
+        // If no students have marks for this term, return early with empty data
+        if (data.totalStudents === 0) {
+          return {
+            term,
+            isPublished: data.isPublished || false,
+            publishedAt: data.publishedAt || null,
+            stats: {
+              totalStudents: 0,
+              updated: 0,
+              pendingUpdates: 0,
+              completionPercentage: 0,
+              lastUpdated: data.lastUpdated || new Date(),
+              perClass: {}
+            },
+            className: 'All Classes',
+            error: null
+          };
+        }
+
+        // Calculate class-wise stats from the new structure
+        const classStats = {};
+        if (data.classAnalysis) {
+          Object.entries(data.classAnalysis).forEach(([className, classData]) => {
+            classStats[className] = {
+              total: classData.totalStudents,
+              updated: classData.completedCount,
+              pending: classData.pendingCount,
+              pendingStudents: classData.students?.filter(student => !student.hasMarks) || []
+            };
+          });
+        }
+
+        // Calculate overall stats
+        const totalStudents = data.totalStudents || 0;
+        const completedCount = data.completedCount || 0;
+        const pendingCount = data.pendingCount || 0;
+        const completionPercentage = totalStudents > 0 ? (completedCount / totalStudents) * 100 : 0;
+
         return {
-          ...serverItem,
-          stats: statsData?.stats ?? statsData ?? null,
+          term,
+          isPublished: data.isPublished || false,
+          publishedAt: data.publishedAt || null,
+          stats: {
+            totalStudents,
+            updated: completedCount,
+            pendingUpdates: pendingCount,
+            completionPercentage: Math.round(completionPercentage),
+            lastUpdated: data.lastUpdated || new Date(),
+            perClass: classStats
+          },
           className: 'All Classes',
-          error: statsData?.error
+          error: null
         };
       });
 
@@ -93,8 +156,16 @@ const ResultPublishPanel = () => {
     try {
       const newStatus = !currentStatus;
       const password = uiState.passwordInput[term] || '';
+      const result = results.find(r => r.term === term);
       
-      const response = await updatePublishStatus(term, newStatus, password);
+      let response;
+      if (newStatus) {
+        // Publishing results
+        response = await publishResults(term, Object.keys(result?.stats?.perClass || []), password, result?.stats?.totalStudents || 0);
+      } else {
+        // Unpublishing results
+        response = await unpublishResults(term, password);
+      }
       
       if (response?.success) {
         // Update results with a single state update
@@ -270,14 +341,6 @@ const ResultPublishPanel = () => {
                             <span className="inline-block w-2 h-2 rounded-full bg-blue-500 mr-1.5"></span>
                             <span>{result.stats.totalStudents || 0} Total</span>
                           </div>
-                          <div className="flex items-center text-gray-600 dark:text-gray-300">
-                            <span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-1.5"></span>
-                            <span>{
-                              result.stats.perClass 
-                                ? Object.values(result.stats.perClass).reduce((sum, cls) => sum + (cls.absent || 0), 0) 
-                                : 0
-                            } Absent</span>
-                          </div>
                         </>
                       )}
                     </div>
@@ -320,7 +383,7 @@ const ResultPublishPanel = () => {
                             <span>{result.stats.completionPercentage || 0}%</span>
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-                            <div 
+                            <div
                               className="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out"
                               style={{ width: `${result.stats.completionPercentage || 0}%` }}
                             ></div>
@@ -339,7 +402,6 @@ const ResultPublishPanel = () => {
                                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Class</th>
                                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Updated</th>
                                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Pending</th>
-                                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Absent</th>
                                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total</th>
                                 </tr>
                               </thead>
@@ -349,7 +411,6 @@ const ResultPublishPanel = () => {
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{className}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 dark:text-green-400">{stats.updated}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-yellow-600 dark:text-yellow-400">{stats.pending}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600 dark:text-red-400">{stats.absent || 0}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{stats.total}</td>
                                   </tr>
                                 ))}
@@ -375,7 +436,7 @@ const ResultPublishPanel = () => {
                               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                 {Object.entries(result.stats.perClass)
                                   .filter(([_, cls]) => cls.pendingStudents?.length > 0)
-                                  .flatMap(([className, cls]) => 
+                                  .flatMap(([className, cls]) =>
                                     cls.pendingStudents.map((student, idx) => (
                                       <tr key={`${className}-${student.roll}-${idx}`} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                                         <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">{className}</td>
@@ -453,45 +514,50 @@ const ResultPublishPanel = () => {
                       </div>
                       
                       <div className="space-y-3">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePublishToggle(result.term, result.isPublished);
-                          }}
-                          disabled={publishing[result.term] || (!result.isPublished && result.stats && result.stats.pendingUpdates !== 0)}
-                          className={`w-full flex justify-center items-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white ${
-                            result.isPublished
-                              ? 'bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600 focus:ring-red-500'
-                              : (result.stats
-                                  ? (result.stats.pendingUpdates === 0
-                                      ? 'bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-700 dark:hover:bg-indigo-600 focus:ring-indigo-500'
-                                      : 'bg-gray-400 cursor-not-allowed dark:bg-gray-600')
-                                  : 'bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-700 dark:hover:bg-indigo-600 focus:ring-indigo-500')
-                          } focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors`}
-                        >
-                          {publishing[result.term] ? (
-                            <>
-                              <FaSpinner className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" />
-                              Processing...
-                            </>
-                          ) : result.isPublished ? (
-                            <>
-                              <FiXCircle className="-ml-0.5 mr-2 h-4 w-4" />
-                              Unpublish Results
-                            </>
-                          ) : (
-                            <>
-                              <FiCheckCircle className="-ml-0.5 mr-2 h-4 w-4" />
-                              Publish Results
-                            </>
-                          )}
-                        </button>
+                        {(() => {
+                          const password = uiState.passwordInput[result.term] || '';
+                          return (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePublishToggle(result.term, result.isPublished);
+                              }}
+                              disabled={publishing[result.term] || (!result.isPublished && result.stats && result.stats.pendingUpdates !== 0) || (password.length < 6)}
+                              className={`w-full flex justify-center items-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white ${
+                                result.isPublished
+                                  ? 'bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600 focus:ring-red-500'
+                                  : (result.stats
+                                      ? (result.stats.pendingUpdates === 0 && password.length >= 6
+                                          ? 'bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-700 dark:hover:bg-indigo-600 focus:ring-indigo-500'
+                                          : 'bg-gray-400 cursor-not-allowed dark:bg-gray-600')
+                                      : 'bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-700 dark:hover:bg-indigo-600 focus:ring-indigo-500')
+                              } focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors`}
+                            >
+                              {publishing[result.term] ? (
+                                <>
+                                  <FaSpinner className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" />
+                                  Processing...
+                                </>
+                              ) : result.isPublished ? (
+                                <>
+                                  <FiXCircle className="-ml-0.5 mr-2 h-4 w-4" />
+                                  Unpublish Results
+                                </>
+                              ) : (
+                                <>
+                                  <FiCheckCircle className="-ml-0.5 mr-2 h-4 w-4" />
+                                  Publish Results
+                                </>
+                              )}
+                            </button>
+                          );
+                        })()}
                         
                         {result.publishedAt && (
                           <div className="text-center">
                             <p className="text-xs text-gray-500 dark:text-gray-400">
-                              Last {result.isPublished ? 'published' : 'unpublished'}: {result.publishedAt ? new Date(result.publishedAt).toLocaleString() : 'Never'}
+                              Last {result.isPublished ? 'published' : 'unpublished'}: {result.publishedAt ? formatDate(result.publishedAt) : 'Never'}
                             </p>
                           </div>
                         )}
@@ -510,9 +576,8 @@ const ResultPublishPanel = () => {
 
 // Helper function to format date safely
 const formatDate = (dateString) => {
-  console.log('Formatting date:', dateString); // Debug log
   if (!dateString) return 'N/A';
-  
+
   try {
     // Handle both string and Date objects
     const date = new Date(dateString);
@@ -520,7 +585,7 @@ const formatDate = (dateString) => {
       console.error('Invalid date string:', dateString);
       return 'N/A';
     }
-    
+
     return date.toLocaleString('en-US', {
       year: 'numeric',
       month: 'short',

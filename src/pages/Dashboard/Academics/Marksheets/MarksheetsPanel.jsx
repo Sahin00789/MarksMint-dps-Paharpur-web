@@ -1,11 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useReactToPrint } from 'react-to-print';
 import { PrinterIcon, EyeIcon } from '@heroicons/react/24/outline';
 import ExamDependentClassSelectorCard from '@/components/common/ExamDependentClassSelectorCard';
 import api from '@/services/api';
 import MarksheetPreviewModal from './Modals/MarksheetPreviewModal';
-import MarksheetPrintPage from './MarksheetPage/MarksheetPrintPage';
 
 const MarksheetsPanel = () => {
   const navigate = useNavigate();
@@ -13,7 +11,6 @@ const MarksheetsPanel = () => {
   const [students, setStudents] = useState([]);
   const [studentMarks, setStudentMarks] = useState({});
   const [isLoading, setIsLoading] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState('');
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
@@ -26,26 +23,208 @@ const MarksheetsPanel = () => {
     }
   }, []);
 
+  // Function to process students data for selected class
+  const processStudentsData = async (className) => {
+    if (!className) return [];
+
+    console.log(`Processing students data for class: ${className}`);
+
+    try {
+      // Step 1: Load students of selected class
+      const studentsRes = await api.get(`/students?class=${className}`);
+      const students = studentsRes.data;
+      console.log(`Loaded ${students.length} students for class ${className}`);
+
+      // Step 2: Load exam configuration (exam name -> subjects -> evaluation type -> max marks)
+      // For now, we'll extract this from the students' marks data
+      // In a real implementation, this would come from a separate API endpoint
+      const examConfig = {};
+      const processedStudents = [];
+
+      for (const student of students) {
+        const studentMarks = student.marks || {};
+
+        // Create processed student data in the required format
+        const processedStudent = {
+          student: {
+            name: student.studentName || student.name || '',
+            class: student.class || className,
+            rollNo: student.rollNumber || student.roll || '',
+            fatherName: student.fatherName || '',
+            dob: student.dob || '',
+            address: student.address || '',
+            session: student.session || '',
+            photoUrl: student.photoUrl || ''
+          },
+          marks: {}, // Exam-wise data with subjectDetails
+          subjectwiseSummary: {}, // Subject totals across all exams
+          coScholastic: student.coScholastic || student.coscholastic || {
+            workEducation: { grade: 'N/A', description: 'Not Available' },
+            artEducation: { grade: 'N/A', description: 'Not Available' },
+            healthAndPhysical: { grade: 'N/A', description: 'Not Available' },
+            discipline: { grade: 'N/A', description: 'Not Available' }
+          },
+          attendanceSummary: student.attendanceSummary || {
+            totalDays: 0,
+            presentDays: 0,
+            absentDays: 0,
+            attendancePercentage: 0,
+            workingDays: 0
+          },
+          overallSummary: {
+            totalMarks: 0,
+            obtainedMarks: 0,
+            percentage: 0,
+            grade: 'N/A',
+            rank: 0,
+            totalStudents: students.length,
+            resultStatus: 'Pass'
+          }
+        };
+
+        // Process each exam for this student
+        for (const [examName, subjects] of Object.entries(studentMarks)) {
+          if (!processedStudent.marks[examName]) {
+            processedStudent.marks[examName] = {
+              subjectDetails: {}
+            };
+          }
+
+          // Process each subject for this exam
+          for (const [subjectName, evaluations] of Object.entries(subjects)) {
+            if (!processedStudent.marks[examName].subjectDetails[subjectName]) {
+              processedStudent.marks[examName].subjectDetails[subjectName] = {
+                total: 0,
+                max: 0,
+                percentage: 0,
+                grade: 'N/A',
+                evaluations: []
+              };
+            }
+
+            // Process each evaluation type for this subject
+            for (const [evalType, marks] of Object.entries(evaluations)) {
+              const obtainedMarks = parseFloat(marks) || 0;
+              const maxMarks = parseFloat(marks) || 0; // Assuming same for now
+
+              processedStudent.marks[examName].subjectDetails[subjectName].total += obtainedMarks;
+              processedStudent.marks[examName].subjectDetails[subjectName].max += maxMarks;
+
+              processedStudent.marks[examName].subjectDetails[subjectName].evaluations.push({
+                type: evalType,
+                name: evalType,
+                marks: obtainedMarks,
+                maxMarks: maxMarks,
+                isAbsent: false,
+                status: 'Graded'
+              });
+            }
+
+            // Calculate percentage and grade for this subject in this exam
+            const subjectData = processedStudent.marks[examName].subjectDetails[subjectName];
+            subjectData.percentage = subjectData.max > 0 ? (subjectData.total / subjectData.max) * 100 : 0;
+            subjectData.grade = calculateGrade(subjectData.percentage);
+
+            // Update subjectwiseSummary
+            if (!processedStudent.subjectwiseSummary[subjectName]) {
+              processedStudent.subjectwiseSummary[subjectName] = {
+                obtainedTotal: 0,
+                maxTotal: 0,
+                percentage: 0,
+                grade: 'N/A'
+              };
+            }
+            processedStudent.subjectwiseSummary[subjectName].obtainedTotal += subjectData.total;
+            processedStudent.subjectwiseSummary[subjectName].maxTotal += subjectData.max;
+          }
+        }
+
+        // Calculate subjectwiseSummary percentages and grades
+        for (const [subjectName, summary] of Object.entries(processedStudent.subjectwiseSummary)) {
+          summary.percentage = summary.maxTotal > 0 ? (summary.obtainedTotal / summary.maxTotal) * 100 : 0;
+          summary.grade = calculateGrade(summary.percentage);
+        }
+
+        // Calculate overall summary
+        const totalObtained = Object.values(processedStudent.subjectwiseSummary).reduce((sum, subject) => sum + subject.obtainedTotal, 0);
+        const totalMax = Object.values(processedStudent.subjectwiseSummary).reduce((sum, subject) => sum + subject.maxTotal, 0);
+        const percentage = totalMax > 0 ? (totalObtained / totalMax) * 100 : 0;
+
+        processedStudent.overallSummary = {
+          totalMarks: totalMax,
+          obtainedMarks: totalObtained,
+          percentage: percentage,
+          grade: calculateGrade(percentage),
+          rank: 0, // Will be calculated after processing all students
+          totalStudents: students.length,
+          resultStatus: percentage >= 35 ? 'Pass' : 'Fail' // Assuming 35% pass criteria
+        };
+
+        processedStudents.push(processedStudent);
+      }
+
+      // Calculate ranks
+      processedStudents.sort((a, b) => b.overallSummary.obtainedMarks - a.overallSummary.obtainedMarks);
+      processedStudents.forEach((student, index) => {
+        student.overallSummary.rank = index + 1;
+      });
+
+      // Log processed data
+      console.log('=== PROCESSED STUDENTS DATA ===');
+      console.log(`Total students processed: ${processedStudents.length}`);
+      console.log('Exam Configuration:', examConfig);
+      console.log('Sample processed student:', processedStudents[0]);
+      console.log('Students with ranks:', processedStudents.map(s => ({
+        name: s.student.name,
+        totalMarks: s.overallSummary.obtainedMarks,
+        percentage: s.overallSummary.percentage,
+        rank: s.overallSummary.rank,
+        coScholastic: s.coScholastic,
+        attendance: s.attendanceSummary
+      })));
+
+      return processedStudents;
+
+    } catch (error) {
+      console.error('Error processing students data:', error);
+      setError('Failed to process students data');
+      return [];
+    }
+  };
+
+  // Helper function to calculate grade from percentage
+  const calculateGrade = (percentage) => {
+    if (percentage >= 90) return 'A+';
+    if (percentage >= 80) return 'A';
+    if (percentage >= 70) return 'B+';
+    if (percentage >= 60) return 'B';
+    if (percentage >= 50) return 'C+';
+    if (percentage >= 40) return 'C';
+    if (percentage >= 35) return 'D';
+    return 'F';
+  };
+
   useEffect(() => {
     const fetchStudentMarks = async () => {
       if (!selectedClass) return;
-      
+
       setIsLoading(true);
       setError('');
-      
+
       try {
-        // Fetch all students for the class
-        const studentsRes = await api.get(`/students?class=${selectedClass}`);
-        setStudents(studentsRes.data);
-        
-        // Use existing student data instead of making API calls
+        // Use the new processStudentsData function instead of old logic
+        const processedData = await processStudentsData(selectedClass);
+
+        // Set students for display
+        setStudents(processedData.map(p => p.student));
+
+        // Set processed data for marksheet generation
         const marksData = {};
-        for (const student of studentsRes.data) {
-          // Use student's marks if available, otherwise use an empty object
-          marksData[student._id] = student.marks || {};
+        for (const processedStudent of processedData) {
+          marksData[processedStudent.student.rollNo] = processedStudent;
         }
         setStudentMarks(marksData);
-        
+
       } catch (err) {
         console.error('Error fetching student marks:', err);
         setError('Failed to load student marks');
@@ -53,7 +232,7 @@ const MarksheetsPanel = () => {
         setIsLoading(false);
       }
     };
-    
+
     fetchStudentMarks();
   }, [selectedClass]);
 
@@ -64,11 +243,39 @@ const MarksheetsPanel = () => {
     }
   };
 
+  const handlePrintMarksheet = async (student) => {
+    try {
+      // Get the processed student data from studentMarks
+      const processedStudent = studentMarks[student.rollNumber || student.roll || student.rollNo];
+
+      if (!processedStudent) {
+        throw new Error('Processed student data not found');
+      }
+
+      // Set the selected student and processed marks to open the preview modal
+      setSelectedStudent({
+        ...student,
+        name: student.studentName || student.name || '',
+        className: selectedClass,
+        rollNumber: student.rollNumber || student.roll || '',
+      });
+
+      // Set the processed marks data for the preview
+      setSelectedStudentMarks(processedStudent);
+
+      // Open the preview modal
+      setIsPreviewOpen(true);
+
+    } catch (error) {
+      console.error('Error preparing marksheet preview:', error);
+      setError('Failed to prepare marksheet preview. Please try again.');
+    }
+  };
+
   const handlePreviewMarksheet = (student) => {
     if (!student) return;
     
     try {
-      setIsGenerating(true);
       setSelectedStudent(student);
       
       // Use the student's marks directly from the student object
@@ -82,83 +289,26 @@ const MarksheetsPanel = () => {
       console.error('Error preparing marksheet preview:', error);
       setError('Failed to prepare marksheet preview. Please try again.');
       setSelectedStudentMarks({});
-    } finally {
-      setIsGenerating(false);
     }
   };
   
-  const printRef = useRef();
-  const [printData, setPrintData] = useState(null);
-  const [isPrinting, setIsPrinting] = useState(false);
 
-  // Handle print with react-to-print
-  const handlePrint = useReactToPrint({
-    content: () => printRef.current,
-    pageStyle: `
-      @page { 
-        size: A4;
-        margin: 10mm 15mm;
-      }
-      @media print {
-        body { 
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-        }
-      }
-    `,
-    onBeforeGetContent: () => {
-      setIsPrinting(true);
-      return Promise.resolve();
-    },
-    onAfterPrint: () => {
-      setIsPrinting(false);
-      setPrintData(null);
-    },
-    removeAfterPrint: true,
-  
-  });
 
-  const handlePrintMarksheet = async (student) => {
-    try {
-      setIsGenerating(true);
-      setError('');
-      
-      // Set the selected student and marks to open the preview modal
-      setSelectedStudent({
-        ...student,
-        name: student.studentName || student.name || '',
-        className: selectedClass,
-        rollNumber: student.rollNumber || student.roll || '',
-      });
-      
-      // Set the student marks for the preview
-      setSelectedStudentMarks(studentMarks[student._id] || {});
-      
-      // Open the preview modal
-      setIsPreviewOpen(true);
-      
-    } catch (error) {
-      console.error('Error preparing marksheet preview:', error);
-      setError('Failed to prepare marksheet preview. Please try again.');
-    } finally {
-      setIsGenerating(false);
-    }
-  };
+ 
+
 
   const renderStudentRow = (student) => {
-    const marks = studentMarks[student._id] || {};
-    const totalMarks = Object.values(marks).reduce((sum, exam) => {
-      const examTotal = Object.values(exam.subjects || {}).reduce((examSum, subject) => {
-        return examSum + (parseFloat(subject.obtainedMarks) || 0);
-      }, 0);
-      return sum + examTotal;
-    }, 0);
-    
-    const examCount = Object.keys(marks).length;
-    const avgMarks = examCount > 0 ? (totalMarks / examCount).toFixed(2) : 0;
-    
+    const processedStudent = studentMarks[student.rollNumber || student.roll || student.rollNo];
+    const overallSummary = processedStudent?.overallSummary || {};
+    const totalMarks = overallSummary.obtainedMarks || 0;
+    const maxMarks = overallSummary.totalMarks || 0;
+    const percentage = overallSummary.percentage || 0;
+    const grade = overallSummary.grade || 'N/A';
+    const rank = overallSummary.rank || 0;
+    const resultStatus = overallSummary.resultStatus || 'N/A';
+
     return (
-      <div 
+      <div
         key={student._id}
         className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700 transition-all duration-200 ease-in-out transform hover:scale-[1.02] hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-500/50"
       >
@@ -196,7 +346,7 @@ const MarksheetsPanel = () => {
               </h3>
               <div className="flex items-center space-x-1.5">
                 <span className="text-xs text-blue-100">
-                  Roll: {student.rollNumber || student.roll || 'N/A'}
+                  Roll: {student.rollNo || student.roll || 'N/A'}
                 </span>
                 <span className="text-blue-200">•</span>
                 <span className="text-xs text-blue-100">
@@ -207,17 +357,38 @@ const MarksheetsPanel = () => {
           </div>
         </div>
 
-        {/* Marks Summary */}
-        <div className="p-2 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-b border-blue-100 dark:border-blue-800/30">
-          <div className="grid grid-cols-2 gap-2 text-center">
+        {/* Overall Summary Display */}
+        <div className="p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-b border-blue-100 dark:border-blue-800/30">
+          <div className="grid grid-cols-2 gap-3 text-center">
             <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Exams</p>
-              <p className="text-sm font-semibold text-blue-800 dark:text-blue-200">{examCount}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Total Marks</p>
+              <p className="text-sm font-semibold text-blue-800 dark:text-blue-200">
+                {totalMarks.toFixed(1)} / {maxMarks.toFixed(1)}
+              </p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Avg. Marks</p>
-              <p className="text-sm font-semibold text-blue-800 dark:text-blue-200">{avgMarks}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Percentage</p>
+              <p className="text-sm font-semibold text-blue-800 dark:text-blue-200">{percentage.toFixed(1)}%</p>
             </div>
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Grade</p>
+              <p className="text-sm font-semibold text-blue-800 dark:text-blue-200">{grade}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Rank</p>
+              <p className="text-sm font-semibold text-blue-800 dark:text-blue-200">#{rank}</p>
+            </div>
+          </div>
+
+          {/* Result Status Badge */}
+          <div className="mt-2 flex justify-center">
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+              resultStatus === 'Pass'
+                ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+            }`}>
+              {resultStatus}
+            </span>
           </div>
         </div>
 
@@ -228,23 +399,10 @@ const MarksheetsPanel = () => {
               e.stopPropagation();
               handlePrintMarksheet(student);
             }}
-            disabled={isGenerating || isPrinting}
-            className="w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
           >
-            {isPrinting ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Preparing Print Preview...
-              </>
-            ) : (
-              <>
-                <PrinterIcon className="h-4 w-4 mr-2" />
-                Print Preview
-              </>
-            )}
+            <PrinterIcon className="h-4 w-4 mr-2" />
+            Print Preview
           </button>
         </div>
       </div>
@@ -253,19 +411,6 @@ const MarksheetsPanel = () => {
 
   return (
     <div className="p-6">
-      {/* Print Component (hidden from view) */}
-      <div style={{ display: 'none' }}>
-        {printData && (
-          <div ref={printRef}>
-            <MarksheetPrintPage 
-              student={printData.student}
-              examResults={printData.marks}
-              academicYear={printData.academicYear}
-            />
-          </div>
-        )}
-      </div>
-
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">Marksheets</h1>
         <p className="text-gray-600 dark:text-gray-300">Generate and print student marksheets</p>
@@ -333,10 +478,8 @@ const MarksheetsPanel = () => {
       <MarksheetPreviewModal
         isOpen={isPreviewOpen}
         onClose={() => setIsPreviewOpen(false)}
-        student={selectedStudent}
-        marks={selectedStudentMarks}
-        className={selectedClass}
-        academicYear={String(new Date().getFullYear() + 1)} // Default to next year
+        processedStudent={selectedStudentMarks}
+        academicYear="2025"
       />
     </div>
   );

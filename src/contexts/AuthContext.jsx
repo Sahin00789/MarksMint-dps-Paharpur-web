@@ -1,11 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+
 import api from '../services/api';
 import { toast } from 'react-toastify';
 
-const AuthContext = createContext();
+const AuthContext = createContext(null);
 
-export const AuthProvider = ({ children }) => {
+// Create a named function for better debugging
+export function AuthProvider({ children }) {
   // Safe localStorage operations with enhanced error handling
   const safeGetItem = (key) => {
     try {
@@ -68,28 +70,28 @@ export const AuthProvider = ({ children }) => {
     try {
       const storedUser = safeGetItem('user');
       const token = safeGetItem('token');
-      
+
       if (!storedUser || !token) {
         setUser(null);
         setLoading(false);
         return;
       }
-      
+
       // Set auth header for subsequent requests
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      
+
       // Check if we've verified recently (within 5 minutes)
       const lastVerified = safeGetItem('lastVerified');
       const now = new Date().getTime();
-      
+
       // If verified recently, just use the stored user data
       if (lastVerified && (now - parseInt(lastVerified, 10)) < 5 * 60 * 1000) {
         setUser(JSON.parse(storedUser));
         setLoading(false);
         return;
       }
-      
-      // Verify token with server
+
+      // Verify token with server - with retry logic
       try {
         const response = await api.get('/auth/verify');
         if (response.data?.user) {
@@ -98,11 +100,25 @@ export const AuthProvider = ({ children }) => {
           safeSetItem('lastVerified', now.toString());
           setUser(userData);
         } else {
+          // Server responded but no user data - token might be invalid
+          console.warn('Token verification: No user data in response');
           clearAuthData();
         }
       } catch (error) {
-        console.warn('Token verification failed, clearing auth data:', error);
-        clearAuthData();
+        // Check if it's a network error (server down) vs auth error (invalid token)
+        if (error.code === 'ECONNABORTED' || error.code === 'NETWORK_ERROR' || !navigator.onLine) {
+          // Server is down or network issue - keep user logged in with stored data
+          console.warn('Server unavailable, keeping user logged in with stored data');
+          setUser(JSON.parse(storedUser));
+        } else if (error.response?.status === 401) {
+          // Authentication error - clear auth data
+          console.warn('Token verification failed (401), clearing auth data');
+          clearAuthData();
+        } else {
+          // Other error - also clear auth data to be safe
+          console.warn('Token verification failed, clearing auth data:', error.message);
+          clearAuthData();
+        }
       }
     } catch (error) {
       console.error('Error initializing auth:', error);
@@ -122,53 +138,85 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       console.log('[Auth] Attempting login with:', credentials);
       
-      // Make actual API call to login
+      // Create a minimal axios instance for login to avoid any interceptors
+    
+      
+      // Make direct login request without using the interceptors
       const response = await api.post('/auth/login', credentials);
       
-      if (response.data && response.data.token) {
+      // Check for successful response with token
+      if (response.data?.token) {
         const { token, refreshToken, user: userData } = response.data;
         
-        if (!userData || !userData.id) {
+        if (!userData?.id) {
           throw new Error('Invalid user data received from server');
         }
         
-        // Store user data in localStorage safely
-        if (!safeSetItem('token', token) || 
-            !safeSetItem('refreshToken', refreshToken) || 
-            !safeSetItem('user', JSON.stringify(userData))) {
+        // Store authentication data
+        const storageSuccess = [
+          safeSetItem('token', token),
+          refreshToken && safeSetItem('refreshToken', refreshToken),
+          safeSetItem('user', JSON.stringify(userData)),
+          safeSetItem('lastVerified', Date.now().toString())
+        ].every(Boolean);
+        
+        if (!storageSuccess) {
           throw new Error('Failed to store authentication data');
         }
         
-        // Set the default authorization header
+        // Update API defaults
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         console.log('[Auth] Login successful for user:', userData.username);
         
-        // Update state with the user data
+        // Update state
         setUser(userData);
         
-        // Ensure state is updated before navigation
-        await new Promise(resolve => setUser(prevUser => {
-          resolve();
-          return userData;
-        }));
-        
-        // Navigate to dashboard after successful login with replace to prevent going back
+        // Navigate to dashboard
         navigate('/dashboard', { replace: true });
         
-        return { success: true, user: userData };
+        return { 
+          success: true, 
+          user: userData,
+          message: 'Login successful!'
+        };
       } else {
-        throw new Error('Invalid response from server');
+        throw new Error(response.data?.message || 'Invalid response from server');
       }
     } catch (error) {
       console.error('Login failed:', error);
-      safeRemoveItem('token');
-      safeRemoveItem('user');
-      safeRemoveItem('refreshToken');
-      setUser(null);
+      
+      // Clear any partial auth data
+      clearAuthData();
+      
+      // Handle different types of errors
+      let errorMessage = 'Login failed. Please try again.';
+      
+      if (error.response) {
+        // Server responded with an error status code
+        if (error.response.status === 401) {
+          errorMessage = 'Invalid username or password';
+        } else if (error.response.status >= 500) {
+          errorMessage = 'Server error. Please try again later.';
+          console.error('Server error details:', error.response.data);
+        } else if (error.response.data?.message) {
+          errorMessage = error.response.data.message;
+        }
+      } else if (error.request) {
+        // Request was made but no response received
+        errorMessage = 'Unable to connect to the server. Please check your connection.';
+      } else if (error.message) {
+        // Other errors
+        errorMessage = error.message;
+      }
+      
+      // Show error toast
+      toast.error(errorMessage);
       
       return { 
         success: false, 
-        error: error.response?.data?.message || error.message || 'Login failed. Please try again.' 
+        error: errorMessage,
+        status: error.response?.status,
+        data: error.response?.data
       };
     } finally {
       setLoading(false);
@@ -206,10 +254,15 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-export const useAuth = () => {
+// Export the hook with a display name for better debugging
+export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-};
+}
+
+// Add display names for better debugging in React DevTools
+AuthProvider.displayName = 'AuthProvider';
+useAuth.displayName = 'useAuth';

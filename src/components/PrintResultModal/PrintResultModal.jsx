@@ -17,24 +17,36 @@ const PrintResultModal = ({
   useEffect(() => {
     // Generate QR code with student data
     const studentInfo = {
-      school :"DINA PUBLIC SCHOOL - PAHARPUR",
+      school: "DINA PUBLIC SCHOOL - PAHARPUR",
       class: studentData?.class || '',
       roll: studentData?.roll || '',
-      exam: resultData?.exam?.name || '',
-      academicYear: resultData?.academicYear || '',
+      exam: resultData?.term || '',
+      academicYear: '2025',
     };
 
-    const qrCode = new QRCode({
-      content: JSON.stringify(studentInfo),
-      padding: 2,
-      width: 80,
-      height: 80,
-      color: '#000000',
-      background: '#ffffff',
-      ecl: 'M' // Error correction level: L, M, Q, H
-    }).svg();
-    
-    setQrCodeSvg(qrCode);
+    try {
+      // Check if QRCode is available
+      if (typeof QRCode === 'undefined') {
+        console.warn('QRCode library not loaded');
+        setQrCodeSvg(null);
+        return;
+      }
+
+      const qrCode = new QRCode({
+        content: JSON.stringify(studentInfo),
+        padding: 2,
+        width: 80,
+        height: 80,
+        color: '#000000',
+        background: '#ffffff',
+        ecl: 'M' // Error correction level: L, M, Q, H
+      }).svg();
+
+      setQrCodeSvg(qrCode);
+    } catch (error) {
+      console.error('Error generating QR code:', error);
+      setQrCodeSvg(null);
+    }
   }, [studentData, resultData]);
 
   const handlePrint = useReactToPrint({
@@ -195,102 +207,342 @@ const PrintResultModal = ({
         </div>
 
         {/* Content */}
-        <div ref={printRef} style={{ padding: '1.5rem' }}>
+        <div ref={printRef} style={{ padding: '1rem' }}>
           {/* Header */}
-          <div style={{ textAlign: 'center', marginBottom: '0.75rem', paddingBottom: '0.5rem', borderBottom: '1px solid #f3f4f6' }}>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111827', marginBottom: '0.5rem' }}>
-              {schoolinfo.name || 'School Name'}
-            </h1>
-            <p style={{ color: '#4b5563', marginBottom: '0.5rem' }}>
-              {schoolinfo.address || 'School Address'}
-            </p>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#3b82f6', marginTop: '0.5rem' }}>
-              {resultData.exam?.name || 'Exam Name'} - Academic Year {resultData.academicYear || '2024-2025'}
+          <div style={{ textAlign: 'center', marginBottom: '0.5rem', paddingBottom: '0.5rem', borderBottom: '1px solid #f3f4f6' }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '1rem',
+              padding: '0.5rem',
+              backgroundColor: '#f8fafc',
+              borderRadius: '0.5rem',
+              border: '1px solid #e5e7eb'
+            }}>
+              {/* School Information */}
+              <div style={{ flex: 1, textAlign: 'left' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
+                  <h1 style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#111827', margin: 0 }}>
+                    {schoolinfo.name || 'School Name'}
+                  </h1>
+                  {schoolinfo.branch && (
+                    <span style={{
+                      background: 'linear-gradient(135deg, #2196F3 0%, #4CAF50 100%)',
+                      color: 'white',
+                      padding: '0.25rem 0.75rem',
+                      borderRadius: '9999px',
+                      fontSize: '0.875rem',
+                      fontWeight: 600,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.025em',
+                      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                      border: '1px solid rgba(255, 255, 255, 0.2)'
+                    }}>
+                      {schoolinfo.branch} BRANCH
+                    </span>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  {schoolinfo.regNumber && (
+                    <span style={{
+                      backgroundColor: '#f3f4f6',
+                      color: '#4b5563',
+                      padding: '0.125rem 0.5rem',
+                      borderRadius: '0.25rem',
+                      fontSize: '0.75rem',
+                      fontWeight: 500,
+                      border: '1px solid #e5e7eb'
+                    }}>
+                      Reg. No: {schoolinfo.regNumber}
+                    </span>
+                  )}
+                  {schoolinfo.estd && (
+                    <span style={{
+                      backgroundColor: '#f3f4f6',
+                      color: '#4b5563',
+                      padding: '0.125rem 0.5rem',
+                      borderRadius: '0.25rem',
+                      fontSize: '0.75rem',
+                      fontWeight: 500,
+                      border: '1px solid #e5e7eb'
+                    }}>
+                      Est. {schoolinfo.estd}
+                    </span>
+                  )}
+                  {schoolinfo.runBy && (
+                    <span style={{
+                      backgroundColor: '#f3f4f6',
+                      color: '#4b5563',
+                      padding: '0.125rem 0.5rem',
+                      borderRadius: '0.25rem',
+                      fontSize: '0.75rem',
+                      fontWeight: 500,
+                      border: '1px solid #e5e7eb'
+                    }}>
+                      Run by: {schoolinfo.runBy}
+                    </span>
+                  )}
+                  {schoolinfo.curriculamFollows && (
+                    <span style={{
+                      backgroundColor: '#f3f4f6',
+                      color: '#4b5563',
+                      padding: '0.125rem 0.5rem',
+                      borderRadius: '0.25rem',
+                      fontSize: '0.75rem',
+                      fontWeight: 500,
+                      border: '1px solid #e5e7eb'
+                    }}>
+                      Curriculum: {schoolinfo.curriculamFollows}
+                    </span>
+                  )}
+                </div>
+
+                <p style={{ color: '#4b5563', marginBottom: '0.25rem', margin: 0, fontSize: '0.875rem' }}>
+                  {schoolinfo.address || 'School Address'}
+                </p>
+              </div>
+
+              {/* QR Code */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0.5rem',
+                backgroundColor: 'white',
+                borderRadius: '0.5rem',
+                border: '2px solid #e5e7eb',
+                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                minWidth: '90px',
+                height: '90px',
+                position: 'relative'
+              }}>
+                {qrCodeSvg ? (
+                  <div
+                    style={{
+                      width: '70px',
+                      height: '70px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                    dangerouslySetInnerHTML={{ __html: qrCodeSvg }}
+                  />
+                ) : (
+                  <div style={{
+                    width: '70px',
+                    height: '70px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: '#f3f4f6',
+                    borderRadius: '0.25rem',
+                    color: '#9ca3af',
+                    fontSize: '0.75rem',
+                    textAlign: 'center',
+                    border: '1px dashed #d1d5db'
+                  }}>
+                    QR Code
+                    <br />
+                    <span style={{ fontSize: '0.6rem', marginTop: '0.25rem' }}>
+                      Loading...
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Exam Information Card */}
+          <div style={{
+            background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #bae6fd 100%)',
+            border: '2px solid #3b82f6',
+            borderRadius: '0.75rem',
+            padding: '1rem',
+            marginBottom: '0.75rem',
+            textAlign: 'center',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            {/* Decorative elements */}
+            <div style={{
+              position: 'absolute',
+              top: '-10px',
+              left: '-10px',
+              width: '40px',
+              height: '40px',
+              background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+              borderRadius: '50%',
+              opacity: 0.1
+            }}></div>
+            <div style={{
+              position: 'absolute',
+              bottom: '-10px',
+              right: '-10px',
+              width: '30px',
+              height: '30px',
+              background: 'linear-gradient(135deg, #1d4ed8, #1e40af)',
+              borderRadius: '50%',
+              opacity: 0.1
+            }}></div>
+
+            <h2 style={{
+              fontSize: '1.25rem',
+              fontWeight: 700,
+              color: '#1e40af',
+              margin: 0,
+              textShadow: '0 1px 2px rgba(59, 130, 246, 0.1)',
+              letterSpacing: '0.025em'
+            }}>
+              {resultData.term || 'Exam Name'}
             </h2>
+            <p style={{
+              fontSize: '1rem',
+              fontWeight: 600,
+              color: '#3b82f6',
+              margin: '0.5rem 0 0 0',
+              backgroundColor: 'rgba(255, 255, 255, 0.8)',
+              padding: '0.25rem 1rem',
+              borderRadius: '9999px',
+              display: 'inline-block',
+              border: '1px solid rgba(59, 130, 246, 0.2)'
+            }}>
+              Academic Year 2025
+            </p>
           </div>
 
           {/* Student Info Card */}
-          <div style={{...styles.studentCard, padding: '0.75rem', marginBottom: '0.75rem', position: 'relative'}}>
-            {/* QR Code - Moved below the header */}
-            <div style={{ 
-              position: 'absolute', 
-              top: '50px',
-              right: '20px',
+          <div style={{
+            ...styles.studentCard,
+            padding: '0.75rem',
+            marginBottom: '0.75rem',
+            display: 'flex',
+            gap: '1rem',
+            alignItems: 'flex-start'
+          }}>
+            {/* Student Information */}
+            <div style={{ flex: 1 }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '1rem',
+                borderBottom: '1px solid #dbeafe',
+                paddingBottom: '0.5rem'
+              }}>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#1e40af', margin: 0 }}>
+                  Student Information
+                </h3>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <span style={{
+                    background: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 50%, #7dd3fc 100%)',
+                    color: '#0369a1',
+                    padding: '0.35rem 0.75rem',
+                    borderRadius: '6px',
+                    fontSize: '0.9rem',
+                    fontWeight: 600,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                    border: '1px solid #bae6fd'
+                  }}>
+                    Class: {studentData.class} {studentData.section ? `- ${studentData.section}` : ''}
+                  </span>
+                  <span style={{
+                    background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #bae6fd 100%)',
+                    color: '#0369a1',
+                    padding: '0.35rem 0.75rem',
+                    borderRadius: '6px',
+                    fontSize: '0.9rem',
+                    fontWeight: 600,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                    border: '1px solid #bae6fd'
+                  }}>
+                    Roll: {studentData.rollNo || studentData.roll || 'N/A'}
+                  </span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+                <div style={{ flex: '1 1 40%' }}>
+                  <p style={{ marginBottom: '0.5rem' }}><span style={{ fontWeight: 600, color: '#374151' }}>Name:</span> <span style={{ color: '#4b5563' }}>{studentData.name || 'N/A'}</span></p>
+                  <p><span style={{ fontWeight: 600, color: '#374151' }}>Address:</span> <span style={{ color: '#4b5563' }}>{studentData.address || 'N/A'}</span></p>
+                </div>
+                <div style={{ flex: '1 1 40%' }}>
+                  <p style={{ marginBottom: '0.5rem' }}><span style={{ fontWeight: 600, color: '#374151' }}>Father's Name:</span> <span style={{ color: '#4b5563' }}>{studentData.fatherName || 'N/A'}</span></p>
+                  <p style={{ marginBottom: '0.5rem' }}><span style={{ fontWeight: 600, color: '#374151' }}>DOB:</span> <span style={{ color: '#4b5563' }}>{studentData.dob ? format(new Date(studentData.dob), 'dd MMMM yyyy') : 'N/A'}</span></p>
+                </div>
+              </div>
+            </div>
+
+            {/* Student Photo */}
+            <div style={{
+              width: '120px',
+              height: '150px',
               backgroundColor: 'white',
-              padding: '0.25rem',
-              borderRadius: '0.25rem',
-              border: '1px solid #e5e7eb',
+              padding: '0.5rem',
+              borderRadius: '0.5rem',
+              border: '2px solid #e5e7eb',
+              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
               display: 'flex',
-              flexDirection: 'column',
               alignItems: 'center',
-              zIndex: 1
+              justifyContent: 'center',
+              flexShrink: 0
             }}>
-              {qrCodeSvg && (
-                <div 
-                  style={{ width: '60px', height: '60px' }}
-                  dangerouslySetInnerHTML={{ __html: qrCodeSvg }}
+              {studentData?.photoUrl ? (
+                <img
+                  src={studentData.photoUrl}
+                  alt={studentData.name || 'Student'}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    backgroundColor: '#f3f4f6',
+                    borderRadius: '0.25rem'
+                  }}
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.style.display = 'none';
+                    e.target.parentElement.innerHTML = `
+                      <div style="
+                        width: 100%;
+                        height: 100%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        background-color: #f3f4f6;
+                        color: #9ca3af;
+                        font-size: 2rem;
+                        font-family: Poppins, sans-serif;
+                      ">
+                        ${studentData?.name ? studentData.name.trim().charAt(0).toUpperCase() : '?'}
+                      </div>
+                    `;
+                  }}
                 />
+              ) : (
+                <div style={{
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: '#f3f4f6',
+                  color: '#9ca3af',
+                  fontSize: '2rem',
+                  fontFamily: 'Poppins, sans-serif'
+                }}>
+                  {studentData?.name ? studentData.name.trim().charAt(0).toUpperCase() : '?'}
+                </div>
               )}
-             
-            </div>
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center', 
-              marginBottom: '1rem', 
-              borderBottom: '1px solid #dbeafe', 
-              paddingBottom: '0.5rem',
-              position: 'relative',
-              zIndex: 2
-            }}>
-              <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#1e40af', margin: 0 }}>
-                Student Information
-              </h3>
-              <div style={{ display: 'flex', gap: '0.75rem' }}>
-                <span style={{
-                  background: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 50%, #7dd3fc 100%)',
-                  color: '#0369a1',
-                  padding: '0.35rem 0.75rem',
-                  borderRadius: '6px',
-                  fontSize: '0.9rem',
-                  fontWeight: 600,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-                  border: '1px solid #bae6fd'
-                }}>
-                  Class: {studentData.class} {studentData.section ? `- ${studentData.section}` : ''}
-                </span>
-                <span style={{
-                  background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #bae6fd 100%)',
-                  color: '#0369a1',
-                  padding: '0.35rem 0.75rem',
-                  borderRadius: '6px',
-                  fontSize: '0.9rem',
-                  fontWeight: 600,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-                  border: '1px solid #bae6fd'
-                }}>
-                  Roll: {studentData.roll || 'N/A'}
-                </span>
-              </div>
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
-              <div style={{ flex: '1 1 40%' }}>
-                <p style={{ marginBottom: '0.5rem' }}><span style={{ fontWeight: 600, color: '#374151' }}>Name:</span> <span style={{ color: '#4b5563' }}>{studentData.name || 'N/A'}</span></p>
-                <p><span style={{ fontWeight: 600, color: '#374151' }}>Address:</span> <span style={{ color: '#4b5563' }}>{studentData.address || 'N/A'}</span></p>
-              </div>
-              <div style={{ flex: '1 1 40%' }}>
-                <p style={{ marginBottom: '0.5rem' }}><span style={{ fontWeight: 600, color: '#374151' }}>Father's Name:</span> <span style={{ color: '#4b5563' }}>{studentData.fatherName || 'N/A'}</span></p>
-                <p style={{ marginBottom: '0.5rem' }}><span style={{ fontWeight: 600, color: '#374151' }}>DOB:</span> <span style={{ color: '#4b5563' }}>{studentData.dob ? format(new Date(studentData.dob), 'dd MMMM yyyy') : 'N/A'}</span></p>
-              </div>
             </div>
           </div>
 
           {/* Marks Table */}
-          <div style={{ overflowX: 'auto', marginBottom: '2rem' }}>
+          <div style={{ overflowX: 'auto', marginBottom: '1rem' }}>
             <table style={styles.table}>
               <thead>
                 <tr>
@@ -303,7 +555,16 @@ const PrintResultModal = ({
                         <span style={{ flex: 1, textAlign: 'center' }}>F.M.</span>
                       </div>
                     </th>
-                  ))}
+                  )) || (
+                    // Fallback for when evaluationTypes is not available
+                    <th colSpan="2" style={{ ...styles.th, textAlign: 'center' }}>
+                      Written
+                      <div style={{ ...styles.subHeader, display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ flex: 1, textAlign: 'center' }}>M.O.</span>
+                        <span style={{ flex: 1, textAlign: 'center' }}>F.M.</span>
+                      </div>
+                    </th>
+                  )}
                   <th style={{ ...styles.th, textAlign: 'center' }}>
                     Total
                     <div style={{ ...styles.subHeader, display: 'flex', justifyContent: 'space-between' }}>
@@ -319,35 +580,45 @@ const PrintResultModal = ({
                   <tr key={subject} style={{ backgroundColor: 'white' }}>
                     <td style={{ ...styles.td, textAlign: 'left', fontWeight: 500 }}>{subject}</td>
                     {resultData.exam?.config?.evaluationTypes?.map(type => {
-                      const evaluation = details.evaluations?.find(e => e.type.toLowerCase() === type.toLowerCase());
+                      const evaluation = details.evaluations?.find(e => e.type?.toLowerCase() === type.toLowerCase());
                       return (
                         <React.Fragment key={`${subject}-${type}`}>
                           <td style={styles.td}>
                             {evaluation?.marks || '0'}
                           </td>
                           <td style={styles.td}>
-                            {evaluation?.maxMarks || evaluation?.fullMarks || '0'}
+                            {evaluation?.maxMarks || '0'}
                           </td>
                         </React.Fragment>
                       );
-                    })}
+                    }) || (
+                      // Fallback when evaluationTypes is not available
+                      <React.Fragment>
+                        <td style={styles.td}>
+                          {details.evaluations?.[0]?.marks || details.total || '0'}
+                        </td>
+                        <td style={styles.td}>
+                          {details.evaluations?.[0]?.maxMarks || details.max || '0'}
+                        </td>
+                      </React.Fragment>
+                    )}
                     <td style={{ ...styles.td, fontWeight: 'bold' }}>
-                      <div style={{ 
-                        display: 'flex', 
+                      <div style={{
+                        display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         gap: '0.5rem'
                       }}>
-                        <span style={{ fontWeight: 600 }}>{details.obtainedMarks || details.total || '0'}</span>
+                        <span style={{ fontWeight: 600 }}>{details.total || details.obtainedMarks || '0'}</span>
                         <span style={{ color: '#9ca3af' }}>/</span>
                         <span style={{ color: '#6b7280', fontSize: '0.95em' }}>
-                          {details.maxMarks || details.totalMarks || 
+                          {details.max || details.totalMarks ||
                            (details.evaluations?.reduce((sum, evalItem) => sum + (parseInt(evalItem.maxMarks) || 0), 0) || '0')}
                         </span>
                       </div>
                     </td>
                     <td style={styles.td}>
-                      <span style={{ 
+                      <span style={{
                         backgroundColor: details.grade === 'F' ? '#fee2e2' : '#dcfce7',
                         color: details.grade === 'F' ? '#b91c1c' : '#166534',
                         padding: '0.25rem 0.5rem',
@@ -364,8 +635,8 @@ const PrintResultModal = ({
           </div>
 
           {/* Summary Cards */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', marginTop: '2rem' }}>
-            <div style={{ ...styles.summaryCard, flex: '1 1 48%', padding: '0.75rem', margin: '0.5rem 0' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginTop: '1rem' }}>
+            <div style={{ ...styles.summaryCard, flex: '1 1 48%', padding: '0.5rem', margin: '0.5rem 0' }}>
               <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: '#1e40af', marginBottom: '0.5rem', borderBottom: '1px solid #dbeafe', paddingBottom: '0.25rem' }}>
                 Academic Summary
               </h3>
@@ -398,7 +669,7 @@ const PrintResultModal = ({
               </div>
             </div>
 
-            <div style={{ ...styles.summaryCard, flex: '1 1 48%', padding: '0.75rem', margin: '0.5rem 0' }}>
+            <div style={{ ...styles.summaryCard, flex: '1 1 48%', padding: '0.5rem', margin: '0.5rem 0' }}>
               <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: '#1e40af', marginBottom: '0.5rem', borderBottom: '1px solid #dbeafe', paddingBottom: '0.25rem' }}>
                 Class Performance
               </h3>
@@ -417,15 +688,15 @@ const PrintResultModal = ({
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontWeight: 500, color: '#4b5563' }}>Result Status:</span>
-                  <span style={{ 
-                    fontWeight: 600, 
-                    color: resultData.summary?.isPassed ? '#166534' : '#b91c1c',
-                    backgroundColor: resultData.summary?.isPassed ? '#dcfce7' : '#fee2e2',
+                  <span style={{
+                    fontWeight: 600,
+                    color: resultData.summary?.resultStatus === 'Pass' ? '#166534' : '#b91c1c',
+                    backgroundColor: resultData.summary?.resultStatus === 'Pass' ? '#dcfce7' : '#fee2e2',
                     padding: '0.25rem 0.75rem',
                     borderRadius: '9999px',
                     fontSize: '0.875rem'
                   }}>
-                    {resultData.summary?.isPassed ? 'Passed' : 'Failed'}
+                    {resultData.summary?.resultStatus === 'Pass' ? 'Passed' : 'Failed'}
                   </span>
                 </div>
               </div>
@@ -433,17 +704,55 @@ const PrintResultModal = ({
           </div>
 
           {/* Footer Note */}
-          <p style={{ 
-            fontSize: '0.75rem', 
-            color: '#6b7280', 
-            fontStyle: 'italic', 
-            textAlign: 'center', 
-            marginTop: '2rem',
+          <div style={{
+            marginTop: '1rem',
             paddingTop: '1rem',
             borderTop: '1px solid #e5e7eb'
           }}>
-            This is a computer generated document and does not require a signature.
-          </p>
+            {/* Contact Information */}
+            <div style={{
+              backgroundColor: '#f8fafc',
+              padding: '1rem',
+              borderRadius: '0.5rem',
+              marginBottom: '1rem',
+              border: '1px solid #e5e7eb'
+            }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                gap: '1.5rem',
+                flexWrap: 'wrap',
+                fontSize: '0.875rem',
+                color: '#4b5563'
+              }}>
+                {schoolinfo.contact?.phone && (
+                  <span style={{ fontWeight: 500 }}>
+                    📞 {schoolinfo.contact.phone}
+                  </span>
+                )}
+                {schoolinfo.contact?.email && (
+                  <span style={{ fontWeight: 500 }}>
+                    ✉️ {schoolinfo.contact.email}
+                  </span>
+                )}
+                {schoolinfo.contact?.website && (
+                  <span style={{ fontWeight: 500 }}>
+                    🌐 {schoolinfo.contact.website}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <p style={{
+              fontSize: '0.75rem',
+              color: '#6b7280',
+              fontStyle: 'italic',
+              textAlign: 'center',
+              margin: 0
+            }}>
+              This is a computer generated document and does not require a signature.
+            </p>
+          </div>
         </div>
       </div>
     </div>

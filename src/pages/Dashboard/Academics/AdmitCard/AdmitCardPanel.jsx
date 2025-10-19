@@ -689,8 +689,11 @@ const AdmitCardPanel = () => {
     // Filter the fullMarks and schedule objects based on the filtered subjects
     const filteredFullMarks = {};
     const filteredSchedule = {};
-    const fullMarks = rawExamData?.fullMarks || examDetails?.fullMarks || {};
-    const schedule = rawExamData?.schedule || examDetails?.schedule || {};
+    const examDetails = exams.find(exam => exam._id === selectedExam);
+    const examName = examDetails?.name || "Exam";
+    const fullMarks = examDetails?.fullMarks || {};
+    const schedule = examDetails?.schedule || {};
+    const evaluationTypes = examDetails?.evaluationTypes || ['Written'];
 
     subjects.forEach(subject => {
       if (fullMarks[subject]) {
@@ -705,17 +708,17 @@ const AdmitCardPanel = () => {
     const studentWithExam = {
       ...student,
       exam: {
-        ...selectedExamData,
+        ...examDetails,
         name: examName,
         subjects: subjects,
-        evaluationTypes: rawExamData?.evaluationTypes || examDetails?.evaluationTypes || ['Written'],
+        evaluationTypes: evaluationTypes,
         fullMarks: filteredFullMarks,
         schedule: filteredSchedule,
         // Include the full examConfig if available
-        ...(rawExamData && { 
+        ...(examDetails && { 
           examConfig: { 
             [examName]: {
-              ...rawExamData,
+              ...examDetails,
               subjects: subjects,
               fullMarks: filteredFullMarks,
               schedule: filteredSchedule

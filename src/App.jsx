@@ -39,6 +39,12 @@ const RouteLoader = ({ children }) => {
   const location = useLocation();
   const { loading: authLoading } = useAuth();
 
+  // Define public routes that don't require auth loading
+  const publicRoutes = ['/', '/login', '/results'];
+
+  // Check if current path is public
+  const isPublicRoute = publicRoutes.some(route => location.pathname.startsWith(route));
+
   // Only show loading for path changes, not for search/hash changes
   useEffect(() => {
     setIsLoading(true);
@@ -46,6 +52,15 @@ const RouteLoader = ({ children }) => {
     return () => clearTimeout(timer);
   }, [location.pathname]); // Only run on pathname changes
 
+  // For public routes, don't wait for authLoading
+  if (isPublicRoute) {
+    if (isLoading) {
+      return <FullPageLoader />;
+    }
+    return children;
+  }
+
+  // For protected routes, wait for both page loading and auth loading
   if (isLoading || authLoading) {
     return <FullPageLoader />;
   }
@@ -140,10 +155,7 @@ const AppContent = () => {
               <Login />
             </PublicRoute>
           } />
-          
-          <Route path="/results" element={<PublicResultsPage />}>
-            <Route path="term/:term" element={<PublicResultsPage />} />
-          </Route>
+          <Route path="/results" element={<PublicResultsPage />} />
 
           {/* Dashboard Routes - Protected */}
           <Route

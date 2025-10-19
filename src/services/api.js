@@ -110,10 +110,7 @@ const handleUnauthorizedError = async (error) => {
     processQueue(refreshError, null);
     
     // Only redirect if we're not already on the login page
-    if (window.location.pathname !== '/login') {
-      console.log('[API] Redirecting to login after token refresh failure');
-      window.location.href = '/login';
-    }
+   
     
     return Promise.reject(refreshError);
     
@@ -153,28 +150,33 @@ const uploadApi = axios.create({
 });
 
 // Request interceptor to include auth token and handle logging
-// Helper to check if endpoint is public
+// Helper to check if endpoint is public or auth-related
 const isPublicEndpoint = (url) => {
-  const publicPaths = ['/public/', '/auth/verify', '/health'];
-  return publicPaths.some(path => url.includes(path));
+  const publicPaths = [
+    '/publicresults/',
+    '/auth/verify',
+    '/health',
+    '/auth/login',
+    '/auth/refresh-token',
+    '/api/publicresults/status/term/',
+    '/api/publicresults/getresult'
+  ];
+  return publicPaths.some(path => url.startsWith(path) || url.endsWith(path));
+};
+
+// Helper to check if endpoint is an auth endpoint
+const isAuthEndpoint = (url) => {
+  return url.includes('/auth/');
 };
 
 api.interceptors.request.use(
   (config) => {
     // Skip auth for public endpoints or when skipAuth is explicitly set
-    if (!isPublicEndpoint(config.url) && !config.skipAuth) {
-      const token = localStorage.getItem('token');
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
+    if (isPublicEndpoint(config.url) || config.skipAuth) {
+      // For login requests, make sure we don't add any auth headers
+      delete config.headers.Authorization;
+      return config;
     }
-
-    // Add cache control for GET requests to public endpoints
-    if (config.method?.toLowerCase() === 'get' && isPublicEndpoint(config.url)) {
-      config.headers['Cache-Control'] = 'public, max-age=300'; // 5 minutes
-    }
-
-    // Skip logging for health checks to reduce noise
     if (!config.url.includes('/health')) {
       const logData = {};
       
@@ -252,7 +254,7 @@ api.interceptors.request.use(
     }
     
     // Skip adding token for public and auth endpoints
-    const isPublicEndpoint = config.url.includes('/public/') || 
+    const isPublicEndpoint = config.url.includes('/publicresults/') || 
                            config.url.includes('/auth/') ||
                            config.url === '/health';
     
@@ -324,158 +326,50 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
     
-    // Handle server errors
+    // Handle server errors - don't attempt token refresh
     if (error.response?.status >= 500) {
       console.error('[API] Server error:', error.response.data);
       error.message = 'Server error. Please try again later.';
+      toast.error('Server error. Please try again later.');
       return Promise.reject(error);
     }
     
-    // Handle unauthorized errors (401)
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      console.log('[API] Unauthorized - attempting token refresh');
-      
-      // If we're already refreshing the token, add the request to the queue
+    // Handle 401 Unauthorized errors - but not for auth endpoints
+    if (error.response?.status === 401 && !isAuthEndpoint(error.config?.url)) {
+      // If we're already refreshing, don't try again
       if (isRefreshing) {
-        console.log('[API] Token refresh already in progress, adding to queue');
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
-          .then((token) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-            return api(originalRequest);
-          })
-          .catch((err) => {
-            return Promise.reject(err);
-          });
-      }
-
-      // Mark that we're refreshing the token
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        if (!refreshToken) {
-          throw new Error('No refresh token available');
-        }
-
-        // Try to refresh the token
-        const response = await api.post('/auth/refresh-token', { refreshToken });
-        const { token: newToken, refreshToken: newRefreshToken } = response.data;
-        
-        // Store the new tokens
-        localStorage.setItem('token', newToken);
-        if (newRefreshToken) {
-          localStorage.setItem('refreshToken', newRefreshToken);
-        }
-
-        // Update the original request with the new token
-        originalRequest.headers.Authorization = `Bearer ${newToken}`;
-        
-        // Process any queued requests
-        processQueue(null, newToken);
-        
-        // Retry the original request
-        return api(originalRequest);
-      } catch (refreshError) {
-        // If refresh fails, clear auth and redirect to login
-        processQueue(refreshError, null);
-        clearAuthAndRedirect();
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
-      }
-    }
-
-    // Handle network errors
-    if (!error.response) {
-      toast.error('Network error. Please check your connection.');
-      return Promise.reject(error);
-    }
-
-    // Handle 401 Unauthorized errors
-    if (status === 401) {
-      // If this is a refresh token request or we're already refreshing, reject
-      if (originalRequest.url.includes('/auth/refresh-token') || isRefreshing) {
-        // If we're already refreshing, add the failed request to the queue
-        if (isRefreshing) {
-          return new Promise((resolve, reject) => {
-            failedQueue.push({ resolve, reject });
-          })
-            .then((token) => {
-              originalRequest.headers.Authorization = `Bearer ${token}`;
-              return api(originalRequest);
-            })
-            .catch((err) => {
-              return Promise.reject(err);
-            });
-        }
-        
-        // Clear auth data and redirect to login
-        clearAuthAndRedirect();
         return Promise.reject(error);
       }
-
-      // Try to refresh the token
-      const refreshToken = localStorage.getItem('refreshToken');
-      if (refreshToken) {
-        isRefreshing = true;
-        
-        try {
-          const response = await axios.post(`${API_URL}/auth/refresh-token`, { refreshToken });
-          const { token } = response.data;
-          
-          if (!token) {
-            throw new Error('No token received');
-          }
-          
-          // Store the new token
-          localStorage.setItem('token', token);
-          
-          // Update the Authorization header
-          api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-          originalRequest.headers.Authorization = `Bearer ${token}`;
-          
-          // Process any queued requests
-          processQueue(null, token);
-          isRefreshing = false;
-          
-          // Retry the original request
-          return api(originalRequest);
-        } catch (refreshError) {
-          // If refresh fails, clear auth and redirect to login
-          processQueue(refreshError, null);
-          clearAuthAndRedirect();
-          return Promise.reject(refreshError);
-        } finally {
-          isRefreshing = false;
-        }
-      } else {
-        // No refresh token available, redirect to login
-        clearAuthAndRedirect();
-        return Promise.reject(new Error('Session expired. Please log in again.'));
-      }
+      
+      console.log('[API] Handling 401 Unauthorized for non-auth endpoint');
+      return handleUnauthorizedError(error);
     }
-
+    
     // Handle other error statuses
-    if (status >= 500) {
-      toast.error('Server error. Please try again later.');
-    } else if (status === 404) {
-      toast.error('The requested resource was not found.');
-    } else if (status === 403) {
-      toast.error('You do not have permission to perform this action.');
-    } else if (error.response?.data?.message) {
-      // Only show error message if it's not an auth error
-      if (status !== 401 && status !== 403) {
-        toast.error(error.response.data.message);
+    if (error.response?.status) {
+      const { status, data } = error.response;
+      
+      if (status === 404) {
+        toast.error('The requested resource was not found.');
+      } else if (status === 403) {
+        toast.error('You do not have permission to perform this action.');
+      } else if (data?.message && status !== 401) {
+        // Only show message if it's not an auth error
+        toast.error(data.message);
       }
+    } else if (error.code === 'ECONNABORTED') {
+      toast.error('Request timed out. Please check your connection.');
+    } else if (!window.navigator.onLine) {
+      toast.error('No internet connection. Please check your network settings.');
+    } else {
+      toast.error(error.message || 'An unexpected error occurred');
     }
     
     return Promise.reject(error);
   }
 );
 
+// ... (rest of the code remains the same)
 // Helper function to clear auth data and redirect to login
 const clearAuthAndRedirect = () => {
   localStorage.removeItem('token');

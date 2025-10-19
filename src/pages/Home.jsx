@@ -23,7 +23,8 @@ import {
 } from 'react-icons/fa';
 import { FiAlertCircle, FiInfo } from 'react-icons/fi';
 import { useAuth } from '@contexts/AuthContext';
-import api from '../services/api';
+import { getPublishedStatusForPublic } from '../services/resultsService';
+import { examTermsInTheSchool } from '../shared/schoolInformation';
 import Navbar from '../layouts/Header';
 import { schoolinfo } from '@/shared/schoolInformation';
 
@@ -53,20 +54,16 @@ const usePublicResults = () => {
     queryKey: ['publicResults'],
     queryFn: async () => {
       try {
-        const response = await api.get('/public/results/status', {
-          skipAuth: true, // Skip auth for public endpoint
-          headers: {
-            'Cache-Control': 'public, max-age=300' // 5 minutes cache
+        const fetchPromises = examTermsInTheSchool.map(async (term) => {
+          const result = await getPublishedStatusForPublic(term);
+          if (result.success && result.data) {
+            return { ...result.data, term };
+          } else {
+            return { term, isPublished: false, classes: [] };
           }
         });
-        
-        if (!response?.data) {
-          console.warn('No data received from public results endpoint');
-          return [];
-        }
-        
-        // Only return published results
-        return response.data.items?.filter(item => item?.isPublished) || [];
+        const results = await Promise.all(fetchPromises);
+        return results;
       } catch (error) {
         // Don't log 401 errors for public endpoints
         if (error?.response?.status !== 401) {
@@ -277,34 +274,48 @@ const PublicResultsCard = React.memo(({ publicResultStatuses = [], isLoading, is
   return (
     <div className="space-y-4" role="list" aria-label="Published results">
       {publicResultStatuses.map((result, index) => (
-        <button
-          key={result._id || index}
-          className={`w-full text-left bg-gradient-to-r ${cardColors[index % cardColors.length]} rounded-lg shadow-md overflow-hidden transform transition-all duration-200 hover:scale-[1.02] hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
-          onClick={() => navigate(`/results?term=${encodeURIComponent(result.term)}`)}
-          aria-label={`View ${result.term} results`}
+        <div
+          key={result._id || `${result.term}-${index}`}
+          className={`w-full text-left rounded-lg shadow-md overflow-hidden transform transition-all duration-200 ${
+            result.isPublished
+              ? `bg-gradient-to-r ${cardColors[index % cardColors.length]} hover:scale-[1.02] hover:shadow-lg`
+              : 'bg-gray-100 dark:bg-gray-800 opacity-60'
+          }`}
+          aria-label={`${result.term} results`}
         >
-          <div className="p-4 text-white">
+          <div className={`p-4 ${result.isPublished ? 'text-white' : 'text-gray-700 dark:text-gray-300'}`}>
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold">{result.class} Results</h3>
-              <FiExternalLink className="h-5 w-5 opacity-75" aria-hidden="true" />
+              <h3 className="text-lg font-semibold">{result.term} Results</h3>
+              {result.isPublished ? (
+                <FiExternalLink className="h-5 w-5 opacity-75" aria-hidden="true" />
+              ) : (
+                <span className="text-xs bg-gray-500 text-white px-2 py-1 rounded">Not Published</span>
+              )}
             </div>
             <p className="text-sm opacity-90 mt-1">
-              {result.term} • {result.section || 'All Sections'}
+              {result.isPublished ? `${result.section || 'All Classes'}` : 'Results not yet published'}
             </p>
-            {result.publishedAt && (
+            {result.isPublished && result.publishedAt && (
               <div className="mt-2 flex items-center text-xs opacity-80">
                 <FiCheckCircle className="h-4 w-4 mr-1" aria-hidden="true" />
                 <span>Published on {new Date(result.publishedAt).toLocaleDateString()}</span>
               </div>
             )}
             <div className="mt-4 flex justify-end">
-              <span className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
-                <FiExternalLink className="mr-1.5 h-3.5 w-3.5" />
-                View Results
-              </span>
+              {result.isPublished ? (
+                <button
+                  className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                  onClick={() => navigate(`/results?term=${encodeURIComponent(result.term)}`)}
+                >
+                  <FiExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                  View Results
+                </button>
+              ) : (
+                <span className="text-xs text-gray-500 dark:text-gray-400">Check back later</span>
+              )}
             </div>
           </div>
-        </button>
+        </div>
       ))}
     </div>
   );

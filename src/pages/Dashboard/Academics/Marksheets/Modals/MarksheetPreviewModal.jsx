@@ -5,177 +5,21 @@ import { XMarkIcon, ArrowLeftIcon, ArrowDownTrayIcon } from '@heroicons/react/24
 import { schoolinfo } from '@/shared/schoolInformation';
 import MarksheetPrintPage from '../MarksheetPage/MarksheetPrintPage';
 
-const MarksheetPreviewModal = ({ 
-  isOpen, 
-  onClose, 
-  student: propStudent, 
-  marks: propMarks = [],
-  className: propClassName,
-  academicYear = '2024-2025' 
+const MarksheetPreviewModal = ({
+  isOpen,
+  onClose,
+  processedStudent, // Already processed data
+  academicYear = '2025'
 }) => {
   const componentRef = useRef();
   const printContentRef = useRef();
   const navigate = useNavigate();
-  // Initialize state with props
-  const [studentData, setStudentData] = useState(propStudent);
-  const [examConfig, setExamConfig] = useState([]);
-  const [attendanceConfig, setAttendanceConfig] = useState({});
-  const [className, setClassName] = useState(propClassName);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [marksheetData, setMarksheetData] = useState(null);
-  
-  console.log('Preview Modal - Initial props:', { propStudent, propMarks, propClassName });
-  
-  const schoolInfo = {
-    name: schoolinfo.name,
-    branch: schoolinfo.branch || '',
-    address: schoolinfo.address,
-    regNumber: schoolinfo.regNumber,
-    runBy: schoolinfo.runBy || 'M.M.D.C.T.',
-    estd: schoolinfo.estd,
-    contact: schoolinfo.contact
-  };
-  // Process marks from student data
-  const processMarksheetData = useCallback(() => {
-    if (!propStudent) {
-      console.error('No student data provided to MarksheetPreviewModal');
-      return null;
-    }
-    
-    console.log('[MarksheetPreview] Processing student data:', propStudent);
-    console.log('[MarksheetPreview] Processing marks from student data:', propMarks);
-    
-    // Ensure we have a clean student object with all required fields
-    const student = {
-      ...propStudent,
-      name: propStudent.name || propStudent.studentName || '',
-      studentName: propStudent.studentName || propStudent.name || '',
-      rollNumber: propStudent.rollNumber || propStudent.roll || '',
-      className: propClassName || propStudent.className || propStudent.class || '',
-      class: propClassName || propStudent.className || propStudent.class || '',
-      admissionNo: propStudent.admissionNo || '',
-      fatherName: propStudent.fatherName || '',
-      motherName: propStudent.motherName || '',
-      dob: propStudent.dob || '',
-      marks: propMarks || {}
-    };
-    
-    setStudentData(student);
-    
-    // Process marks for each exam term
-    const results = [];
-    const examTerms = Object.keys(propStudent.marks || {});
-    
-    examTerms.forEach(examTerm => {
-      const examMarks = propStudent.marks[examTerm];
-      if (!examMarks) return;
-      
-      const examResult = {
-        examName: examTerm,
-        className: student.className,
-        studentId: student._id,
-        studentName: student.studentName,
-        rollNumber: student.rollNumber,
-        subjects: {}
-      };
-      
-      // Process each subject's marks
-      Object.entries(examMarks).forEach(([subject, marks]) => {
-        if (marks && typeof marks === 'object') {
-          // Calculate total marks if not already provided
-          let totalMarks = marks.SubjectTotal;
-          if (totalMarks === undefined) {
-            totalMarks = Object.entries(marks).reduce((sum, [key, value]) => {
-              return key !== 'SubjectTotal' ? sum + (parseFloat(value) || 0) : sum;
-            }, 0);
-          }
-          
-          examResult.subjects[subject] = {
-            ...marks,
-            obtainedMarks: totalMarks,
-            maxMarks: marks.SubjectTotal || 100, // Default max marks
-            percentage: Math.round((totalMarks / marks.SubjectTotal || 100) * 100),
-            grade: calculateGrade(totalMarks, marks.SubjectTotal || 100)
-          };
-        } else if (typeof marks === 'number' || !isNaN(parseFloat(marks))) {
-          // Handle case where marks is just a number
-          const markValue = typeof marks === 'number' ? marks : parseFloat(marks);
-          examResult.subjects[subject] = {
-            obtainedMarks: markValue,
-            maxMarks: 100,
-            percentage: markValue,
-            grade: calculateGrade(markValue, 100)
-          };
-        }
-      });
-      
-      results.push(examResult);
-    });
-    
-    return {
-      success: true,
-      data: {
-        student,
-        examConfig: null,
-        attendanceConfig: null,
-        results: results
-      }
-    };
-  }, [propStudent, propClassName]);
-  
-  // Calculate grade helper function
-  const calculateGrade = (obtained, max) => {
-    if (!obtained || !max) return 'N/A';
-    const percentage = (obtained / max) * 100;
-    if (percentage >= 90) return 'A+';
-    if (percentage >= 80) return 'A';
-    if (percentage >= 70) return 'B+';
-    if (percentage >= 60) return 'B';
-    if (percentage >= 50) return 'C';
-    if (percentage >= 40) return 'D';
-    return 'F';
-  };
 
-  // Process marks when component mounts or when student data changes
-  useEffect(() => {
-    if (isOpen && propStudent) {
-      console.log('[MarksheetPreview] Processing student data:', propStudent);
-      
-      // First, ensure we have the basic student data
-      const studentClass = propClassName || propStudent.class || propStudent.className || '';
-      setClassName(studentClass);
-      
-      // Update student data with all required fields
-      const updatedStudent = {
-        ...propStudent,
-        name: propStudent.name || propStudent.studentName || '',
-        studentName: propStudent.studentName || propStudent.name || '',
-        rollNumber: propStudent.rollNumber || propStudent.roll || '',
-        className: studentClass,
-        class: studentClass,
-        admissionNo: propStudent.admissionNo || '',
-        fatherName: propStudent.fatherName || '',
-        motherName: propStudent.motherName || '',
-        dob: propStudent.dob || '',
-        marks: propMarks || {}
-      };
-      
-      setStudentData(updatedStudent);
-      
-      // Process exam config from marks
-      const examTerms = Object.keys(propMarks || {});
-      if (examTerms.length > 0) {
-        const results = examTerms.map(term => ({
-          examName: term,
-          subjects: propMarks[term] || {}
-        }));
-        setExamConfig(results);
-      }
-      
-      setIsLoading(false);
-    }
-  }, [isOpen, propStudent, propMarks, propClassName]);
+  // Use processed data directly - no processing needed
+  const studentData = processedStudent?.student;
+  const className = processedStudent?.student?.class;
+  
+
 
   // Handle print functionality
   const handlePrint = useReactToPrint({
@@ -230,7 +74,7 @@ const MarksheetPreviewModal = ({
       }
     };
 
-console.log("studentData",studentData,"examConfig",examConfig,"className",className,"academicYear",academicYear);
+console.log("studentData",studentData,"className",className,"academicYear",academicYear);
     
 
     if (isOpen) {
@@ -245,65 +89,6 @@ console.log("studentData",studentData,"examConfig",examConfig,"className",classN
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
-
-  if (isLoading) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
-          <div className="text-center">
-            <div className="flex justify-center mb-4">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              Loading Marksheet
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-              Please wait while we load {studentData?.name ? `${studentData.name}'s` : 'the student\'s'} data...
-            </p>
-            <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-              <div className="bg-blue-600 h-2.5 rounded-full animate-pulse w-3/4"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !studentData) {
-    const errorMessage = error?.message || 'Failed to load student data. Please try again.';
-    
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
-          <div className="text-center">
-            <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 dark:bg-red-900/30 mb-4">
-              <XMarkIcon className="h-8 w-8 text-red-600 dark:text-red-400" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-3">
-              Error Loading Data
-            </h3>
-            <div className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 p-3 rounded-md text-sm mb-6 text-left">
-              {errorMessage}
-            </div>
-            <div className="flex flex-col sm:flex-row justify-center gap-3">
-              <button
-                onClick={onClose}
-                className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex-1 sm:flex-none"
-              >
-                Close
-              </button>
-              <button
-                onClick={() => window.location.reload()}
-                className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex-1 sm:flex-none"
-              >
-                Try Again
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -381,56 +166,9 @@ console.log("studentData",studentData,"examConfig",examConfig,"className",classN
                           `
                         }} />
                         <div ref={printContentRef} className="w-full">
-                          <MarksheetPrintPage 
-                            student={{
-                              ...(propStudent || {}),
-                              name: propStudent?.name || propStudent?.studentName || 'Student Name',
-                              studentName: propStudent?.studentName || propStudent?.name || 'Student Name',
-                              rollNumber: propStudent?.rollNumber || propStudent?.roll || 'N/A',
-                              Class: className || propStudent?.className || propStudent?.class || 'N/A',
-                              className: className || propStudent?.className || propStudent?.class || 'N/A',
-                              admissionNo: propStudent?.admissionNo || 'N/A',
-                              fatherName: propStudent?.fatherName || 'N/A',
-                              motherName: propStudent?.motherName || 'N/A',
-                            }}
-                            marks={propMarks || []}
-                            examConfig={examConfig || []}
-                            academicYear={academicYear || '2024-2025'}
-                            className={className}
-                            coScholastic={propStudent?.coScholastic || {}}
-                            attendanceConfig={attendanceConfig || {}}
-                            calculateMarks={(subjectMarks) => {
-                              if (!subjectMarks) {
-                                return {
-                                  subject: 'Subject',
-                                  obtainedMarks: 0,
-                                  maxMarks: 100,
-                                  percentage: 0,
-                                  grade: 'N/A'
-                                };
-                              }
-                              
-                              let obtainedMarks = 0;
-                              if (typeof subjectMarks === 'object' && subjectMarks !== null) {
-                                obtainedMarks = subjectMarks.SubjectTotal || 
-                                  Object.values(subjectMarks).reduce((sum, val) => 
-                                    typeof val === 'number' ? sum + val : sum, 0);
-                              } else {
-                                obtainedMarks = parseFloat(subjectMarks) || 0;
-                              }
-                              
-                              const maxMarks = subjectMarks?.maxMarks || 100;
-                              const percentage = maxMarks > 0 ? (obtainedMarks / maxMarks) * 100 : 0;
-                              const grade = calculateGrade(obtainedMarks, maxMarks);
-                              
-                              return {
-                                subject: subjectMarks?.subject || 'Subject',
-                                obtainedMarks: Number(obtainedMarks.toFixed(2)),
-                                maxMarks: Number(maxMarks.toFixed(2)),
-                                percentage: Math.round(percentage),
-                                grade: grade || 'N/A'
-                              };
-                            }}
+                          <MarksheetPrintPage
+                            processedStudent={processedStudent}
+                            academicYear={academicYear}
                           />
                         </div>
                       </div>

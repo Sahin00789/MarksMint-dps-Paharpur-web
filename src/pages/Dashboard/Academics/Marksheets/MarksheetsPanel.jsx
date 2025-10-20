@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { PrinterIcon, EyeIcon } from '@heroicons/react/24/outline';
 import ExamDependentClassSelectorCard from '@/components/common/ExamDependentClassSelectorCard';
 import api from '@/services/api';
+import { fetchExamConfig } from '@/services/examConfig';
 import MarksheetPreviewModal from './Modals/MarksheetPreviewModal';
 
 const MarksheetsPanel = () => {
@@ -27,18 +28,71 @@ const MarksheetsPanel = () => {
   const processStudentsData = async (className) => {
     if (!className) return [];
 
-    console.log(`Processing students data for class: ${className}`);
-
     try {
       // Step 1: Load students of selected class
       const studentsRes = await api.get(`/students?class=${className}`);
       const students = studentsRes.data;
-      console.log(`Loaded ${students.length} students for class ${className}`);
 
-      // Step 2: Load exam configuration (exam name -> subjects -> evaluation type -> max marks)
-      // For now, we'll extract this from the students' marks data
-      // In a real implementation, this would come from a separate API endpoint
-      const examConfig = {};
+      // Step 2: Load exam configuration for the class using the exam config service
+      let examConfig = {};
+      try {
+        const configData = await fetchExamConfig(className);
+        const examConfigData = configData?.data?.examConfig || {};
+        
+        // Transform the exam config to our required format
+        Object.entries(examConfigData).forEach(([examName, examData]) => {
+          if (!examData || typeof examData !== 'object') return;
+          
+          examConfig[examName] = {};
+          
+          // Process each subject and its evaluation types
+          examData.subjects?.forEach(subjectName => {
+            if (examData.fullMarks?.[subjectName]) {
+              // Use the fullMarks from the config
+              examConfig[examName][subjectName] = { ...examData.fullMarks[subjectName] };
+            } else {
+              // Fallback to default evaluation types if no specific marks are defined
+              const defaultEvals = {
+                'Written': 0,
+                'Oral': 0,
+                'Practical': 0
+              };
+              
+              if (examData.evaluationTypes?.length > 0) {
+                examConfig[examName][subjectName] = {};
+                examData.evaluationTypes.forEach(evalType => {
+                  examConfig[examName][subjectName][evalType] = 0;
+                });
+              } else {
+                examConfig[examName][subjectName] = { ...defaultEvals };
+              }
+            }
+          });
+        });
+      } catch (error) {
+        console.error('Failed to load exam config, using default config', error);
+        // Fallback to a default config if the API call fails
+        examConfig = {
+          'First Summative Evaluation': {
+            'Bengali': { 'Written': 10 },
+            'English': { 'Written': 10 },
+            'Math': { 'Written': 10 },
+            'G_K': { 'Written': 10 }
+          },
+          'Second Summative Evaluation': {
+            'Bengali': { 'Written': 20 },
+            'English': { 'Written': 20 },
+            'Math': { 'Written': 20 },
+            'G_K': { 'Written': 20 }
+          },
+          'Third Summative Evaluation': {
+            'Bengali': { 'Written': 40, 'Oral': 10 },
+            'English': { 'Written': 40, 'Oral': 10 },
+            'Math': { 'Written': 40, 'Oral': 10 },
+            'G_K': { 'Written': 40, 'Oral': 10 }
+          }
+        };
+      }
       const processedStudents = [];
 
       for (const student of students) {
@@ -82,16 +136,52 @@ const MarksheetsPanel = () => {
           }
         };
 
-        // Process each exam for this student
-        for (const [examName, subjects] of Object.entries(studentMarks)) {
+        // Handle the case where marks is an object with success/message or direct marks
+        let marksData = {};
+        
+        // First, check if we have direct marks in the expected format
+        if (studentMarks && typeof studentMarks === 'object') {
+          // Copy all exam marks, excluding any non-exam properties
+          Object.entries(studentMarks).forEach(([examName, subjects]) => {
+            if (examName !== 'success' && examName !== 'message' && subjects && typeof subjects === 'object') {
+              marksData[examName] = {};
+              
+              // Process each subject and its evaluations
+              Object.entries(subjects).forEach(([subjectName, evaluations]) => {
+                if (evaluations && typeof evaluations === 'object') {
+                  marksData[examName][subjectName] = {};
+                  
+                  // Process each evaluation type
+                  Object.entries(evaluations).forEach(([evalType, mark]) => {
+                    // Convert mark to number and handle different string formats
+                    const numericMark = typeof mark === 'string' ? 
+                      parseFloat(mark.replace(',', '.')) : 
+                      Number(mark);
+                      
+                    if (!isNaN(numericMark)) {
+                      // Convert evaluation type to title case to match config
+                      const formattedEvalType = evalType.charAt(0).toUpperCase() + evalType.slice(1).toLowerCase();
+                      marksData[examName][subjectName][formattedEvalType] = numericMark;
+                    }
+                  });
+                }
+              });
+            }
+          });
+        }
+        
+        // Process each exam in the configuration
+        for (const [examName, subjects] of Object.entries(examConfig)) {
+          // Initialize exam entry if it doesn't exist
           if (!processedStudent.marks[examName]) {
             processedStudent.marks[examName] = {
               subjectDetails: {}
             };
           }
 
-          // Process each subject for this exam
+          // Process each subject in the exam config
           for (const [subjectName, evaluations] of Object.entries(subjects)) {
+            // Initialize subject details if they don't exist
             if (!processedStudent.marks[examName].subjectDetails[subjectName]) {
               processedStudent.marks[examName].subjectDetails[subjectName] = {
                 total: 0,
@@ -102,21 +192,97 @@ const MarksheetsPanel = () => {
               };
             }
 
-            // Process each evaluation type for this subject
-            for (const [evalType, marks] of Object.entries(evaluations)) {
-              const obtainedMarks = parseFloat(marks) || 0;
-              const maxMarks = parseFloat(marks) || 0; // Assuming same for now
+            // Get the student's marks for this exam and subject, if any
+            let studentSubjectMarks = {};
+            
+            // Find marks for this exam and subject
+            const examMarks = marksData[examName];
+            if (examMarks) {
+              // Try exact match first
+              if (examMarks[subjectName]) {
+                studentSubjectMarks = examMarks[subjectName];
+              } else {
+                // Try case-insensitive match
+                const subjectKey = Object.keys(examMarks).find(
+                  key => key.toLowerCase() === subjectName.toLowerCase()
+                );
+                if (subjectKey) {
+                  studentSubjectMarks = examMarks[subjectKey];
+                }
+              }
+              
+              // Debug logging removed for production
+            }
+            
+            // Initialize variables at the start of the evaluation loop
+            const evalTypes = Object.entries(evaluations);
+            for (const [evalType, maxMarks] of evalTypes) {
+              let obtainedMarks = 0;
+              const evalMaxMarks = typeof maxMarks === 'number' ? maxMarks : 100;
+              
+              // Handle different mark structures
+              if (studentSubjectMarks.marks !== undefined) {
+                // If marks is directly in the subject object
+                obtainedMarks = parseFloat(studentSubjectMarks.marks) || 0;
+              } else if (studentSubjectMarks[evalType] !== undefined) {
+                // If marks are in an evaluation type property
+                obtainedMarks = parseFloat(studentSubjectMarks[evalType]) || 0;
+              } else if (typeof studentSubjectMarks === 'number') {
+                // If subject marks is a direct number
+                obtainedMarks = studentSubjectMarks;
+              }
 
-              processedStudent.marks[examName].subjectDetails[subjectName].total += obtainedMarks;
-              processedStudent.marks[examName].subjectDetails[subjectName].max += maxMarks;
+              // Initialize subject data if it doesn't exist
+              if (!processedStudent.marks[examName].subjectDetails[subjectName]) {
+                processedStudent.marks[examName].subjectDetails[subjectName] = {
+                  total: 0,
+                  max: 0,
+                  percentage: 0,
+                  grade: 'N/A',
+                  evaluations: []
+                };
+              }
+              
+              const subjectData = processedStudent.marks[examName].subjectDetails[subjectName];
+              
+              // Update subject totals
+              subjectData.total += obtainedMarks;
+              subjectData.max += evalMaxMarks;
 
-              processedStudent.marks[examName].subjectDetails[subjectName].evaluations.push({
+              // Initialize subjectwiseSummary for this subject if it doesn't exist
+              if (!processedStudent.subjectwiseSummary[subjectName]) {
+                processedStudent.subjectwiseSummary[subjectName] = {
+                  obtainedTotal: 0,
+                  maxTotal: 0,
+                  percentage: 0,
+                  grade: 'N/A',
+                  evaluations: []
+                };
+              }
+              
+              // Add to the subjectwise summary
+              const subjectSummary = processedStudent.subjectwiseSummary[subjectName];
+              subjectSummary.obtainedTotal = (subjectSummary.obtainedTotal || 0) + obtainedMarks;
+              subjectSummary.maxTotal = (subjectSummary.maxTotal || 0) + evalMaxMarks;
+              
+              // Add evaluation to the summary
+              subjectSummary.evaluations.push({
                 type: evalType,
                 name: evalType,
                 marks: obtainedMarks,
-                maxMarks: maxMarks,
-                isAbsent: false,
-                status: 'Graded'
+                maxMarks: evalMaxMarks,
+                isAbsent: obtainedMarks === 0 && studentSubjectMarks && studentSubjectMarks[evalType] === undefined,
+                status: obtainedMarks > 0 ? 'Graded' : 'Not Taken'
+              });
+
+              // Add evaluation details to subject data
+              subjectData.evaluations.push({
+                type: evalType,
+                name: evalType,
+                marks: obtainedMarks,
+                maxMarks: evalMaxMarks,
+                isAbsent: obtainedMarks === 0 && studentSubjectMarks[evalType] === undefined,
+                status: obtainedMarks > 0 ? 'Graded' : 'Not Taken'
               });
             }
 
@@ -124,23 +290,16 @@ const MarksheetsPanel = () => {
             const subjectData = processedStudent.marks[examName].subjectDetails[subjectName];
             subjectData.percentage = subjectData.max > 0 ? (subjectData.total / subjectData.max) * 100 : 0;
             subjectData.grade = calculateGrade(subjectData.percentage);
-
-            // Update subjectwiseSummary
-            if (!processedStudent.subjectwiseSummary[subjectName]) {
-              processedStudent.subjectwiseSummary[subjectName] = {
-                obtainedTotal: 0,
-                maxTotal: 0,
-                percentage: 0,
-                grade: 'N/A'
-              };
-            }
-            processedStudent.subjectwiseSummary[subjectName].obtainedTotal += subjectData.total;
-            processedStudent.subjectwiseSummary[subjectName].maxTotal += subjectData.max;
           }
         }
 
         // Calculate subjectwiseSummary percentages and grades
         for (const [subjectName, summary] of Object.entries(processedStudent.subjectwiseSummary)) {
+          // Recalculate totals from evaluations to ensure accuracy
+          if (summary.evaluations && summary.evaluations.length > 0) {
+            summary.obtainedTotal = summary.evaluations.reduce((sum, evalItem) => sum + (evalItem.marks || 0), 0);
+            summary.maxTotal = summary.evaluations.reduce((sum, evalItem) => sum + (evalItem.maxMarks || 0), 0);
+          }
           summary.percentage = summary.maxTotal > 0 ? (summary.obtainedTotal / summary.maxTotal) * 100 : 0;
           summary.grade = calculateGrade(summary.percentage);
         }
@@ -169,19 +328,18 @@ const MarksheetsPanel = () => {
         student.overallSummary.rank = index + 1;
       });
 
-      // Log processed data
-      console.log('=== PROCESSED STUDENTS DATA ===');
-      console.log(`Total students processed: ${processedStudents.length}`);
-      console.log('Exam Configuration:', examConfig);
-      console.log('Sample processed student:', processedStudents[0]);
-      console.log('Students with ranks:', processedStudents.map(s => ({
-        name: s.student.name,
-        totalMarks: s.overallSummary.obtainedMarks,
-        percentage: s.overallSummary.percentage,
-        rank: s.overallSummary.rank,
-        coScholastic: s.coScholastic,
-        attendance: s.attendanceSummary
-      })));
+      // Log final results summary
+      if (processedStudents.length > 0) {
+        console.log(`Successfully processed ${processedStudents.length} students`);
+        console.log('Sample student summary:', {
+          name: processedStudents[0].student.name,
+          totalMarks: processedStudents[0].overallSummary.obtainedMarks,
+          percentage: processedStudents[0].overallSummary.percentage,
+          rank: processedStudents[0].overallSummary.rank,
+          coScholastic: processedStudents[0].coScholastic,
+          attendance: processedStudents[0].attendanceSummary
+        });
+      }
 
       return processedStudents;
 

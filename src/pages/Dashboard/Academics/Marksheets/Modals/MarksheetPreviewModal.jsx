@@ -11,21 +11,20 @@ const MarksheetPreviewModal = ({
   processedStudent, // Already processed data
   academicYear = '2025'
 }) => {
-  const componentRef = useRef();
+ 
   const printContentRef = useRef();
   const navigate = useNavigate();
 
-  // Use processed data directly - no processing needed
-  const studentData = processedStudent?.student;
-  const className = processedStudent?.student?.class;
-  
+  // Use processed data directly - no processing needed here
+  const studentData = processedStudent?.student || {};
+  const className = studentData.class || '';
 
 
   // Handle print functionality
   const handlePrint = useReactToPrint({
     contentRef: printContentRef,
     removeAfterPrint: true,
-    documentTitle: `Marksheet-${studentData?.rollNumber || studentData?.roll || 'student'}`,
+    documentTitle: `Marksheet-${studentData.rollNumber || studentData.rollNo || 'student'}`,
     pageStyle: `
       @page { 
         size: A4;
@@ -144,33 +143,13 @@ console.log("studentData",studentData,"className",className,"academicYear",acade
                 <div className="flex-1 overflow-auto p-4">
                   <div className="bg-white dark:bg-gray-700 shadow-lg rounded-lg overflow-hidden">
                     <div className="w-full h-full overflow-auto">
-                      <div className="bg-white p-6 print:p-0 print:shadow-none print:bg-transparent">
-                        <style dangerouslySetInnerHTML={{
-                          __html: `
-                            @media print {
-                              body * {
-                                visibility: hidden;
-                              }
-                              #marksheet-print-container, #marksheet-print-container * {
-                                visibility: visible;
-                              }
-                              #marksheet-print-container {
-                                position: absolute;
-                                left: 0;
-                                top: 0;
-                                width: 100%;
-                                padding: 0;
-                                margin: 0;
-                              }
-                            }
-                          `
-                        }} />
+                      
                         <div ref={printContentRef} className="w-full">
                           <MarksheetPrintPage
+                            ref={printContentRef}
                             processedStudent={processedStudent}
                             academicYear={academicYear}
                           />
-                        </div>
                       </div>
                     </div>
                   </div>

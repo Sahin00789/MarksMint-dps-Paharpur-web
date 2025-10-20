@@ -743,15 +743,7 @@ const PrintResultModal = ({
               </div>
             </div>
 
-            <p style={{
-              fontSize: '0.75rem',
-              color: '#6b7280',
-              fontStyle: 'italic',
-              textAlign: 'center',
-              margin: 0
-            }}>
-              This is a computer generated document and does not require a signature.
-            </p>
+           
           </div>
         </div>
       </div>

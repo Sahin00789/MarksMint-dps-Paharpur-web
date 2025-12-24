@@ -16,7 +16,8 @@ import {
   FiHelpCircle,
   FiSearch,
   FiInfo,
-  FiArrowUp
+  FiArrowUp,
+  FiBookOpen
 } from 'react-icons/fi';
 import { FaSchool, FaUserGraduate, FaFilePdf } from 'react-icons/fa';
 import { FiPrinter } from 'react-icons/fi';
@@ -28,6 +29,32 @@ import { schoolinfo } from '../shared/schoolInformation';
 import { getResult, getPublishedStatusForPublic} from '../services/resultsService';
 
 // Helper function to get grade description
+const getGradeDescription = (grade) => {
+  const descriptions = {
+    'A+': 'Exceptional',
+    'A': 'Excellent',
+    'B+': 'Very Good',
+    'B': 'Good',
+    'C': 'Satisfactory',
+    'F': 'Needs Improvement',
+  };
+  return descriptions[grade] || 'Passed';
+};
+
+// Helper function to format date
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A';
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  } catch (e) {
+    return dateString;
+  }
+};
 
 function PublicResultsPage() {
   const [searchParams] = useSearchParams();
@@ -675,174 +702,221 @@ function PublicResultsPage() {
     }
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-50 dark:from-gray-900 dark:to-gray-800 py-4 px-3 sm:px-6 lg:px-8">
-        <div className="max-w-5xl mx-auto">
-          {/* Header Card - Compact */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 mb-4">
-            <div className="p-4">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-gray-900 dark:to-gray-800 py-6 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto">
+          {/* Enhanced Header Card - Sleek & Modern */}
+          <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-2xl shadow-xl border border-white dark:border-gray-700 mb-6 overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
+            <div className="p-6 md:p-8">
               <div className="flex flex-col items-center justify-center text-center">
-                <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white leading-tight">
+                <h1 className="text-3xl md:text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 tracking-tight leading-none mb-3">
                   {schoolinfo.name || result?.student?.schoolName || 'School Name'}
                 </h1>
-                <div className="flex items-center gap-2 mt-1 flex-wrap justify-center">
+                
+                <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 mb-5">
                   {schoolinfo.branch && (
-                    <span className="px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200 uppercase tracking-wide">
+                    <span className="px-3 py-1 rounded-full text-[10px] font-black bg-blue-600 text-white uppercase tracking-[0.2em] shadow-lg shadow-blue-200 dark:shadow-none">
                       {schoolinfo.branch}
                     </span>
                   )}
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    {schoolinfo.Address}
-                  </span>
+                  {schoolinfo.Address && (
+                    <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 flex items-center">
+                      <FiHome className="mr-2 text-blue-400" />
+                      {schoolinfo.Address}
+                    </p>
+                  )}
                 </div>
-                <div className="mt-2 inline-flex items-center px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-xs font-medium text-blue-700 dark:text-blue-300">
-                  {term} Examination Result | Session: {result?.student?.session || '2024-2025'}
+
+                <div className="flex flex-wrap justify-center gap-2">
+                  <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 text-[10px] font-black text-indigo-700 dark:text-indigo-300 shadow-sm uppercase tracking-widest">
+                    <FiBookOpen className="mr-2 text-indigo-500 w-4 h-4" />
+                    {term} EXAMINATION RESULT
+                  </div>
+                  <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 text-[10px] font-black text-blue-700 dark:text-blue-300 shadow-sm uppercase tracking-widest">
+                    <FiCalendar className="mr-2 text-blue-500 w-4 h-4" />
+                    ACADEMIC SESSION: {result?.student?.session || '2025'}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4 mb-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            {/* Enhanced Student Info Card - Compact */}
-            <div className="md:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-              <div className="px-4 py-2 bg-gray-50 dark:bg-gray-700/30 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-                <h2 className="text-sm font-bold text-gray-700 dark:text-gray-200 flex items-center">
-                  <FiUser className="mr-2" /> Student Profile
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-4">
+            {/* Enhanced Student Info Card - Modern & Compact */}
+            <div className="lg:col-span-8 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+              <div className="px-5 py-3 bg-gradient-to-r from-blue-600/5 to-indigo-600/5 dark:from-blue-400/10 dark:to-indigo-400/10 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+                <h2 className="text-sm font-bold text-gray-800 dark:text-white flex items-center">
+                  <div className="p-1.5 bg-blue-100 dark:bg-blue-900/40 rounded-lg mr-3">
+                    <FiUser className="text-blue-600 dark:text-blue-400 w-4 h-4" />
+                  </div>
+                  STUDENT PROFILE
                 </h2>
-                <span className="text-xs font-mono text-gray-500">{result?.student?.session || '2024-25'}</span>
+                <div className="px-2.5 py-1 rounded-full bg-blue-100/50 dark:bg-blue-900/30 text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-widest">
+                  SESSION {result?.student?.session || '2025'}
+                </div>
               </div>
-              <div className="p-4">
-                <div className="grid grid-cols-2 sm:grid-cols-6 gap-y-3 gap-x-4">
-                  {/* Row 1: Class, Roll, Name */}
-                  <div className="col-span-1 sm:col-span-2">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider">Class / Sec</p>
-                    <p className="font-semibold text-gray-900 dark:text-white text-sm">
-                       {result?.student?.class || formData.class} {result?.student?.section ? `- ${result.student.section}` : ''}
+              <div className="p-5">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                  {/* Name section - prominent */}
+                  <div className="col-span-2 md:col-span-1">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Student Name</label>
+                    <p className="text-base font-extrabold text-gray-900 dark:text-white truncate">
+                      {result?.student?.name || 'N/A'}
                     </p>
                   </div>
-                  <div className="col-span-1 sm:col-span-2">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider">Roll No</p>
-                    <p className="font-semibold text-gray-900 dark:text-white text-sm font-mono bg-gray-100 dark:bg-gray-700 inline-block px-2 rounded">
+
+                  <div className="col-span-1">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Class & Section</label>
+                    <div className="flex items-center gap-2">
+                       <span className="px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 transform font-bold text-sm">
+                        {result?.student?.class || formData.class}
+                       </span>
+                       {result?.student?.section && (
+                         <span className="px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-bold text-sm">
+                          SEC: {result.student.section}
+                         </span>
+                       )}
+                    </div>
+                  </div>
+
+                  <div className="col-span-1">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Roll Number</label>
+                    <p className="text-sm font-black text-gray-900 dark:text-white font-mono bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded inline-block border border-amber-100 dark:border-amber-800/30">
                       {result?.student?.rollNo || formData.roll}
                     </p>
                   </div>
-                  <div className="col-span-2 sm:col-span-2">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider">Name</p>
-                    <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">{result?.student?.name || 'N/A'}</p>
-                  </div>
                   
-                  {/* Row 2: Father Name, DOB */}
-                  <div className="col-span-2 sm:col-span-3">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider">Father's Name</p>
-                    <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">{result?.student?.fatherName || 'N/A'}</p>
+                  <div className="col-span-2 md:col-span-1 border-t border-gray-50 dark:border-gray-700 pt-3">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Father's Name</label>
+                    <p className="text-sm font-bold text-gray-700 dark:text-gray-300 truncate">{result?.student?.fatherName || 'N/A'}</p>
                   </div>
-                  <div className="col-span-2 sm:col-span-3">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider">DOB</p>
-                    <p className="font-semibold text-gray-900 dark:text-white text-sm">{formatDate(result?.student?.dob) || 'N/A'}</p>
+
+                  <div className="col-span-2 md:col-span-2 border-t border-gray-50 dark:border-gray-700 pt-3">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Date of Birth</label>
+                    <div className="flex items-center text-sm font-bold text-gray-700 dark:text-gray-300">
+                      <FiCalendar className="mr-2 text-gray-400" />
+                      {formatDate(result?.student?.dob) || 'N/A'}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Performance Overview - Compact */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col justify-center">
-              <div className="px-3 py-2 bg-gray-50 dark:bg-gray-700/30 border-b border-gray-100 dark:border-gray-700">
-                <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 flex items-center">
-                  <FiAward className="mr-1.5" /> Overview
-                </h3>
-              </div>
-              <div className="p-3 grid grid-cols-2 gap-2">
-                 {/* Marks */}
-                 <div className="bg-blue-50/50 dark:bg-blue-900/10 p-2 rounded border border-blue-100 dark:border-blue-800/30 text-center">
-                    <p className="text-[10px] text-gray-500 uppercase">Score</p>
-                    <p className="text-lg font-bold text-blue-700 dark:text-blue-300 leading-none mt-0.5">{summary.obtainedMarks}</p>
-                    <p className="text-[10px] text-gray-400">/ {summary.totalMarks}</p>
-                 </div>
-                 {/* Percentage */}
-                 <div className="bg-green-50/50 dark:bg-green-900/10 p-2 rounded border border-green-100 dark:border-green-800/30 text-center">
-                    <p className="text-[10px] text-gray-500 uppercase">Percent</p>
-                    <p className="text-lg font-bold text-green-700 dark:text-green-300 leading-none mt-0.5">{typeof percentage === 'number' ? percentage.toFixed(1) : percentage}%</p>
-                    <p className="text-[10px] text-green-600/70 truncate">{percentage >= 75 ? 'Excellent' : percentage >= 40 ? 'Good' : 'Avg'}</p>
-                 </div>
-                 {/* Grade */}
-                 <div className="bg-purple-50/50 dark:bg-purple-900/10 p-2 rounded border border-purple-100 dark:border-purple-800/30 text-center">
-                    <p className="text-[10px] text-gray-500 uppercase">Grade</p>
-                    <p className="text-xl font-bold text-purple-700 dark:text-purple-300 leading-none mt-0.5">{grade}</p>
-                 </div>
-                 {/* Rank */}
-                 <div className="bg-amber-50/50 dark:bg-amber-900/10 p-2 rounded border border-amber-100 dark:border-amber-800/30 text-center">
-                    <p className="text-[10px] text-gray-500 uppercase">Rank</p>
-                    <p className="text-xl font-bold text-amber-700 dark:text-amber-300 leading-none mt-0.5">{summary.rank ? `#${summary.rank}` : '-'}</p>
-                    <p className="text-[10px] text-amber-600/70">{summary.totalStudents ? `of ${summary.totalStudents}` : ''}</p>
-                 </div>
+            {/* Performance Overview - Compact & Vibrant */}
+            <div className="lg:col-span-4 flex flex-col gap-4">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden flex-1">
+                <div className="px-5 py-3 bg-gradient-to-r from-emerald-600/5 to-teal-600/5 dark:from-emerald-400/10 dark:to-teal-400/10 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+                  <h3 className="text-sm font-bold text-gray-800 dark:text-white flex items-center">
+                    <div className="p-1.5 bg-emerald-100 dark:bg-emerald-900/40 rounded-lg mr-3">
+                      <FiAward className="text-emerald-600 dark:text-emerald-400 w-4 h-4" />
+                    </div>
+                    SUMMARY
+                  </h3>
+                </div>
+                <div className="p-3 grid grid-cols-2 gap-3">
+                   {/* Combined Score & % */}
+                    <div className="col-span-2 grid grid-cols-2 gap-3 mb-1">
+                     <div className="bg-blue-50/50 dark:bg-blue-900/10 p-2.5 rounded-xl border border-blue-100/50 dark:border-blue-800/30 text-center flex flex-col justify-center transition-transform hover:scale-[1.02]">
+                        <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">Total Score</p>
+                        <p className="text-lg font-black text-blue-700 dark:text-blue-300 leading-none mb-1">
+                          {summary.obtainedMarks} <span className="text-[10px] font-normal opacity-60">/ {summary.totalMarks}</span>
+                        </p>
+                     </div>
+                     <div className="bg-emerald-50/50 dark:bg-emerald-900/10 p-2.5 rounded-xl border border-emerald-100/50 dark:border-emerald-800/30 text-center flex flex-col justify-center transition-transform hover:scale-[1.02]">
+                        <p className="text-[9px] font-black text-emerald-400 uppercase tracking-widest mb-1">Percentage</p>
+                        <p className="text-lg font-black text-emerald-700 dark:text-emerald-300 leading-none mb-1">
+                          {typeof percentage === 'number' ? percentage.toFixed(1) : percentage}%
+                        </p>
+                     </div>
+                   </div>
+
+                   {/* Grade */}
+                   <div className="bg-indigo-50/50 dark:bg-indigo-900/10 p-2.5 rounded-xl border border-indigo-100/50 dark:border-indigo-800/30 text-center flex flex-col justify-center items-center">
+                      <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">Grade</p>
+                      <div className="w-9 h-9 rounded-full bg-indigo-600 dark:bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-200 dark:shadow-none mb-1">
+                        <span className="text-base font-black text-white">{grade}</span>
+                      </div>
+                      <p className="text-[8px] font-bold text-indigo-600/70 uppercase truncate w-full px-1">{getGradeDescription(grade)}</p>
+                   </div>
+
+                   {/* Rank */}
+                   <div className="bg-amber-50/50 dark:bg-amber-900/10 p-2.5 rounded-xl border border-amber-100/50 dark:border-amber-800/30 text-center flex flex-col justify-center items-center">
+                      <p className="text-[9px] font-black text-amber-400 uppercase tracking-widest mb-1">Class Rank</p>
+                      <div className="mb-0.5">
+                        <span className="text-xl font-black text-amber-600 dark:text-amber-400 leading-none">#{summary.rank || '-'}</span>
+                      </div>
+                      <p className="text-[8px] font-bold text-amber-600/70 uppercase">of {summary.totalStudents || '28'}</p>
+                   </div>
+                </div>
               </div>
             </div>
           </div>
-            {/* Subject-wise Performance - Compact Table */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-700/30">
-                <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 flex items-center">
-                  <FiBook className="mr-2" /> Subject Performance
-                </h3>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                  <thead className="bg-gray-50 dark:bg-gray-800">
-                    <tr>
-                      <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Subject</th>
-                      {evaluationColumns.map((col, idx) => (
-                        <th key={idx} scope="col" className="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          {col.charAt(0).toUpperCase() + col.slice(1)}
-                        </th>
-                      ))}
-                      <th scope="col" className="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total</th>
-                      <th scope="col" className="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Grade</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+
+          {/* Subject-wise Performance - Premium Table */}
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden mb-6">
+            <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-700/20 flex justify-between items-center">
+              <h3 className="text-sm font-black text-gray-700 dark:text-gray-200 flex items-center tracking-wide">
+                <FiBook className="mr-3 text-indigo-500 w-5 h-5" /> PERFORMANCE BY SUBJECT
+              </h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead>
+                  <tr className="bg-gray-50/30 dark:bg-gray-800/50">
+                    <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Subject</th>
+                    {evaluationColumns.map((col, idx) => (
+                      <th key={idx} scope="col" className="px-6 py-4 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                        {col}
+                      </th>
+                    ))}
+                    <th scope="col" className="px-6 py-4 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">Total</th>
+                    <th scope="col" className="px-6 py-4 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">Grade</th>
+                  </tr>
+                </thead>
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">
                     {Object.entries(subjectDetails).map(([subjectName, subject], index) => {
-                      const { total, max, percentage, grade, isAbsent, evaluations = [] } = subject;
+                      const { total, max, grade, isAbsent, evaluations = [] } = subject;
                       
                       return (
-                        <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                          <td className="px-4 py-2 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900 dark:text-white">{subjectName}</div>
+                        <tr key={index} className="hover:bg-indigo-50/30 dark:hover:bg-gray-700/50 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-bold text-gray-800 dark:text-white uppercase tracking-tight">{subjectName}</div>
                           </td>
                           
                           {/* Dynamic Evaluation Columns */}
                           {evaluationColumns.map((col, idx) => {
-                            // Find matching evaluation
                             const evalItem = evaluations.find(e => (e.name || e.type) === col);
                             
                             return (
-                              <td key={idx} className="px-4 py-2 whitespace-nowrap text-center text-sm">
+                              <td key={idx} className="px-6 py-4 whitespace-nowrap text-center">
                                 {evalItem ? (
-                                  <div className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-                                    {Math.round(evalItem.marks)} <span className="text-xs font-normal text-gray-400">/ {evalItem.maxMarks}</span>
+                                  <div className="text-sm font-bold text-gray-600 dark:text-gray-300">
+                                    {Math.round(evalItem.marks)} <span className="text-[10px] font-normal opacity-50">/ {evalItem.maxMarks}</span>
                                   </div>
                                 ) : (
-                                  <span className="text-gray-300 dark:text-gray-600">-</span>
+                                  <span className="text-gray-200 dark:text-gray-600">-</span>
                                 )}
                               </td>
                             );
                           })}
 
-                          <td className="px-4 py-2 whitespace-nowrap text-center">
-                            <div className="inline-flex items-baseline gap-1.5 px-3 py-1 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-600">
-                              <span className={`text-lg font-black ${isAbsent ? 'text-rose-500' : 'text-gray-800 dark:text-white'}`}>
+                          <td className="px-6 py-4 whitespace-nowrap text-center">
+                            <div className="inline-flex items-baseline gap-1.5 px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-600">
+                              <span className={`text-base font-black ${isAbsent ? 'text-rose-500' : 'text-indigo-600 dark:text-indigo-400'}`}>
                                 {isAbsent ? 'AB' : Math.round(total)}
                               </span>
-                              {!isAbsent && <span className="text-xs font-semibold text-gray-400">/ {Math.round(max)}</span>}
+                              {!isAbsent && <span className="text-[10px] font-bold text-gray-400">/ {Math.round(max)}</span>}
                             </div>
                           </td>
-                          <td className="px-4 py-2 whitespace-nowrap text-center">
-                            <span className={`px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          <td className="px-6 py-4 whitespace-nowrap text-center">
+                            <span className={`px-3 py-1 inline-flex text-xs leading-5 font-black rounded-lg shadow-sm ${
                               isAbsent ? 'bg-gray-100 text-gray-800' :
-                              grade === 'A+' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
-                              grade === 'A' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
-                              grade === 'B' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
-                              grade === 'F' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' :
-                              'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+                              grade === 'A+' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' :
+                              grade === 'A' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' :
+                              grade === 'B' || grade === 'B+' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' :
+                              grade === 'F' ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300' :
+                              'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300'
                             }`}>
                               {grade}
                             </span>

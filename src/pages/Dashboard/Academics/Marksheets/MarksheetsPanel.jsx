@@ -4,7 +4,9 @@ import { PrinterIcon, EyeIcon } from '@heroicons/react/24/outline';
 import ExamDependentClassSelectorCard from '@/components/common/ExamDependentClassSelectorCard';
 import api from '@/services/api';
 import { fetchExamConfig } from '@/services/examConfig';
+import { getAttendanceConfig } from '@/services/attendanceConfig';
 import MarksheetPreviewModal from './Modals/MarksheetPreviewModal';
+import MarksheetPrintAllPreviewModal from './Modals/MarksheetPrintAllPreviewModal';
 
 const MarksheetsPanel = () => {
   const navigate = useNavigate();
@@ -16,6 +18,7 @@ const MarksheetsPanel = () => {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [selectedStudentMarks, setSelectedStudentMarks] = useState([]);
+  const [isAllPreviewOpen, setIsAllPreviewOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -93,15 +96,25 @@ const MarksheetsPanel = () => {
           }
         };
       }
-      // Fetch attendance configuration to get school working days
-      let attendanceConfig = { schoolWorkingDays: 260 }; // Default fallback
+      // Fetch attendance configuration to get school working days using the service
+      let attendanceConfig = { schoolWorkingDays: 0 }; 
       try {
-        const attendanceConfigRes = await api.get(`/attendance-config?class=${className}&academicYear=2024-2025`);
-        if (attendanceConfigRes.data && attendanceConfigRes.data.schoolWorkingDays) {
-          attendanceConfig = attendanceConfigRes.data;
+        const configData = await getAttendanceConfig(className, '2024-2025');
+        if (configData && configData.schoolWorkingDays) {
+          attendanceConfig = configData;
+        } else {
+          // If no config found, try to get from any student in that class
+          const studentsWithAttendance = students.find(s => s.attendance && typeof s.attendance === 'string' && s.attendance.includes('/'));
+          if (studentsWithAttendance) {
+            const parts = studentsWithAttendance.attendance.split('/');
+            attendanceConfig.schoolWorkingDays = parseInt(parts[1], 10) || 260;
+          } else {
+            attendanceConfig.schoolWorkingDays = 260; // Final fallback
+          }
         }
       } catch (error) {
         console.error('Failed to load attendance config, using default values', error);
+        attendanceConfig.schoolWorkingDays = 260;
       }
 
       const processedStudents = [];
@@ -187,6 +200,10 @@ const MarksheetsPanel = () => {
         
         // Process each exam in the configuration
         for (const [examName, subjects] of Object.entries(examConfig)) {
+          // Check if this exam has any marks entered for this student
+          const examMarks = marksData[examName];
+          const hasMarksForExam = examMarks && Object.keys(examMarks).length > 0;
+
           // Initialize exam entry if it doesn't exist
           if (!processedStudent.marks[examName]) {
             processedStudent.marks[examName] = {
@@ -222,7 +239,6 @@ const MarksheetsPanel = () => {
             let studentSubjectMarks = {};
             
             // Find marks for this exam and subject
-            const examMarks = marksData[examName];
             if (examMarks) {
               // Try exact match first
               if (examMarks[subjectName]) {
@@ -236,8 +252,6 @@ const MarksheetsPanel = () => {
                   studentSubjectMarks = examMarks[subjectKey];
                 }
               }
-              
-              // Debug logging removed for production
             }
             
             // Initialize variables at the start of the evaluation loop
@@ -275,31 +289,33 @@ const MarksheetsPanel = () => {
               subjectData.total += obtainedMarks;
               subjectData.max += evalMaxMarks;
 
-              // Initialize subjectwiseSummary for this subject if it doesn't exist
-              if (!processedStudent.subjectwiseSummary[subjectName]) {
-                processedStudent.subjectwiseSummary[subjectName] = {
-                  obtainedTotal: 0,
-                  maxTotal: 0,
-                  percentage: 0,
-                  grade: 'N/A',
-                  evaluations: []
-                };
+              if (hasMarksForExam) {
+                // Initialize subjectwiseSummary for this subject if it doesn't exist
+                if (!processedStudent.subjectwiseSummary[subjectName]) {
+                  processedStudent.subjectwiseSummary[subjectName] = {
+                    obtainedTotal: 0,
+                    maxTotal: 0,
+                    percentage: 0,
+                    grade: 'N/A',
+                    evaluations: []
+                  };
+                }
+                
+                // Add to the subjectwise summary
+                const subjectSummary = processedStudent.subjectwiseSummary[subjectName];
+                subjectSummary.obtainedTotal = (subjectSummary.obtainedTotal || 0) + obtainedMarks;
+                subjectSummary.maxTotal = (subjectSummary.maxTotal || 0) + evalMaxMarks;
+                
+                // Add evaluation to the summary
+                subjectSummary.evaluations.push({
+                  type: evalType,
+                  name: evalType,
+                  marks: obtainedMarks,
+                  maxMarks: evalMaxMarks,
+                  isAbsent: obtainedMarks === 0 && studentSubjectMarks && studentSubjectMarks[evalType] === undefined,
+                  status: obtainedMarks > 0 ? 'Graded' : 'Not Taken'
+                });
               }
-              
-              // Add to the subjectwise summary
-              const subjectSummary = processedStudent.subjectwiseSummary[subjectName];
-              subjectSummary.obtainedTotal = (subjectSummary.obtainedTotal || 0) + obtainedMarks;
-              subjectSummary.maxTotal = (subjectSummary.maxTotal || 0) + evalMaxMarks;
-              
-              // Add evaluation to the summary
-              subjectSummary.evaluations.push({
-                type: evalType,
-                name: evalType,
-                marks: obtainedMarks,
-                maxMarks: evalMaxMarks,
-                isAbsent: obtainedMarks === 0 && studentSubjectMarks && studentSubjectMarks[evalType] === undefined,
-                status: obtainedMarks > 0 ? 'Graded' : 'Not Taken'
-              });
 
               // Add evaluation details to subject data
               subjectData.evaluations.push({
@@ -595,9 +611,21 @@ const MarksheetsPanel = () => {
 
   return (
     <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">Marksheets</h1>
-        <p className="text-gray-600 dark:text-gray-300">Generate and print student marksheets</p>
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">Marksheets</h1>
+          <p className="text-gray-600 dark:text-gray-300">Generate and print student marksheets</p>
+        </div>
+        
+        {selectedClass && students.length > 0 && (
+          <button
+            onClick={() => setIsAllPreviewOpen(true)}
+            className="inline-flex items-center px-5 py-3 border border-transparent text-sm font-bold rounded-xl shadow-lg shadow-blue-200 text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all transform hover:scale-[1.02] active:scale-95"
+          >
+            <PrinterIcon className="h-5 w-5 mr-2" />
+            Print All Marksheets ({students.length})
+          </button>
+        )}
       </div>
       
       <div className="space-y-6">
@@ -663,6 +691,14 @@ const MarksheetsPanel = () => {
         isOpen={isPreviewOpen}
         onClose={() => setIsPreviewOpen(false)}
         processedStudent={selectedStudentMarks}
+        academicYear="2025"
+      />
+      {/* Bulk Preview Modal */}
+      <MarksheetPrintAllPreviewModal
+        isOpen={isAllPreviewOpen}
+        onClose={() => setIsAllPreviewOpen(false)}
+        studentMarks={studentMarks}
+        selectedClass={selectedClass}
         academicYear="2025"
       />
     </div>

@@ -154,45 +154,60 @@ const CoScholasticGradesPanel = () => {
     }
 
     try {
-      setIsLoading(true);
+      setIsSaving(true);
       
-      // Transform the imported data to match the expected format
-      const updatedStudents = students.map(student => {
-        const importedStudent = importedData.find(s => 
-          s.rollNumber && student.roll && s.rollNumber.toString() === student.roll.toString()
+      const updates = [];
+      
+      // Transform the imported data to match the expected format for the server
+      importedData.forEach(importedItem => {
+        const student = students.find(s => 
+          s.roll && importedItem['Roll Number'] && s.roll.toString() === importedItem['Roll Number'].toString()
         );
         
-        if (importedStudent) {
-          return {
-            ...student,
-            cognitive: {
-              workEd: importedStudent.grades?.['Work Education'] || student.cognitive?.workEd || '-',
-              artEd: importedStudent.grades?.['Art Education'] || student.cognitive?.artEd || '-',
-              phyEd: importedStudent.grades?.['Health & Physical Education'] || student.cognitive?.phyEd || '-',
-              discipline: importedStudent.grades?.['Discipline'] || student.cognitive?.discipline || '-',
+        if (student) {
+          updates.push({
+            studentId: student._id,
+            rollNumber: student.roll,
+            grades: {
+              workEd: importedItem['Work Education'] || student.coscholastic?.workEd || '-',
+              artEd: importedItem['Art Education'] || student.coscholastic?.artEd || '-',
+              phyEd: importedItem['Physical Education'] || student.coscholastic?.phyEd || '-',
+              discipline: importedItem['Discipline'] || student.coscholastic?.discipline || '-'
             }
-          };
+          });
         }
-        return student;
       });
+
+      if (updates.length === 0) {
+        toast.info('No matching students found by roll number');
+        return;
+      }
+
+      await bulkUpdateCoScholastic(selectedClass, updates);
       
-      // Update the state with the new data
-      setStudents(updatedStudents);
+      // Update local state
+      setStudents(prevStudents => 
+        prevStudents.map(s => {
+          const update = updates.find(u => u.studentId === s._id);
+          return update 
+            ? { 
+                ...s, 
+                coscholastic: { ...update.grades },
+                cognitive: { ...update.grades } // For safety
+              } 
+            : s;
+        })
+      );
       
-      // Close the import modal
       setIsImportModalOpen(false);
-      
-      // Optionally, you can save the updated data to the server here
-      // await bulkUpdateCoScholastic(updatedStudents);
-      
-      toast.success('Grades imported successfully!');
+      toast.success(`Successfully updated ${updates.length} students`);
     } catch (error) {
       console.error('Error importing grades:', error);
-      toast.error('Failed to import grades. Please try again.');
+      toast.error('Failed to save imported grades. Please check your data format.');
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
-  }, [students]);
+  }, [students, selectedClass]);
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">

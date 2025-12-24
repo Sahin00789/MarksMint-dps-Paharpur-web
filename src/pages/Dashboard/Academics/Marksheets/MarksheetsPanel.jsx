@@ -108,7 +108,8 @@ const MarksheetsPanel = () => {
             dob: student.dob || '',
             address: student.address || '',
             session: student.session || '',
-            photoUrl: student.photoUrl || ''
+            photoUrl: student.photoUrl || '',
+            religion: student.religion || ''
           },
           marks: {}, // Exam-wise data with subjectDetails
           subjectwiseSummary: {}, // Subject totals across all exams
@@ -181,6 +182,17 @@ const MarksheetsPanel = () => {
 
           // Process each subject in the exam config
           for (const [subjectName, evaluations] of Object.entries(subjects)) {
+            // Apply religion-based filtering
+            const studentReligion = (student.religion || '').toLowerCase();
+            const isMuslim = studentReligion === 'islam';
+            const subjectNameLower = subjectName.toLowerCase();
+
+            // Logic: 
+            // - If Muslim: Skip 'Hindi' (keep 'Arabic-Hindi')
+            // - If NOT Muslim: Skip 'Arabic-Hindi' (keep 'Hindi')
+            if (isMuslim && subjectNameLower === 'hindi') continue;
+            if (!isMuslim && subjectNameLower.includes('arabic-hindi')) continue;
+
             // Initialize subject details if they don't exist
             if (!processedStudent.marks[examName].subjectDetails[subjectName]) {
               processedStudent.marks[examName].subjectDetails[subjectName] = {

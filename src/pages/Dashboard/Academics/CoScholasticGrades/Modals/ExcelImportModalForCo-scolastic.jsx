@@ -7,7 +7,7 @@ const ExcelImportModalForCoScolastic = ({
   isOpen,
   onClose,
   selectedColumns = [],
-  onImport,
+  onImportSuccess,
   selectedClass,
   title = 'Import Co-Scholastic Grades',
   requiredColumns = [
@@ -276,7 +276,7 @@ const ExcelImportModalForCoScolastic = ({
         }).filter(item => item['Roll Number'] && item['Student Name']); // Filter out empty rows
 
         // Prepare preview data
-        const previewRows = formattedData.slice(0, 5).map(item => 
+        const previewRows = formattedData.map(item => 
           requiredColumns.map(col => item[col] || '')
         );
 
@@ -316,7 +316,7 @@ const ExcelImportModalForCoScolastic = ({
 
     try {
       setIsLoading(true);
-      await onImport({ ...previewData, class: selectedClass });
+      await onImportSuccess(data);
       onClose();
     } catch (error) {
       console.error("Import error:", error);
@@ -418,14 +418,14 @@ const ExcelImportModalForCoScolastic = ({
                     variants={itemVariants}
                     custom={0}
                   >
-                    Import Students from Excel
+                    {title}
                   </motion.h3>
                   <motion.p
                     className="mt-1 text-sm text-gray-500 dark:text-gray-400"
                     variants={itemVariants}
                     custom={0.1}
                   >
-                    Upload an Excel file with student data
+                    Upload an Excel file with co-scholastic grades
                   </motion.p>
                 </div>
                 <motion.button
@@ -496,7 +496,7 @@ const ExcelImportModalForCoScolastic = ({
                     >
                       <FiUpload className="w-10 h-10 text-gray-400 mb-3" />
                       <p className="font-medium text-gray-700 dark:text-gray-200 mb-1">
-                        {file ? 'Change File' : 'Upload Student Data'}
+                        {file ? 'Change File' : `Upload ${title}`}
                       </p>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
                         Drag & drop or click to browse
@@ -523,7 +523,7 @@ const ExcelImportModalForCoScolastic = ({
                         Download Template
                       </p>
                       <p className="text-sm text-indigo-600 dark:text-indigo-400">
-                        Get the Student template
+                        Get the {title} template
                       </p>
                       <p className="text-xs text-indigo-500/80 dark:text-indigo-500 mt-1">
                         Pre-formatted with required fields
@@ -600,7 +600,7 @@ const ExcelImportModalForCoScolastic = ({
                                 key={cellIndex}
                                 className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap"
                               >
-                                {row[header] || "-"}
+                                {row[cellIndex] || "-"}
                               </td>
                             ))}
                           </tr>

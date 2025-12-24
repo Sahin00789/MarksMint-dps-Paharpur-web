@@ -636,6 +636,26 @@ function PublicResultsPage() {
     
     // Get subject details from the result
     const subjectDetails = metrics.subjectDetails || {};
+    
+    // Calculate unique evaluation types for the table headers
+    const uniqueEvaluationTypes = new Set();
+    Object.values(subjectDetails).forEach(subject => {
+      if (subject.evaluations && Array.isArray(subject.evaluations)) {
+        subject.evaluations.forEach(evalItem => {
+          // Use name if available (e.g. "Written", "Oral"), fallback to type
+          const type = evalItem.name || evalItem.type;
+          if (type) uniqueEvaluationTypes.add(type);
+        });
+      }
+    });
+    // Sort columns: put Written first if present, then alphabetical
+    const evaluationColumns = Array.from(uniqueEvaluationTypes).sort((a, b) => {
+      const aLower = a.toLowerCase();
+      const bLower = b.toLowerCase();
+      if (aLower === 'written') return -1;
+      if (bLower === 'written') return 1;
+      return aLower.localeCompare(bLower);
+    });
 
     console.log("metrics in render result",metrics);
     
@@ -655,387 +675,183 @@ function PublicResultsPage() {
     }
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-50 dark:from-gray-900 dark:to-gray-800 py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-6xl mx-auto">
-          {/* Header Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden mb-6">
-            <div className="p-6">
-              <div className="flex flex-col items-center sm:flex-row sm:items-center sm:justify-center gap-4">
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white text-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-50 dark:from-gray-900 dark:to-gray-800 py-4 px-3 sm:px-6 lg:px-8">
+        <div className="max-w-5xl mx-auto">
+          {/* Header Card - Compact */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 mb-4">
+            <div className="p-4">
+              <div className="flex flex-col items-center justify-center text-center">
+                <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white leading-tight">
                   {schoolinfo.name || result?.student?.schoolName || 'School Name'}
                 </h1>
-                {schoolinfo.branch && (
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
-                    {schoolinfo.branch}
+                <div className="flex items-center gap-2 mt-1 flex-wrap justify-center">
+                  {schoolinfo.branch && (
+                    <span className="px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200 uppercase tracking-wide">
+                      {schoolinfo.branch}
+                    </span>
+                  )}
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    {schoolinfo.Address}
                   </span>
-                )}
+                </div>
+                <div className="mt-2 inline-flex items-center px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-xs font-medium text-blue-700 dark:text-blue-300">
+                  {term} Examination Result | Session: {result?.student?.session || '2024-2025'}
+                </div>
               </div>
-              <div className="mt-2 text-center">
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {schoolinfo.Address && `${schoolinfo.Address} | `}
-                  Academic Session: {result?.student?.session || '2024-2025'}
-                </p>
-              </div>
-              <h2 className="text-xl text-blue-600 dark:text-blue-400 font-medium mt-3 text-center">
-                {term} Examination Result
-              </h2>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 mb-6">
-            {/* Enhanced Student Info Card */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-2xl w-full">
-              <div className="p-3 bg-gradient-to-r from-blue-600 to-indigo-600">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <FiUser className="h-5 w-5 text-white mr-2" />
-                    <h2 className="text-lg font-bold text-white">
-                      Student Information
-                    </h2>
-                  </div>
-                  <div className="bg-white/20 px-3 py-1 rounded-full">
-                    <span className="text-sm font-medium text-white">
-                      {result?.student?.session || '2024-25'}
-                    </span>
-                  </div>
-                </div>
+          <div className="grid grid-cols-1 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            {/* Enhanced Student Info Card - Compact */}
+            <div className="md:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+              <div className="px-4 py-2 bg-gray-50 dark:bg-gray-700/30 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+                <h2 className="text-sm font-bold text-gray-700 dark:text-gray-200 flex items-center">
+                  <FiUser className="mr-2" /> Student Profile
+                </h2>
+                <span className="text-xs font-mono text-gray-500">{result?.student?.session || '2024-25'}</span>
               </div>
-              <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
-                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Full Name</p>
-                      <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
-                        {result?.student?.name || 'N/A'}
-                      </p>
-                    </div>
-                    <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
-                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Father's Name</p>
-                      <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
-                        {result?.student?.fatherName || 'N/A'}
-                      </p>
-                    </div>
+              <div className="p-4">
+                <div className="grid grid-cols-2 sm:grid-cols-6 gap-y-3 gap-x-4">
+                  {/* Row 1: Class, Roll, Name */}
+                  <div className="col-span-1 sm:col-span-2">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider">Class / Sec</p>
+                    <p className="font-semibold text-gray-900 dark:text-white text-sm">
+                       {result?.student?.class || formData.class} {result?.student?.section ? `- ${result.student.section}` : ''}
+                    </p>
                   </div>
-                  <div className="space-y-4">
-                    <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
-                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Academic Details</p>
-                      <div className="mt-2 grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">Class</p>
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">
-                            {result?.student?.class || formData.class} {result?.student?.section ? `- ${result.student.section}` : ''}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">Roll No</p>
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">
-                            {result?.student?.rollNo || formData.roll}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">DOB</p>
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">
-                            {formatDate(result?.student?.dob) || 'N/A'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">Term</p>
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">
-                            {term || 'N/A'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+                  <div className="col-span-1 sm:col-span-2">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider">Roll No</p>
+                    <p className="font-semibold text-gray-900 dark:text-white text-sm font-mono bg-gray-100 dark:bg-gray-700 inline-block px-2 rounded">
+                      {result?.student?.rollNo || formData.roll}
+                    </p>
+                  </div>
+                  <div className="col-span-2 sm:col-span-2">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider">Name</p>
+                    <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">{result?.student?.name || 'N/A'}</p>
+                  </div>
+                  
+                  {/* Row 2: Father Name, DOB */}
+                  <div className="col-span-2 sm:col-span-3">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider">Father's Name</p>
+                    <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">{result?.student?.fatherName || 'N/A'}</p>
+                  </div>
+                  <div className="col-span-2 sm:col-span-3">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider">DOB</p>
+                    <p className="font-semibold text-gray-900 dark:text-white text-sm">{formatDate(result?.student?.dob) || 'N/A'}</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Performance Overview Card */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-2xl w-full">
-              <div className="bg-gradient-to-r from-pink-600 to-purple-600 px-6 py-4">
-                <h3 className="text-lg font-bold text-white flex items-center">
-                  <FiAward className="mr-2" /> Performance Overview
+            {/* Performance Overview - Compact */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col justify-center">
+              <div className="px-3 py-2 bg-gray-50 dark:bg-gray-700/30 border-b border-gray-100 dark:border-gray-700">
+                <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 flex items-center">
+                  <FiAward className="mr-1.5" /> Overview
                 </h3>
               </div>
-              
-              {/* Performance Stats - Responsive Grid */}
-              <div className="px-4 pb-2 pt-1">
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-                  {/* Total Marks */}
-                  <div className="bg-white dark:bg-gray-800/90 p-3 rounded-xl border border-gray-100/80 dark:border-gray-700/80 hover:shadow-sm transition-shadow duration-200 relative overflow-hidden group">
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-50/80 to-transparent dark:from-blue-900/5 dark:to-transparent group-hover:opacity-30 opacity-20 transition-opacity duration-200"></div>
-                    <div className="relative">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-xs font-medium text-blue-600/90 dark:text-blue-400/90">Total Marks</p>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50/50 text-blue-700/80 dark:bg-blue-900/20 dark:text-blue-300/90">
-                          Max: {summary.totalMarks}
-                        </span>
-                      </div>
-                      <div className="flex items-baseline gap-1.5 mb-1.5">
-                        <p className="text-2xl font-bold text-gray-800 dark:text-white/95">
-                          {summary.obtainedMarks || 0}
-                        </p>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">
-                          / {summary.totalMarks}
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-100/80 dark:bg-gray-700/80 rounded-full h-1.5 overflow-hidden">
-                        <div 
-                          className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-700"
-                          style={{ width: `${Math.min(100, ((summary.obtainedMarks || 0) / (result?.exam?.fullMarks || maxMarks)) * 100)}%` }}
-                        ></div>
-                      </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 text-right">
-                        {Math.round(((summary.obtainedMarks || 0) / (result?.exam?.fullMarks || maxMarks)) * 100)}% of total
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Percentage */}
-                  <div className="bg-white dark:bg-gray-800/90 p-3 rounded-xl border border-gray-100/80 dark:border-gray-700/80 hover:shadow-sm transition-shadow duration-200 relative overflow-hidden group">
-                    <div className="absolute inset-0 bg-gradient-to-br from-green-50/80 to-transparent dark:from-green-900/5 dark:to-transparent group-hover:opacity-30 opacity-20 transition-opacity duration-200"></div>
-                    <div className="relative">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-xs font-medium text-green-600/90 dark:text-green-400/90">Percentage</p>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-50/50 text-green-700/80 dark:bg-green-900/20 dark:text-green-300/90">
-                          {percentage >= 75 ? 'Excellent' : percentage >= 40 ? 'Good' : 'Needs Improvement'}
-                        </span>
-                      </div>
-                      <p className="text-xl font-bold text-gray-800 dark:text-white/95 mb-1.5">
-                        {typeof percentage === 'number' ? percentage.toFixed(1) : percentage}%
-                      </p>
-                      <div className="w-full bg-gray-100/80 dark:bg-gray-700/80 rounded-full h-1.5 overflow-hidden">
-                        <div 
-                          className="h-full rounded-full bg-gradient-to-r from-green-500 to-green-600 transition-all duration-700"
-                          style={{ width: `${Math.min(100, percentage)}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Grade */}
-                  <div className="bg-white dark:bg-gray-800/90 p-3 rounded-xl border border-gray-100/80 dark:border-gray-700/80 hover:shadow-sm transition-shadow duration-200 relative overflow-hidden group">
-                    <div className="absolute inset-0 bg-gradient-to-br from-purple-50/80 to-transparent dark:from-purple-900/5 dark:to-transparent group-hover:opacity-30 opacity-20 transition-opacity duration-200"></div>
-                    <div className="relative">
-                      <p className="text-xs font-medium text-purple-600/90 dark:text-purple-400/90 mb-1">Grade</p>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl font-bold text-gray-800 dark:text-white/95">
-                            {grade}
-                          </span>
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-50/70 text-purple-700/90 dark:bg-purple-900/20 dark:text-purple-300/90">
-                            {getGradeDescription(grade)}
-                          </span>
-                        </div>
-                        {grade === 'A+' || grade === 'A' ? '🏆' : 
-                         grade === 'B+' || grade === 'B' ? '👍' : 
-                         grade === 'F' || grade === 'AB' ? '⚠️' : '📊'}
-                      </div>
-                      <div className="w-full bg-gray-100/80 dark:bg-gray-700/80 rounded-full h-1.5 mt-2.5 overflow-hidden">
-                        <div 
-                          className="h-full rounded-full bg-gradient-to-r from-purple-500 to-purple-600"
-                          style={{ width: '100%' }}
-                        ></div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Rank */}
-                  <div className="bg-white dark:bg-gray-800/90 p-3 rounded-xl border border-gray-100/80 dark:border-gray-700/80 hover:shadow-sm transition-shadow duration-200 relative overflow-hidden group">
-                    <div className="absolute inset-0 bg-gradient-to-br from-amber-50/80 to-transparent dark:from-amber-900/5 dark:to-transparent group-hover:opacity-30 opacity-20 transition-opacity duration-200"></div>
-                    <div className="relative">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-xs font-medium text-amber-600/90 dark:text-amber-400/90">Class Rank</p>
-                        {summary.rank && summary.totalStudents && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50/50 text-amber-700/80 dark:bg-amber-900/20 dark:text-amber-300/90">
-                            Top {Math.round((summary.rank / summary.totalStudents) * 100)}%
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-baseline gap-1.5 mb-1.5">
-                        <p className="text-xl font-bold text-gray-800 dark:text-white/95">
-                          {summary.rank ? `#${summary.rank}` : 'N/A'}
-                        </p>
-                        {summary.totalStudents && (
-                          <span className="text-xs text-gray-500/90 dark:text-gray-400/90">
-                            of {summary.totalStudents} students
-                          </span>
-                        )}
-                      </div>
-                      <div className="w-full bg-gray-100/80 dark:bg-gray-700/80 rounded-full h-1.5 overflow-hidden">
-                        {summary.rank && summary.totalStudents && (
-                          <div 
-                            className="h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-500 transition-all duration-700"
-                            style={{ width: `${100 - Math.min(100, (summary.rank / summary.totalStudents) * 100)}%` }}
-                          ></div>
-                        )}
-                      </div>
-                      {summary.rank && (
-                        <p className="text-[11px] mt-1.5 text-amber-500/90 dark:text-amber-400/90 font-medium">
-                          {summary.rank === 1 ? '🥇 Top of the class!' : 
-                           summary.rank <= 3 ? '🏆 Excellent performance!' : 
-                           summary.rank <= 10 ? '✨ Great job!' : 'Keep it up!'}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
+              <div className="p-3 grid grid-cols-2 gap-2">
+                 {/* Marks */}
+                 <div className="bg-blue-50/50 dark:bg-blue-900/10 p-2 rounded border border-blue-100 dark:border-blue-800/30 text-center">
+                    <p className="text-[10px] text-gray-500 uppercase">Score</p>
+                    <p className="text-lg font-bold text-blue-700 dark:text-blue-300 leading-none mt-0.5">{summary.obtainedMarks}</p>
+                    <p className="text-[10px] text-gray-400">/ {summary.totalMarks}</p>
+                 </div>
+                 {/* Percentage */}
+                 <div className="bg-green-50/50 dark:bg-green-900/10 p-2 rounded border border-green-100 dark:border-green-800/30 text-center">
+                    <p className="text-[10px] text-gray-500 uppercase">Percent</p>
+                    <p className="text-lg font-bold text-green-700 dark:text-green-300 leading-none mt-0.5">{typeof percentage === 'number' ? percentage.toFixed(1) : percentage}%</p>
+                    <p className="text-[10px] text-green-600/70 truncate">{percentage >= 75 ? 'Excellent' : percentage >= 40 ? 'Good' : 'Avg'}</p>
+                 </div>
+                 {/* Grade */}
+                 <div className="bg-purple-50/50 dark:bg-purple-900/10 p-2 rounded border border-purple-100 dark:border-purple-800/30 text-center">
+                    <p className="text-[10px] text-gray-500 uppercase">Grade</p>
+                    <p className="text-xl font-bold text-purple-700 dark:text-purple-300 leading-none mt-0.5">{grade}</p>
+                 </div>
+                 {/* Rank */}
+                 <div className="bg-amber-50/50 dark:bg-amber-900/10 p-2 rounded border border-amber-100 dark:border-amber-800/30 text-center">
+                    <p className="text-[10px] text-gray-500 uppercase">Rank</p>
+                    <p className="text-xl font-bold text-amber-700 dark:text-amber-300 leading-none mt-0.5">{summary.rank ? `#${summary.rank}` : '-'}</p>
+                    <p className="text-[10px] text-amber-600/70">{summary.totalStudents ? `of ${summary.totalStudents}` : ''}</p>
+                 </div>
               </div>
-              
-              {/* Subject-wise Marks - Cards Layout */}
-              <div className="p-4">
-                <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4 flex items-center">
-                  <FiBook className="mr-2" /> Subject-wise Performance
+            </div>
+          </div>
+            {/* Subject-wise Performance - Compact Table */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-700/30">
+                <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 flex items-center">
+                  <FiBook className="mr-2" /> Subject Performance
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {Object.entries(subjectDetails).map(([subjectName, subject], index) => {
-                    const { total, max, percentage, grade, isAbsent, evaluations = [] } = subject;
-                    const numericPercentage = parseFloat(percentage) || 0;
-                    const numericTotal = parseFloat(total) || 0;
-                    const numericMax = parseFloat(max) || 0;
-                    
-                    // Determine card color based on grade (lemon theme)
-                    const cardColor = isAbsent 
-                      ? 'bg-gray-50 dark:bg-gray-800/50' 
-                      : numericPercentage >= 80 
-                        ? 'bg-amber-50 dark:bg-amber-900/10' 
-                        : numericPercentage >= 60 
-                          ? 'bg-yellow-50 dark:bg-yellow-900/10' 
-                          : numericPercentage >= 40 
-                            ? 'bg-amber-50 dark:bg-amber-900/10' 
-                            : 'bg-rose-50/80 dark:bg-rose-900/20';
-                    
-                    return (
-                      <div key={index} className={`rounded-xl overflow-hidden shadow-md border border-gray-200 dark:border-gray-700 transition-all duration-300 hover:shadow-lg ${cardColor}`}>
-                        {/* Card Header */}
-                        <div className="p-4 border-b border-amber-100 dark:border-amber-800/30 bg-white/70 dark:bg-amber-900/10 backdrop-blur-sm">
-                          <div className="flex items-center justify-between">
-                            <h4 className="text-lg font-semibold text-gray-800 dark:text-white">
-                              {subjectName}
-                            </h4>
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm ${
-                              isAbsent ? 'bg-gray-100/80 text-gray-700 dark:bg-gray-700/50 dark:text-gray-200' :
-                              grade === 'A+' ? 'bg-emerald-100/80 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200' : 
-                              grade === 'A' ? 'bg-amber-100/80 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200' :
-                              grade === 'B' ? 'bg-yellow-100/80 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200' : 
-                              'bg-rose-100/80 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200'
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead className="bg-gray-50 dark:bg-gray-800">
+                    <tr>
+                      <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Subject</th>
+                      {evaluationColumns.map((col, idx) => (
+                        <th key={idx} scope="col" className="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          {col.charAt(0).toUpperCase() + col.slice(1)}
+                        </th>
+                      ))}
+                      <th scope="col" className="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total</th>
+                      <th scope="col" className="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Grade</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {Object.entries(subjectDetails).map(([subjectName, subject], index) => {
+                      const { total, max, percentage, grade, isAbsent, evaluations = [] } = subject;
+                      
+                      return (
+                        <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                          <td className="px-4 py-2 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">{subjectName}</div>
+                          </td>
+                          
+                          {/* Dynamic Evaluation Columns */}
+                          {evaluationColumns.map((col, idx) => {
+                            // Find matching evaluation
+                            const evalItem = evaluations.find(e => (e.name || e.type) === col);
+                            
+                            return (
+                              <td key={idx} className="px-4 py-2 whitespace-nowrap text-center text-sm">
+                                {evalItem ? (
+                                  <div className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                                    {Math.round(evalItem.marks)} <span className="text-xs font-normal text-gray-400">/ {evalItem.maxMarks}</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-300 dark:text-gray-600">-</span>
+                                )}
+                              </td>
+                            );
+                          })}
+
+                          <td className="px-4 py-2 whitespace-nowrap text-center">
+                            <div className="inline-flex items-baseline gap-1.5 px-3 py-1 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-600">
+                              <span className={`text-lg font-black ${isAbsent ? 'text-rose-500' : 'text-gray-800 dark:text-white'}`}>
+                                {isAbsent ? 'AB' : Math.round(total)}
+                              </span>
+                              {!isAbsent && <span className="text-xs font-semibold text-gray-400">/ {Math.round(max)}</span>}
+                            </div>
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-center">
+                            <span className={`px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              isAbsent ? 'bg-gray-100 text-gray-800' :
+                              grade === 'A+' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+                              grade === 'A' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+                              grade === 'B' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
+                              grade === 'F' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' :
+                              'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
                             }`}>
                               {grade}
                             </span>
-                          </div>
-                          {!isAbsent && (
-                            <div className="mt-2">
-                              <div className="w-full bg-amber-100 rounded-full h-2 dark:bg-amber-900/30">
-                                <div 
-                                  className={`h-2 rounded-full ${
-                                    numericPercentage >= 80 ? 'bg-emerald-400' : 
-                                    numericPercentage >= 60 ? 'bg-amber-400' : 
-                                    numericPercentage >= 40 ? 'bg-yellow-400' : 'bg-rose-400'
-                                  }`}
-                                  style={{ width: `${Math.min(100, Math.max(0, numericPercentage))}%` }}
-                                ></div>
-                              </div>
-                              <div className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 mt-1">
-                                {Math.round(numericPercentage)}%
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* Card Body */}
-                        <div className="p-4">
-                          {/* Total Marks */}
-                          <div className="mb-4">
-                            <div className="flex justify-between items-center">
-                              <span className="text-base font-semibold text-gray-700 dark:text-gray-200">Total Marks</span>
-                              <span className="text-lg font-bold text-gray-900 dark:text-white bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg">
-                                {isAbsent ? 'Absent' : (`${numericTotal} / ${numericMax}`)}
-                              </span>
-                            </div>
-                          </div>
-                          
-                          {/* Evaluation Details */}
-                          {evaluations.length > 0 && (
-                            <div className="space-y-2 mt-4">
-                              <h5 className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-2 border-b border-gray-200 dark:border-gray-700 pb-1">Evaluation Breakdown</h5>
-                              <div className="space-y-3">
-                                {evaluations.map((evalItem, evalIndex) => {
-                                  const evalPercentage = evalItem.maxMarks > 0 
-                                    ? (evalItem.marks / evalItem.maxMarks) * 100 
-                                    : 0;
-                                  const isPassing = evalPercentage >= 40;
-                                  
-                                  // Get the evaluation type, prioritizing name for better labeling
-                                  const evaluationType = evalItem.name || evalItem.type || 'written';
-                                  const displayName = evaluationType === 'written' ? 'Written' :
-                                                    evaluationType === 'oral' ? 'Oral' :
-                                                    evaluationType.charAt(0).toUpperCase() + evaluationType.slice(1);
-                                  
-                                  return (
-                                    <div key={evalIndex} className="space-y-1.5">
-                                      <div className="flex justify-between items-center">
-                                        <div className="flex items-center gap-2">
-                                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                            {displayName}:
-                                          </span>
-                                          <span className="font-mono text-sm font-bold text-gray-800 dark:text-white">
-                                            {Math.round(evalItem.marks)} / {Math.round(evalItem.maxMarks)}
-                                          </span>
-                                        </div>
-                                        {isPassing && (
-                                          <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
-                                            Passed
-                                          </span>
-                                        )}
-                                      </div>
-                                      <div className="flex items-center justify-between mt-1">
-                                        <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">{displayName}</span>
-                                        <div className="relative w-10 h-10">
-                                          <svg className="w-full h-full" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
-                                            <circle
-                                              cx="18"
-                                              cy="18"
-                                              r="15.9155"
-                                              fill="none"
-                                              className="stroke-gray-200 dark:stroke-gray-700"
-                                              strokeWidth="3"
-                                            />
-                                            <circle
-                                              cx="18"
-                                              cy="18"
-                                              r="15.9155"
-                                              fill="none"
-                                              className={isPassing ? 'stroke-green-500' : 'stroke-red-500'}
-                                              strokeWidth="3"
-                                              strokeDasharray={`${evalPercentage} ${100 - evalPercentage}`}
-                                              strokeDashoffset="25"
-                                              strokeLinecap="round"
-                                              transform="rotate(-90 18 18)"
-                                            />
-                                            <text
-                                              x="50%"
-                                              y="50%"
-                                              textAnchor="middle"
-                                              dy=".3em"
-                                              className="text-[8px] font-medium fill-gray-700 dark:fill-gray-300"
-                                            >
-                                              {Math.round(evalPercentage)}%
-                                            </text>
-                                          </svg>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>

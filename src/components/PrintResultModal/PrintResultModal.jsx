@@ -35,8 +35,8 @@ const PrintResultModal = ({
       const qrCode = new QRCode({
         content: JSON.stringify(studentInfo),
         padding: 2,
-        width: 80,
-        height: 80,
+        width: 90,
+        height: 90,
         color: '#000000',
         background: '#ffffff',
         ecl: 'M' // Error correction level: L, M, Q, H
@@ -54,7 +54,7 @@ const PrintResultModal = ({
     pageStyle: `
       @page { 
         size: A4;
-        margin: 10mm 15mm 15mm 15mm;
+        margin: 8mm 10mm 10mm 10mm;
       }
       @media print {
         body { 
@@ -141,34 +141,34 @@ const PrintResultModal = ({
     summaryCard: {
       backgroundColor: '#f0f9ff',
       borderRadius: '0.5rem',
-      padding: '1.5rem',
-      marginTop: '2rem',
+      padding: '0.75rem',
+      marginTop: '0.5rem',
       boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
     },
     table: {
       width: '100%',
       borderCollapse: 'collapse',
-      margin: '0.75rem 0',
-      fontSize: '0.9rem',
+      margin: '0.4rem 0',
+      fontSize: '0.85rem',
       boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
     },
     th: {
       backgroundColor: '#f3f4f6',
       border: '1px solid #e5e7eb',
-      padding: '0.6rem 0.7rem',
+      padding: '0.3rem 0.5rem',
       textAlign: 'center',
       fontWeight: 600,
       color: '#1f2937',
       verticalAlign: 'middle',
-      lineHeight: '1.3'
+      lineHeight: '1.2'
     },
     td: {
       border: '1px solid #e5e7eb',
-      padding: '0.5rem 0.6rem',
+      padding: '0.3rem 0.4rem',
       textAlign: 'center',
       color: '#4b5563',
       verticalAlign: 'middle',
-      lineHeight: '1.4'
+      lineHeight: '1.3'
     },
     subHeader: {
       fontSize: '0.6rem',
@@ -207,15 +207,15 @@ const PrintResultModal = ({
         </div>
 
         {/* Content */}
-        <div ref={printRef} style={{ padding: '1rem' }}>
+        <div ref={printRef} style={{ padding: '0.25rem' }}>
           {/* Header */}
-          <div style={{ textAlign: 'center', marginBottom: '0.5rem', paddingBottom: '0.5rem', borderBottom: '1px solid #f3f4f6' }}>
+          <div style={{ textAlign: 'center', marginBottom: '0.2rem', paddingBottom: '0.2rem', borderBottom: '1px solid #f3f4f6' }}>
             <div style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
               gap: '1rem',
-              padding: '0.5rem',
+              padding: '0.4rem',
               backgroundColor: '#f8fafc',
               borderRadius: '0.5rem',
               border: '1px solid #e5e7eb'
@@ -223,7 +223,7 @@ const PrintResultModal = ({
               {/* School Information */}
               <div style={{ flex: 1, textAlign: 'left' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
-                  <h1 style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#111827', margin: 0 }}>
+                  <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111827', margin: 0 }}>
                     {schoolinfo.name || 'School Name'}
                   </h1>
                   {schoolinfo.branch && (
@@ -309,20 +309,20 @@ const PrintResultModal = ({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: '0.5rem',
+                padding: '0.625rem',
                 backgroundColor: 'white',
-                borderRadius: '0.5rem',
-                border: '2px solid #e5e7eb',
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-                minWidth: '90px',
-                height: '90px',
+                borderRadius: '0.75rem',
+                border: '2px solid #166534', // School Green
+                boxShadow: '0 4px 12px rgba(22, 101, 52, 0.15)',
+                minWidth: '110px',
+                height: '110px',
                 position: 'relative'
               }}>
                 {qrCodeSvg ? (
                   <div
                     style={{
-                      width: '70px',
-                      height: '70px',
+                      width: '90px',
+                      height: '90px',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center'
@@ -331,8 +331,8 @@ const PrintResultModal = ({
                   />
                 ) : (
                   <div style={{
-                    width: '70px',
-                    height: '70px',
+                    width: '90px',
+                    height: '90px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -358,9 +358,8 @@ const PrintResultModal = ({
           <div style={{
             background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #bae6fd 100%)',
             border: '2px solid #3b82f6',
-            borderRadius: '0.75rem',
-            padding: '1rem',
-            marginBottom: '0.75rem',
+            padding: '0.5rem',
+            marginBottom: '0.3rem',
             textAlign: 'center',
             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
             position: 'relative',
@@ -389,7 +388,7 @@ const PrintResultModal = ({
             }}></div>
 
             <h2 style={{
-              fontSize: '1.25rem',
+              fontSize: '1.1rem',
               fontWeight: 700,
               color: '#1e40af',
               margin: 0,
@@ -416,8 +415,8 @@ const PrintResultModal = ({
           {/* Student Info Card */}
           <div style={{
             ...styles.studentCard,
-            padding: '0.75rem',
-            marginBottom: '0.75rem',
+            padding: '0.3rem',
+            marginBottom: '0.3rem',
             display: 'flex',
             gap: '1rem',
             alignItems: 'flex-start'
@@ -432,7 +431,7 @@ const PrintResultModal = ({
                 borderBottom: '1px solid #dbeafe',
                 paddingBottom: '0.5rem'
               }}>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#1e40af', margin: 0 }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#1e40af', margin: 0 }}>
                   Student Information
                 </h3>
                 <div style={{ display: 'flex', gap: '0.75rem' }}>
@@ -542,7 +541,7 @@ const PrintResultModal = ({
           </div>
 
           {/* Marks Table */}
-          <div style={{ overflowX: 'auto', marginBottom: '1rem' }}>
+          <div style={{ overflowX: 'auto', marginBottom: '0.3rem' }}>
             <table style={styles.table}>
               <thead>
                 <tr>
@@ -635,7 +634,7 @@ const PrintResultModal = ({
           </div>
 
           {/* Summary Cards */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginTop: '1rem' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '0.5rem' }}>
             <div style={{ ...styles.summaryCard, flex: '1 1 48%', padding: '0.5rem', margin: '0.5rem 0' }}>
               <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: '#1e40af', marginBottom: '0.5rem', borderBottom: '1px solid #dbeafe', paddingBottom: '0.25rem' }}>
                 Academic Summary
@@ -705,16 +704,16 @@ const PrintResultModal = ({
 
           {/* Footer Note */}
           <div style={{
-            marginTop: '1rem',
-            paddingTop: '1rem',
+            marginTop: '0.5rem',
+            paddingTop: '0.5rem',
             borderTop: '1px solid #e5e7eb'
           }}>
             {/* Contact Information */}
             <div style={{
               backgroundColor: '#f8fafc',
-              padding: '1rem',
+              padding: '0.5rem',
               borderRadius: '0.5rem',
-              marginBottom: '1rem',
+              marginBottom: '0.5rem',
               border: '1px solid #e5e7eb'
             }}>
               <div style={{

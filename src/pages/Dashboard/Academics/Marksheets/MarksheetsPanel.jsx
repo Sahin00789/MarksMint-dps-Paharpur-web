@@ -93,6 +93,17 @@ const MarksheetsPanel = () => {
           }
         };
       }
+      // Fetch attendance configuration to get school working days
+      let attendanceConfig = { schoolWorkingDays: 260 }; // Default fallback
+      try {
+        const attendanceConfigRes = await api.get(`/attendance-config?class=${className}&academicYear=2024-2025`);
+        if (attendanceConfigRes.data && attendanceConfigRes.data.schoolWorkingDays) {
+          attendanceConfig = attendanceConfigRes.data;
+        }
+      } catch (error) {
+        console.error('Failed to load attendance config, using default values', error);
+      }
+
       const processedStudents = [];
 
       for (const student of students) {
@@ -111,6 +122,9 @@ const MarksheetsPanel = () => {
             photoUrl: student.photoUrl || '',
             religion: (student.religion || '').trim()
           },
+          // Add attendance data
+          attendance: student.attendance || 0,
+          schoolWorkingDays: attendanceConfig.schoolWorkingDays || 260,
           marks: {}, // Exam-wise data with subjectDetails
           subjectwiseSummary: {}, // Subject totals across all exams
           coScholastic: {

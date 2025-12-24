@@ -61,9 +61,16 @@ const MarksheetPrintPage = ({
     rollNo: processedStudent?.student?.rollNo || processedStudent?.rollNo || 'N/A'
   };
 
+  // Calculate attendance percentage
+  const attendanceDays = processedStudent?.attendance || 0;
+  const totalWorkingDays = processedStudent?.schoolWorkingDays || 1; // Default to 1 to avoid division by zero
+  const attendancePercentage = Math.min(100, Math.round((attendanceDays / totalWorkingDays) * 100));
+  
   const attendanceSummary = {
-    attendancePercentage: processedStudent?.attendanceSummary?.attendancePercentage || 0,
-    getAttendancePercentage: function() { return Math.round(this.attendancePercentage) || 0; }
+    attendancePercentage: attendancePercentage,
+    getAttendancePercentage: function() { return this.attendancePercentage; },
+    presentDays: attendanceDays,
+    totalDays: totalWorkingDays
   };
 
   const overallSummary = {
@@ -508,12 +515,38 @@ const MarksheetPrintPage = ({
         {/* Summary Cards Row */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px', marginBottom: '10px' }}>
             {/* Attendance */}
-            <div style={{ background: 'linear-gradient(135deg, #f0fdf4, #ffffff)', border: '1.5px solid #86efac', borderRadius: '10px', padding: '10px', display: 'flex', alignItems: 'center', gap: '10px', boxShadow: '0 2px 4px rgba(0,0,0,0.06)' }}>
-               <CircularProgress value={attendanceSummary.getAttendancePercentage()} color="#22c55e" size={42} strokeWidth={4} />
+            <div style={{ 
+              background: 'linear-gradient(135deg, #f0fdf4, #ffffff)', 
+              border: `1.5px solid ${attendancePercentage >= 75 ? '#86efac' : attendancePercentage >= 50 ? '#fde047' : '#fca5a5'}`, 
+              borderRadius: '10px', 
+              padding: '10px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '10px', 
+              boxShadow: '0 2px 4px rgba(0,0,0,0.06)' 
+            }}>
+               <CircularProgress 
+                 value={attendancePercentage} 
+                 color={attendancePercentage >= 75 ? "#22c55e" : attendancePercentage >= 50 ? "#eab308" : "#ef4444"} 
+                 size={42} 
+                 strokeWidth={4} 
+               />
                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '9px', color: '#166534', fontWeight: 700, textTransform: 'uppercase', marginBottom: '2px' }}>Attendance</div>
-                  <div style={{ fontSize: '10px', fontWeight: 600, color: '#475569' }}>
-                     {processedStudent?.attendanceSummary?.presentDays || 0}/{processedStudent?.attendanceSummary?.totalDays || 0}
+                  <div style={{ 
+                    fontSize: '9px', 
+                    color: attendancePercentage >= 75 ? '#166534' : attendancePercentage >= 50 ? '#854d0e' : '#991b1b', 
+                    fontWeight: 700, 
+                    textTransform: 'uppercase', 
+                    marginBottom: '2px' 
+                  }}>
+                    Attendance
+                  </div>
+                  <div style={{ 
+                    fontSize: '10px', 
+                    fontWeight: 600, 
+                    color: attendancePercentage >= 75 ? '#166534' : attendancePercentage >= 50 ? '#854d0e' : '#991b1b'
+                  }}>
+                    {attendanceDays}/{totalWorkingDays}
                   </div>
                </div>
             </div>

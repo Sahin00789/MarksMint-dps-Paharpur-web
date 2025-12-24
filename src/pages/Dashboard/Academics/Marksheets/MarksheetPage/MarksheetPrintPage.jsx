@@ -489,7 +489,7 @@ const MarksheetPrintPage = ({
 
         {/* Co-Scholastic (Horizontal Bar) */}
         <div style={{ display: 'flex', gap: '15px', marginBottom: '10px', padding: '8px 15px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', alignItems: 'center' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#065f46', marginRight: '10px', whiteSpace: 'nowrap' }}>CO-SCHOLASTIC & ATTRIBUTES:</div>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#065f46', marginRight: '10px', whiteSpace: 'nowrap' }}>CO-SCHOLASTIC GRADE:</div>
             <div style={{ display: 'flex', flex: 1, justifyContent: 'space-between' }}>
                {[
                  { key: 'workEducation', label: 'Work Education' },

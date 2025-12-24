@@ -109,15 +109,15 @@ const MarksheetsPanel = () => {
             address: student.address || '',
             session: student.session || '',
             photoUrl: student.photoUrl || '',
-            religion: student.religion || ''
+            religion: (student.religion || '').trim()
           },
           marks: {}, // Exam-wise data with subjectDetails
           subjectwiseSummary: {}, // Subject totals across all exams
-          coScholastic: student.coScholastic || student.coscholastic || {
-            workEducation: { grade: 'N/A', description: 'Not Available' },
-            artEducation: { grade: 'N/A', description: 'Not Available' },
-            healthAndPhysical: { grade: 'N/A', description: 'Not Available' },
-            discipline: { grade: 'N/A', description: 'Not Available' }
+          coScholastic: {
+            workEducation: { grade: student.coscholastic?.workEd || student.coScholastic?.workEducation?.grade || 'N/A' },
+            artEducation: { grade: student.coscholastic?.artEd || student.coScholastic?.artEducation?.grade || 'N/A' },
+            healthAndPhysical: { grade: student.coscholastic?.phyEd || student.coScholastic?.healthAndPhysical?.grade || 'N/A' },
+            discipline: { grade: student.coscholastic?.discipline || student.coScholastic?.discipline?.grade || 'N/A' }
           },
           attendanceSummary: student.attendanceSummary || {
             totalDays: 0,
@@ -183,7 +183,7 @@ const MarksheetsPanel = () => {
           // Process each subject in the exam config
           for (const [subjectName, evaluations] of Object.entries(subjects)) {
             // Apply religion-based filtering
-            const studentReligion = (student.religion || '').toLowerCase();
+            const studentReligion = (student.religion || '').toLowerCase().trim();
             const isMuslim = studentReligion === 'islam';
             const subjectNameLower = subjectName.toLowerCase();
 

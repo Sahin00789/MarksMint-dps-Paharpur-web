@@ -64,6 +64,9 @@ const ExcelImportModalForAttendance = ({
     // Add example data row
     const exampleRow = selectedColumns.reduce((acc, col) => {
       switch(col) {
+        case 'Roll Number':
+          acc[col] = '1';
+          break;
         case 'Roll':
           acc[col] = '1';
           break;
@@ -217,6 +220,8 @@ const ExcelImportModalForAttendance = ({
         }
 
         const headers = jsonData[0];
+        console.log("Excel Headers Found:", headers);
+        console.log("Required Columns:", selectedColumns);
 
         const rows = jsonData
           .slice(1)
@@ -225,11 +230,21 @@ const ExcelImportModalForAttendance = ({
           );
 
         // Filter data based on selected columns
-        const columnIndices = selectedColumns.map((col) =>
-          headers.findIndex(
-            (h) => h && col && h.toString().toLowerCase() === col.toLowerCase()
-          )
-        );
+        const columnIndices = selectedColumns.map((col) => {
+          const index = headers.findIndex(
+            (h) => h && col && h.toString().trim().toLowerCase() === col.trim().toLowerCase()
+          );
+          console.log(`Column "${col}" found at index:`, index, `(Header: "${headers[index]}")`);
+          return index;
+        });
+        
+        // Check if any required columns are missing
+        const missingColumns = selectedColumns.filter((col, i) => columnIndices[i] === -1);
+        if (missingColumns.length > 0) {
+          setError(`Missing columns in Excel file: ${missingColumns.join(', ')}. Found headers: ${headers.join(', ')}`);
+          return;
+        }
+        
         const filteredData = rows.map((row) => {
           const obj = {};
           columnIndices.forEach((colIndex, i) => {

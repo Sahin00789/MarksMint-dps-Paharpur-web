@@ -15,12 +15,39 @@ const AttendanceConfigModal = ({
 }) => {
   const [config, setConfig] = useState(initialConfig);
   const [isSaving, setIsSaving] = useState(false);
+  const [inputValue, setInputValue] = useState('');
+  const [validationError, setValidationError] = useState('');
 
   useEffect(() => {
     if (isOpen) {
       setConfig(initialConfig);
+      // Set input value to empty string if 0, otherwise show the actual value
+      setInputValue(initialConfig.schoolWorkingDays > 0 ? String(initialConfig.schoolWorkingDays) : '');
+      setValidationError('');
     }
   }, [isOpen, initialConfig]);
+
+  // Leap year detection
+  const isLeapYear = (year) => {
+    return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+  };
+
+  // Get current year for calculation (session year)
+  const getCurrentYear = () => {
+    return new Date().getFullYear();
+  };
+
+  // Auto-calculate holidays when working days change
+  useEffect(() => {
+    const year = getCurrentYear(); // Use current year instead of academic year
+    const totalDays = isLeapYear(year) ? 366 : 365;
+    const calculatedHolidays = totalDays - (config.schoolWorkingDays || 0);
+    
+    setConfig(prev => ({
+      ...prev,
+      holidays: Math.max(0, calculatedHolidays)
+    }));
+  }, [config.schoolWorkingDays]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -42,12 +69,44 @@ const AttendanceConfigModal = ({
   };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    const { value } = e.target;
+    setInputValue(value);
+    
+    // Validate input
+    if (value === '') {
+      setValidationError('');
+      setConfig(prev => ({
+        ...prev,
+        schoolWorkingDays: 0
+      }));
+      return;
+    }
+    
+    // Check if input is a valid number
+    if (!/^\d+$/.test(value)) {
+      setValidationError('Please enter a valid number');
+      return;
+    }
+    
+    const numValue = parseInt(value, 10);
+    
+    // Check if number is within valid range
+    if (numValue < 0 || numValue > 366) {
+      setValidationError('Working days must be between 0 and 366');
+      return;
+    }
+    
+    // Valid input
+    setValidationError('');
     setConfig(prev => ({
       ...prev,
-      [name]: parseInt(value) || 0
+      schoolWorkingDays: numValue
     }));
   };
+
+  // Calculate display values
+  const year = getCurrentYear();
+  const totalDays = isLeapYear(year) ? 366 : 365;
 
   return (
     <AnimatePresence>
@@ -122,15 +181,24 @@ const AttendanceConfigModal = ({
                         School Working Days (per year)
                       </label>
                       <input
-                      type='number'
+                        type='text'
                         id="schoolWorkingDays"
                         name="schoolWorkingDays"
-                        max="366"
-                        value={config.schoolWorkingDays}
+                        placeholder="Enter working days"
+                        value={inputValue}
                         onChange={handleInputChange}
-                        className="block w-full rounded-lg border border-gray-300 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white px-4 py-2.5 text-sm shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 outline-none"
+                        className={`block w-full rounded-lg border ${
+                          validationError 
+                            ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' 
+                            : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500/20'
+                        } bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white px-4 py-2.5 text-sm shadow-sm focus:ring-2 transition-all duration-200 outline-none`}
                         required
                       />
+                      {validationError && (
+                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                          {validationError}
+                        </p>
+                      )}
                     </motion.div>
 
                     <motion.div
@@ -139,21 +207,23 @@ const AttendanceConfigModal = ({
                       transition={{ delay: 0.15 }}
                     >
                       <label
-                        htmlFor="holidays"
                         className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                       >
-                        Number of Holidays
+                        Holidays (Auto-calculated)
                       </label>
-                      <input
-                      type='number'
-                        id="holidays"
-                        name="holidays"
-                        max="366"
-                        value={config.holidays}
-                        onChange={handleInputChange}
-                        className="block w-full rounded-lg border border-gray-300 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white px-4 py-2.5 text-sm shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 outline-none"
-                        required
-                      />
+                      <div className="block w-full rounded-lg border border-gray-300 bg-gray-50 dark:bg-gray-700/50 dark:border-gray-600 px-4 py-2.5 text-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-900 dark:text-white font-semibold">
+                            {config.holidays} days
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {totalDays} - {config.schoolWorkingDays} = {config.holidays}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          Based on {totalDays} days in year {year} {isLeapYear(year) ? '(Leap Year)' : ''}
+                        </p>
+                      </div>
                     </motion.div>
 
                     <motion.div 

@@ -6,6 +6,7 @@ import ExcelImportModalForAttendance from './Modals/ExcelImportModalForAttendanc
 import ClassSelectorCard from '@/components/common/ClassSelectorCard';
 import { getStudentsByClass, updateStudent } from '@/services/students';
 import { getAttendanceConfig, updateAttendanceConfig } from '@/services/attendanceConfig';
+import api from '@/services/api';
 import { toast } from 'react-toastify';
 
 export default function AttendancePanel() {
@@ -612,52 +613,90 @@ export default function AttendancePanel() {
             setImporting(true);
             setImportError(null);
             
-            // Process the imported data
-            const updatedStudents = [...students];
-            let successCount = 0;
-            let errorCount = 0;
+            // Extract rows from the imported data object
+            const rows = importedData.rows || importedData;
+            console.log('=== ATTENDANCE IMPORT (BULK MODE) ===');
+            console.log('Total rows to process:', rows.length);
             
-            for (const row of importedData) {
+            // Prepare bulk updates
+            const bulkUpdates = [];
+            const errors = [];
+            
+            for (const row of rows) {
               try {
-                const rollNumber = String(row['Roll Number']).trim();
-                const presentDays = parseInt(row['Attendance'], 10);
+                const rollNumber = String(row['Roll Number'] || '').trim();
+                const attendanceValue = row['Attendance'];
                 
-                if (isNaN(presentDays)) {
-                  console.warn(`Invalid attendance value for roll ${rollNumber}:`, row['Attendance']);
-                  errorCount++;
+                if (!rollNumber) {
+                  errors.push({ row, reason: 'No roll number' });
                   continue;
                 }
                 
-                const student = updatedStudents.find(s => String(s.roll).trim() === rollNumber);
-                if (student) {
-                  await updateStudent(student._id, { 
-                    attendance: `${presentDays}/${attendanceConfig.schoolWorkingDays}`
-                  });
-                  successCount++;
+                // Parse attendance - handle "Abs" as 0
+                let presentDays;
+                if (attendanceValue === 'Abs' || attendanceValue === 'AB' || attendanceValue === 'ab') {
+                  presentDays = 0;
                 } else {
-                  console.warn(`Student with roll ${rollNumber} not found`);
-                  errorCount++;
+                  presentDays = parseInt(attendanceValue, 10);
+                }
+                
+                if (isNaN(presentDays)) {
+                  errors.push({ row, reason: `Invalid attendance: ${attendanceValue}` });
+                  continue;
+                }
+                
+                // Find student by roll number
+                const student = students.find(s => String(s.roll).trim() === rollNumber);
+                
+                if (student) {
+                  bulkUpdates.push({
+                    studentId: student._id,
+                    rollNumber: rollNumber,
+                    attendance: presentDays
+                  });
+                } else {
+                  errors.push({ row, reason: `Student not found with roll: ${rollNumber}` });
                 }
               } catch (err) {
-                console.error(`Error processing student ${row['Roll Number']}:`, err);
-                errorCount++;
+                errors.push({ row, reason: err.message });
               }
             }
             
+            console.log(`Prepared ${bulkUpdates.length} updates`);
+            console.log(`Errors: ${errors.length}`);
+            
+            if (bulkUpdates.length === 0) {
+              toast.warning('No valid attendance records to import');
+              return false;
+            }
+            
+            // Perform bulk update with single API call
+            console.log('📤 Sending bulk update request...');
+            const startTime = Date.now();
+            
+            const response = await api.post('/students/bulk-update/attendance', {
+              class: selectedClass,
+              updates: bulkUpdates
+            });
+            
+            const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+            console.log(`✅ Bulk update completed in ${duration}s`);
+            console.log('Server response:', response.data);
+            
             // Refresh the students list
-            if (successCount > 0) {
-              await fetchStudents();
-              toast.success(`Successfully imported attendance for ${successCount} students`);
-              if (errorCount > 0) {
-                toast.warning(`Failed to import ${errorCount} records`);
-              }
-            } else {
-              toast.warning('No attendance records were updated');
+            console.log('🔄 Refreshing students list...');
+            await fetchStudents();
+            
+            const successCount = response.data.modifiedCount || bulkUpdates.length;
+            toast.success(`Successfully imported attendance for ${successCount} students in ${duration}s`);
+            if (errors.length > 0) {
+              toast.warning(`${errors.length} records had errors. Check console for details.`);
+              console.log('Error details:', errors);
             }
             
             return true;
           } catch (err) {
-            console.error('Import failed:', err);
+            console.error('❌ Import failed:', err);
             setImportError(err?.message || 'Failed to import attendance');
             toast.error('Failed to import attendance');
             return false;

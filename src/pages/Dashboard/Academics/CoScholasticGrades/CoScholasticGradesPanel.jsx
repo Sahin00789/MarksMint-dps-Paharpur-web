@@ -19,7 +19,7 @@ const CoScholasticGradesPanel = () => {
   const categories = [
     { key: 'workEd', label: 'Work Education', icon: '🛠️' },
     { key: 'artEd', label: 'Art Education', icon: '🎨' },
-    { key: 'phyEd', label: 'Health & PE', icon: '🏃' },
+    { key: 'phyEd', label: 'Physical Education', icon: '🏃' },
     { key: 'discipline', label: 'Discipline', icon: '📝' }
   ];
 

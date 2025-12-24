@@ -450,8 +450,8 @@ const MarksheetPrintPage = ({
                  );
               })}
               {/* Overall Total Row */}
-              <tr style={{ backgroundColor: '#166534', color: '#fff', fontWeight: 800, fontSize: '11px' }}>
-                <td style={{ padding: '12px 10px', borderRight: '1px solid rgba(255,255,255,0.1)' }}>GRAND TOTAL</td>
+              <tr style={{ backgroundColor: '#f0fdf4', color: '#166534', fontWeight: 800, fontSize: '11px', borderTop: '2px solid #166534' }}>
+                <td style={{ padding: '12px 10px', borderRight: '1px solid #bbf7d0' }}>GRAND TOTAL</td>
                 {processedExamResults.map((exam, idx) => {
                    const evalTypes = new Set();
                    Object.values(exam.subjectDetails).forEach(subject => {
@@ -462,16 +462,16 @@ const MarksheetPrintPage = ({
                    
                    const colSpan = Math.max(1, evalTypes.size) * 2;
                    return (
-                     <td key={idx} colSpan={colSpan} style={{ textAlign: 'center', padding: '10px', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
-                       {Math.round(examTotal)} <span style={{ fontSize: '9px', fontWeight: 400, opacity: 0.8 }}>/ {Math.round(examMax)}</span>
+                     <td key={idx} colSpan={colSpan} style={{ textAlign: 'center', padding: '10px', borderLeft: '1px solid #bbf7d0' }}>
+                       <span style={{ fontWeight: 800 }}>{Math.round(examTotal)}</span> <span style={{ fontSize: '9px', fontWeight: 600, color: '#64748b' }}>/ {Math.round(examMax)}</span>
                      </td>
                    );
                 })}
-                <td style={{ textAlign: 'center', padding: '10px', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
-                  {Math.round(overallSummary.obtainedMarks)} <span style={{ fontSize: '9px', fontWeight: 400, opacity: 0.8 }}>/ {Math.round(overallSummary.totalMarks)}</span>
+                <td style={{ textAlign: 'center', padding: '10px', borderLeft: '1px solid #bbf7d0' }}>
+                  <span style={{ fontWeight: 800 }}>{Math.round(overallSummary.obtainedMarks)}</span> <span style={{ fontSize: '9px', fontWeight: 600, color: '#64748b' }}>/ {Math.round(overallSummary.totalMarks)}</span>
                 </td>
-                <td style={{ textAlign: 'center', padding: '10px', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>{Math.round(overallSummary.percentage)}%</td>
-                <td style={{ textAlign: 'center', padding: '10px', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>{overallSummary.grade}</td>
+                <td style={{ textAlign: 'center', padding: '10px', borderLeft: '1px solid #bbf7d0' }}>{Math.round(overallSummary.percentage)}%</td>
+                <td style={{ textAlign: 'center', padding: '10px', borderLeft: '1px solid #bbf7d0' }}>{overallSummary.grade}</td>
               </tr>
             </tbody>
           </table>
@@ -481,12 +481,27 @@ const MarksheetPrintPage = ({
         <div style={{ display: 'flex', gap: '15px', marginBottom: '10px', padding: '8px 15px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', alignItems: 'center' }}>
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#166534', marginRight: '10px', whiteSpace: 'nowrap' }}>CO-SCHOLASTIC & ATTRIBUTES:</div>
             <div style={{ display: 'flex', flex: 1, justifyContent: 'space-between' }}>
-               {Object.entries(coScholastic).slice(0,4).map(([key, val], idx) => (
-                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                     <span style={{ fontSize: '10px', color: '#64748b', textTransform: 'capitalize' }}>{key.replace(/([A-Z])/g, ' $1').trim()}</span>
-                     <span style={{ fontSize: '11px', fontWeight: 700, color: '#1e293b' }}>{val?.grade || 'A'}</span>
-                  </div>
-               ))}
+               {[
+                 { key: 'workEducation', label: 'Work Education' },
+                 { key: 'artEducation', label: 'Art Education' },
+                 { key: 'healthAndPhysical', label: 'Physical Education' },
+                 { key: 'discipline', label: 'Discipline' }
+               ].map((item, idx) => {
+                  const val = coScholastic[item.key];
+                  const grade = val?.grade || 'N/A';
+                  return (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                       <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 600 }}>{item.label}:</span>
+                       <span style={{ 
+                         fontSize: '11px', 
+                         fontWeight: 700, 
+                         color: grade === 'AB' ? '#dc2626' : '#1e293b' 
+                       }}>
+                         {grade === 'AB' ? 'AB' : grade}
+                       </span>
+                    </div>
+                  );
+               })}
             </div>
         </div>
 
@@ -547,39 +562,38 @@ const MarksheetPrintPage = ({
              ))}
           </div>
 
-          {/* Contact Footer */}
-          <div style={{ background: 'linear-gradient(90deg, #166534, #15803d, #166534)', padding: '8px 15px', borderRadius: '6px', marginTop: '10px', marginBottom: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ffffff', fontSize: '10px' }}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-                </svg>
-                <span style={{ fontWeight: 600 }}>+91 6295884463</span>
-              </div>
-              
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ffffff', fontSize: '10px' }}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                  <polyline points="22,6 12,13 2,6"></polyline>
-                </svg>
-                <span style={{ fontWeight: 600 }}>dinapublicschool.paharpur@gmail.com</span>
-              </div>
-              
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ffffff', fontSize: '10px' }}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="2" y1="12" x2="22" y2="12"></line>
-                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-                </svg>
-                <span style={{ fontWeight: 600 }}>dpspaharpur.web.app/</span>
-              </div>
-            </div>
+           {/* Contact Footer */}
+           <div style={{ padding: '8px 15px', borderRadius: '6px', marginTop: '10px', marginBottom: '10px', border: '1px solid #166534', backgroundColor: '#f0fdf4' }}>
+             <div style={{ display: 'flex', alignItems: 'center', gap: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
+               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#166534', fontSize: '10px' }}>
+                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                   <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                 </svg>
+                 <span style={{ fontWeight: 700 }}>+91 6295884463</span>
+               </div>
+               
+               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#166534', fontSize: '10px' }}>
+                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                   <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                   <polyline points="22,6 12,13 2,6"></polyline>
+                 </svg>
+                 <span style={{ fontWeight: 700 }}>dinapublicschool.paharpur@gmail.com</span>
+               </div>
+               
+               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#166534', fontSize: '10px' }}>
+                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                   <circle cx="12" cy="12" r="10"></circle>
+                   <line x1="2" y1="12" x2="22" y2="12"></line>
+                   <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                 </svg>
+                 <span style={{ fontWeight: 700 }}>dpspaharpur.web.app/</span>
+               </div>
+             </div>
           </div>
         </div>
-
       </div>
     </div>
   );
 };
-
+  
 export default MarksheetPrintPage;

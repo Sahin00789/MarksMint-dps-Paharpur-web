@@ -394,13 +394,14 @@ const MarksheetsPanel = () => {
 
   // Helper function to calculate grade from percentage
   const calculateGrade = (percentage) => {
-    if (percentage >= 90) return 'A+';
-    if (percentage >= 80) return 'A';
-    if (percentage >= 70) return 'B+';
-    if (percentage >= 60) return 'B';
-    if (percentage >= 50) return 'C+';
-    if (percentage >= 40) return 'C';
-    if (percentage >= 35) return 'D';
+    if (percentage >= 90) return 'AA';
+    if (percentage >= 80) return 'A+';
+    if (percentage >= 70) return 'A';
+    if (percentage >= 60) return 'B+';
+    if (percentage >= 50) return 'B';
+    if (percentage >= 40) return 'C+';
+    if (percentage >= 25) return 'C';
+    if (percentage < 25) return 'C';
     return 'F';
   };
 

@@ -87,12 +87,15 @@ const MarksheetPrintPage = ({
     if (!processedStudent || !qrContainerRef.current) return;
     const qrData = JSON.stringify({
       school: schoolinfo?.name || 'School Name',
-      name: student.studentName || 'Student',
+      branch:schoolinfo?.branch,
+      name: student.name || 'Student',
       class: student.class || 'Class',
       roll: student.rollNo || 'N/A',
+      session: 2025,
       result: overallSummary.resultStatus,
-      percentage: overallSummary.percentage
+      percentage: Math.round(overallSummary.percentage)
     });
+console.log(qrData);
 
     try {
       qrContainerRef.current.innerHTML = '';

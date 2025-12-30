@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
-import { FiUpload, FiCalendar, FiSettings, FiUsers, FiPlus, FiEdit2 } from 'react-icons/fi';
+import { FiUpload, FiCalendar, FiSettings, FiUsers, FiPlus, FiEdit2, FiInfo } from 'react-icons/fi';
 import AttendanceConfigModal from './Modals/AttendanceConfigModal';
 import EditAttendanceModal from './Modals/EditAttendanceModal';
 import ExcelImportModalForAttendance from './Modals/ExcelImportModalForAttendance';
@@ -97,24 +97,35 @@ export default function AttendancePanel() {
       return { totalDays: 0, presentDays: 0, absentDays: 0, percentage: 0 };
     }
 
-    const presentCount = students.reduce((sum, student) => {
-      // If attendance is a number, use it directly (capped at schoolWorkingDays)
-      if (typeof student.attendance === 'number') {
-        return sum + Math.min(student.attendance, attendanceConfig.schoolWorkingDays);
-      }
-      // Handle old format 'present/total' if needed
-      const [daysPresent] = (student.attendance || '0/0').split('/').map(Number);
-      return sum + Math.min(isNaN(daysPresent) ? 0 : daysPresent, attendanceConfig.schoolWorkingDays);
-    }, 0);
+    let totalPresentDays = 0;
+    let totalPossibleDays = 0;
+    let studentsWithAttendance = 0;
 
-    const totalPossibleDays = students.length * attendanceConfig.schoolWorkingDays;
-    const absentCount = Math.max(0, totalPossibleDays - presentCount);
+    students.forEach(student => {
+      if (student.attendance !== null && student.attendance !== undefined) {
+        studentsWithAttendance++;
+        let presentDays = 0;
+        
+        if (typeof student.attendance === 'number') {
+          presentDays = Math.min(student.attendance, attendanceConfig.schoolWorkingDays);
+        } else if (typeof student.attendance === 'string') {
+          const [daysPresent] = (student.attendance || '0/0').split('/').map(Number);
+          presentDays = Math.min(isNaN(daysPresent) ? 0 : daysPresent, attendanceConfig.schoolWorkingDays);
+        }
+        
+        totalPresentDays += presentDays;
+        totalPossibleDays += attendanceConfig.schoolWorkingDays;
+      }
+    });
+
+    const totalAbsentDays = Math.max(0, totalPossibleDays - totalPresentDays);
+    const averagePercentage = studentsWithAttendance > 0 ? Math.round((totalPresentDays / totalPossibleDays) * 100) : 0;
     
     return {
       totalDays: attendanceConfig.schoolWorkingDays,
-      presentDays: presentCount,
-      absentDays: absentCount,
-      percentage: Math.round((presentCount / totalPossibleDays) * 100) || 0
+      presentDays: Math.round(totalPresentDays / studentsWithAttendance) || 0,
+      absentDays: Math.round(totalAbsentDays / studentsWithAttendance) || 0,
+      percentage: averagePercentage
     };
   }, [selectedClass, students, attendanceConfig.schoolWorkingDays]);
 
@@ -300,53 +311,80 @@ export default function AttendancePanel() {
         </div>
       </div>
 
-      {/* Quick Actions Card */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white">Attendance Configuration</h3>
+      {/* Enhanced Attendance Configuration */}
+      <div className="bg-gradient-to-br from-slate-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-xl shadow-lg p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+              <FiSettings className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Attendance Configuration</h3>
+          </div>
           <button
             onClick={() => setShowConfigModal(true)}
-            className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:bg-gray-600"
-            title="Configure Attendance"
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center space-x-2"
           >
-            <FiSettings className="mr-1.5 h-3.5 w-3.5" />
-            Configure
+            <FiSettings className="w-4 h-4" />
+            Configure Settings
           </button>
         </div>
         
         {selectedClass ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Class</p>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">{selectedClass}</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-md border border-gray-100 dark:border-gray-700">
+              <div className="flex items-center space-x-3 mb-3">
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                  <FiUsers className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Class</p>
+                  <p className="text-xl font-bold text-gray-900 dark:text-white">{selectedClass}</p>
+                </div>
+              </div>
             </div>
-            <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Total Working Days</p>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">
-                {attendanceConfig.schoolWorkingDays || 'Not set'}
-              </p>
+            
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-md border border-gray-100 dark:border-gray-700">
+              <div className="flex items-center space-x-3 mb-3">
+                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                  <FiCalendar className="w-5 h-5 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Working Days</p>
+                  <p className="text-xl font-bold text-gray-900 dark:text-white">
+                    {attendanceConfig.schoolWorkingDays || 'Not set'}
+                  </p>
+                </div>
+              </div>
             </div>
-            <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Holidays</p>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">
-                {attendanceConfig.holidays || 'Not set'}
-              </p>
+            
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-md border border-gray-100 dark:border-gray-700">
+              <div className="flex items-center space-x-3 mb-3">
+                <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
+                  <FiCalendar className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Holidays</p>
+                  <p className="text-xl font-bold text-gray-900 dark:text-white">
+                    {attendanceConfig.holidays || 'Not set'}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         ) : (
-          <p className="text-sm text-gray-500 dark:text-gray-400">Select a class to view configuration</p>
+          <div className="text-center py-8">
+            <div className="inline-flex items-center space-x-3 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+              <FiInfo className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              <p className="text-sm font-medium text-amber-700 dark:text-amber-300">Select a class to view configuration</p>
+            </div>
+          </div>
         )}
       </div>
 
       {/* Import Card - Only show when a class is selected */}
       {selectedClass && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-          <div className="flex items-center gap-2 mb-4">
-            <FiUpload className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">Import Attendance</h3>
-          </div>
-          
-          <div>
+          <div className="flex items-center justify-between">
             <button
               onClick={() => setShowImportModal(true)}
               disabled={!selectedClass || importing}
@@ -355,7 +393,7 @@ export default function AttendancePanel() {
               <FiUpload size={16} />
               {importing ? 'Importing...' : 'Import from Excel'}
             </button>
-            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               Upload an Excel file with student attendance data
             </p>
           </div>
@@ -395,154 +433,142 @@ export default function AttendancePanel() {
               {importError}
             </div>
           ) : students.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
-              {students.map((student) => {
-                // Safely handle both number and string formats for attendance
-                let presentDays, totalDays;
-                if (typeof student.attendance === 'number') {
-                  presentDays = student.attendance;
-                  totalDays = attendanceConfig.schoolWorkingDays || 1;
-                } else if (typeof student.attendance === 'string') {
-                  const parts = (student.attendance || '0/0').split('/');
-                  presentDays = parseInt(parts[0], 10) || 0;
-                  totalDays = parts.length > 1 ? parseInt(parts[1], 10) || 1 : 1;
-                } else {
-                  presentDays = 0;
-                  totalDays = attendanceConfig.schoolWorkingDays || 1;
-                }
-                const absentDays = Math.max(0, totalDays - presentDays);
-                const percentage = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
-                
-                return (
-                  <div key={student._id} className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700 transition-all duration-200 ease-in-out transform hover:scale-[1.02] hover:shadow-md hover:border-pink-200 dark:hover:border-pink-500/30">
-                    {/* Student Header */}
-                    <div className="bg-gradient-to-r from-pink-500 to-rose-500 p-3 relative rounded-t-2xl">
-                      <div className="absolute top-0 right-0 w-16 h-16 -mr-4 -mt-4 bg-white/10 rounded-full"></div>
-                      <div className="relative z-10 flex items-center space-x-3">
+            <div className="space-y-3 p-6">
+              {/* Student List with Enhanced Bars */}
+              <div className="space-y-3">
+                {students.map((student, index) => {
+                  // Safely handle both number and string formats for attendance
+                  let presentDays, totalDays;
+                  if (typeof student.attendance === 'number') {
+                    presentDays = student.attendance;
+                    totalDays = attendanceConfig.schoolWorkingDays || 1;
+                  } else if (typeof student.attendance === 'string') {
+                    const parts = (student.attendance || '0/0').split('/');
+                    presentDays = parseInt(parts[0], 10) || 0;
+                    totalDays = parts.length > 1 ? parseInt(parts[1], 10) || 1 : 1;
+                  } else {
+                    presentDays = 0;
+                    totalDays = attendanceConfig.schoolWorkingDays || 1;
+                  }
+                  const absentDays = Math.max(0, totalDays - presentDays);
+                  const percentage = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
+                  
+                  // Determine status color
+                  const statusColor = percentage >= 75 ? 'green' : percentage >= 50 ? 'amber' : 'red';
+                  const statusGradient = percentage >= 75 ? 'from-green-400 to-emerald-500' : percentage >= 50 ? 'from-amber-400 to-orange-500' : 'from-red-400 to-rose-500';
+                  
+                  return (
+                  <div key={student._id} className="group relative bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-100 dark:border-gray-700 p-4 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] overflow-hidden">
+                      {/* Animated Background Pattern */}
+                      <div className={`absolute inset-0 bg-gradient-to-br ${statusGradient} opacity-5 group-hover:opacity-10 transition-opacity duration-300`}></div>
+                      
+                      <div className="relative flex items-center space-x-4">
+                        {/* Student Photo */}
                         <div className="flex-shrink-0 relative">
+                          <div className={`absolute -inset-1 bg-gradient-to-br ${statusGradient} rounded-full opacity-20 animate-pulse`}></div>
                           {student.photoUrl ? (
-                            <>
-                              <img
-                                src={student.photoUrl}
-                                alt={student.studentName || 'Student'}
-                                className="h-10 w-10 rounded-full object-cover border-2 border-white/40"
-                                onError={(e) => {
-                                  e.target.onerror = null;
-                                  e.target.style.display = 'none';
-                                  const fallback = e.target.nextElementSibling;
-                                  if (fallback) fallback.style.display = 'flex';
-                                }}
-                              />
-                              <div className="h-10 w-10 rounded-full border-2 border-white/40 items-center justify-center bg-pink-400/30 backdrop-blur-sm text-white font-bold text-sm hidden">
-                                {student.studentName ? student.studentName.trim().charAt(0).toUpperCase() : 'N'}
-                              </div>
-                            </>
+                            <img
+                              src={student.photoUrl}
+                              alt={student.studentName || 'Student'}
+                              className="relative h-11 w-11 rounded-full object-cover border-2 border-white dark:border-gray-700 shadow-lg z-10"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.style.display = 'none';
+                                const fallback = e.target.nextElementSibling;
+                                if (fallback) fallback.style.display = 'flex';
+                              }}
+                            />
                           ) : (
-                            <div className="h-10 w-10 rounded-full border-2 border-white/40 flex items-center justify-center bg-pink-400/30 backdrop-blur-sm text-white font-bold text-sm">
+                            <div className="h-11 w-11 rounded-full border-2 border-white dark:border-gray-700 flex items-center justify-center bg-gradient-to-br from-gray-400 to-gray-600 text-white font-bold text-sm shadow-lg z-10">
                               {student.studentName ? student.studentName.trim().charAt(0).toUpperCase() : 'N'}
                             </div>
                           )}
                         </div>
-                        <div className="min-w-0">
-                          <h3 className="text-sm font-semibold text-white truncate">
-                            {student.studentName?.trim() || 'No Name'}
-                          </h3>
-                          <div className="flex items-center space-x-1.5">
-                            <span className="text-xs text-pink-100">R: {student.roll?.trim() || 'N/A'}</span>
-                            <span className="text-pink-200">•</span>
-                            <span className="text-xs text-pink-100">{selectedClass || 'N/A'}</span>
+                        
+                        {/* Student Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-sm font-bold text-gray-900 dark:text-white truncate capitalize">
+                                {student.studentName?.trim() || 'No Name'}
+                              </h3>
+                              <div className="flex items-center space-x-3 text-xs text-gray-500 dark:text-gray-400">
+                                <span className="flex items-center">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-gray-400 mr-1.5"></span>
+                                  Roll: {student.roll?.trim() || 'N/A'}
+                                </span>
+                                <span className="flex items-center">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 mr-1.5"></span>
+                                  {selectedClass || 'N/A'}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            <button
+                              onClick={() => handleEditStudent(student)}
+                              className="flex-shrink-0 p-2 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-all duration-200 group"
+                              title="Edit attendance"
+                            >
+                              <FiEdit2 size={14} className="group-hover:scale-110 transition-transform duration-200" />
+                            </button>
+                          </div>
+                          
+                          {/* Attendance Progress */}
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
+                              <span className="font-medium">Attendance Progress</span>
+                              <span className="font-bold text-gray-900 dark:text-white">{presentDays}/{totalDays} ({percentage}%)</span>
+                            </div>
+                            
+                            {/* Progress Bar */}
+                            <div className="relative">
+                              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                                <div 
+                                  className={`h-2 rounded-full bg-gradient-to-r ${statusGradient} transition-all duration-500 ease-out relative overflow-hidden`}
+                                  style={{ width: `${Math.min(100, percentage)}%` }}
+                                >
+                                  {/* Animated shimmer effect */}
+                                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
+                                </div>
+                              </div>
+                              
+                              {/* Percentage Badge */}
+                              <div className={`absolute -top-1 -right-1 px-2 py-1 rounded-full text-xs font-bold text-white shadow-lg ${
+                                percentage >= 75 ? 'bg-green-500' : 
+                                percentage >= 50 ? 'bg-amber-500' : 'bg-red-500'
+                              }`}>
+                                {percentage}%
+                              </div>
+                            </div>
+                            
+                            {/* Stats Row */}
+                            <div className="flex items-center justify-between text-xs">
+                              <div className="flex items-center space-x-3">
+                                <span className="flex items-center text-green-600 dark:text-green-400 font-medium">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1"></span>
+                                  {presentDays} present
+                                </span>
+                                <span className="flex items-center text-red-600 dark:text-red-400 font-medium">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 mr-1"></span>
+                                  {absentDays} absent
+                                </span>
+                              </div>
+                              
+                              {/* Status Badge */}
+                              <div className={`px-2 py-1 rounded-full text-xs font-bold text-white shadow-md ${
+                                percentage >= 75 ? 'bg-green-500' : 
+                                percentage >= 50 ? 'bg-amber-500' : 'bg-red-500'
+                              }`}>
+                                {percentage >= 75 ? 'Excellent' : percentage >= 50 ? 'Good' : 'Needs Attention'}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                    
-                    {/* Attendance Stats */}
-                    <div className="p-4 bg-white dark:bg-gray-800">
-                      <div className="space-y-3">
-                        {/* Present Days */}
-                        <div className="bg-pink-50 dark:bg-pink-900/20 rounded-lg p-3 border border-pink-100 dark:border-pink-800/30">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                              <div className="w-2 h-2 rounded-full bg-pink-500"></div>
-                              <span className="text-sm font-medium text-pink-800 dark:text-pink-200">Present</span>
-                            </div>
-                            <div className="flex items-center">
-                              <span className="text-base font-bold text-pink-600 dark:text-pink-400">
-                                {typeof student.attendance === 'number' 
-                                  ? student.attendance 
-                                  : (student.attendance || '0/0').split('/')[0]}
-                              </span>
-                              <span className="ml-1 text-xs text-pink-600/70 dark:text-pink-400/70">days</span>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* Absent Days */}
-                        <div className="bg-rose-50 dark:bg-rose-900/20 rounded-lg p-3 border border-rose-100 dark:border-rose-800/30">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                              <div className="w-2 h-2 rounded-full bg-rose-500"></div>
-                              <span className="text-sm font-medium text-rose-800 dark:text-rose-200">Absent</span>
-                            </div>
-                            <div className="flex items-center">
-                              <span className="text-base font-bold text-rose-600 dark:text-rose-400">
-                                {attendanceConfig.schoolWorkingDays - 
-                                  (typeof student.attendance === 'number' 
-                                    ? student.attendance 
-                                    : (() => {
-                                        const parts = (student.attendance || '0/0').toString().split('/');
-                                        return parseInt(parts[0], 10) || 0;
-                                      })())}
-                              </span>
-                              <span className="ml-1 text-xs text-rose-600/70 dark:text-rose-400/70">days</span>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* Total Days */}
-                        <div className="bg-rose-50/50 dark:bg-rose-900/10 rounded-lg p-3 border border-rose-50 dark:border-rose-800/20">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                              <div className="w-2 h-2 rounded-full bg-rose-400"></div>
-                              <span className="text-sm font-medium text-rose-800/90 dark:text-rose-200">Total </span>
-                            </div>
-                            <div className="flex items-center">
-                              <span className="text-base font-bold text-rose-700 dark:text-rose-300">
-                                {attendanceConfig.schoolWorkingDays}
-                              </span>
-                              <span className="ml-1 text-xs text-rose-600/70 dark:text-rose-300/70">days</span>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* Progress Bar */}
-                        <div className="mt-4">
-                          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
-                            <span>Attendance</span>
-                            <span className="font-medium">{percentage}%</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
-                            <div 
-                              className="h-2 rounded-full bg-gradient-to-r from-pink-500 to-rose-500" 
-                              style={{ width: `${Math.min(100, percentage)}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                        
-                        {/* Edit Button */}
-                        <button
-                          onClick={() => handleEditStudent(student)}
-                          className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
-                          title="Edit attendance"
-                        >
-                          <FiEdit2 size={16} className="text-white" />
-                          <span>Edit Attendance</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           ) : (
             <div className="p-8 text-center">

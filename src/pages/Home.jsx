@@ -54,6 +54,9 @@ const usePublicResults = () => {
     queryKey: ['publicResults'],
     queryFn: async () => {
       try {
+        // Add a small delay to ensure loading state is visible
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
         const fetchPromises = examTermsInTheSchool.map(async (term) => {
           const result = await getPublishedStatusForPublic(term);
           if (result.success && result.data) {
@@ -72,10 +75,10 @@ const usePublicResults = () => {
         return [];
       }
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes before refetching
-    cacheTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
+    staleTime: 0, // No cache - always fresh
+    cacheTime: 0, // No cache
     refetchOnWindowFocus: false,
-    refetchOnMount: 'if-stale',
+    refetchOnMount: 'always', // Always refetch on mount to ensure loading state
     retry: 1, // Only retry once on failure
     retryDelay: 1000,
     onError: (error) => {
@@ -202,12 +205,12 @@ const PublicResultsCard = React.memo(({ publicResultStatuses = [], isLoading, is
   const navigate = useNavigate();
   
   const cardColors = useMemo(() => [
-    'from-blue-500 to-blue-600',
-    'from-purple-500 to-purple-600',
-    'from-green-500 to-green-600',
-    'from-yellow-500 to-yellow-600',
-    'from-red-500 to-red-600',
-    'from-pink-500 to-pink-600',
+    'from-blue-500 via-blue-600 to-indigo-600',
+    'from-purple-500 via-purple-600 to-pink-600',
+    'from-emerald-500 via-emerald-600 to-teal-600',
+    'from-amber-500 via-orange-500 to-red-500',
+    'from-rose-500 via-pink-500 to-fuchsia-600',
+    'from-cyan-500 via-blue-500 to-indigo-600',
   ], []);
 
   // Show loading skeleton
@@ -254,8 +257,8 @@ const PublicResultsCard = React.memo(({ publicResultStatuses = [], isLoading, is
     );
   }
 
-  // Show empty state
-  if (!publicResultStatuses || publicResultStatuses.length === 0) {
+  // Show empty state (only after loading is complete)
+  if (!isLoading && (!publicResultStatuses || publicResultStatuses.length === 0)) {
     return (
       <div 
         className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6 text-center"
@@ -278,10 +281,11 @@ const PublicResultsCard = React.memo(({ publicResultStatuses = [], isLoading, is
           key={result._id || `${result.term}-${index}`}
           className={`w-full text-left rounded-lg shadow-md overflow-hidden transform transition-all duration-200 ${
             result.isPublished
-              ? `bg-gradient-to-r ${cardColors[index % cardColors.length]} hover:scale-[1.02] hover:shadow-lg`
-              : 'bg-gray-100 dark:bg-gray-800 opacity-60'
+              ? `bg-gradient-to-r ${cardColors[index % cardColors.length]} hover:scale-[1.02] hover:shadow-lg cursor-pointer`
+              : 'bg-gray-100 dark:bg-gray-800 opacity-60 cursor-not-allowed'
           }`}
           aria-label={`${result.term} results`}
+          onClick={() => result.isPublished && navigate(`/results?term=${encodeURIComponent(result.term)}`)}
         >
           <div className={`p-4 ${result.isPublished ? 'text-white' : 'text-gray-700 dark:text-gray-300'}`}>
             <div className="flex justify-between items-center">
@@ -303,13 +307,10 @@ const PublicResultsCard = React.memo(({ publicResultStatuses = [], isLoading, is
             )}
             <div className="mt-4 flex justify-end">
               {result.isPublished ? (
-                <button
-                  className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                  onClick={() => navigate(`/results?term=${encodeURIComponent(result.term)}`)}
-                >
+                <div className="flex items-center text-xs opacity-90">
                   <FiExternalLink className="mr-1.5 h-3.5 w-3.5" />
-                  View Results
-                </button>
+                  Click to view results
+                </div>
               ) : (
                 <span className="text-xs text-gray-500 dark:text-gray-400">Check back later</span>
               )}
@@ -345,7 +346,8 @@ function Home() {
           <div className="bg-white dark:bg-gray-800/30 rounded-2xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
             <PublicResultsCard 
               publicResultStatuses={publicResultStatuses}
-              loading={isLoading}
+              isLoading={isLoading}
+              isError={!!error}
               error={error}
             />
           </div>

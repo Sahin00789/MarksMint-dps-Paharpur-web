@@ -1,66 +1,77 @@
 import api from './api';
 
+// Get dashboard statistics
 export const getDashboardStats = async () => {
   try {
     const response = await api.get('/dashboard/stats');
-    // Return the data in a consistent format
-    return {
-      success: response.data?.success ?? false,
-      data: response.data?.data ?? {}
-    };
+    return response.data;
   } catch (error) {
     console.error('Error fetching dashboard stats:', error);
-    // Return a consistent error response
-    return {
-      success: false,
-      error: error.message || 'Failed to fetch dashboard stats',
-      data: {}
-    };
+    throw error;
   }
 };
 
+// Get class performance overview
+export const getClassPerformanceOverview = async () => {
+  try {
+    const response = await api.get('/dashboard/class-performance');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching class performance overview:', error);
+    throw error;
+  }
+};
+
+// Get class-wise absent data
+export const getClassWiseAbsentData = async () => {
+  try {
+    const response = await api.get('/dashboard/class-wise-absent');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching class-wise absent data:', error);
+    throw error;
+  }
+};
+
+// Get subject statistics
+export const getSubjectStats = async () => {
+  try {
+    const response = await api.get('/dashboard/subject-stats');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching subject stats:', error);
+    throw error;
+  }
+};
+
+// Get dashboard activities
 export const getDashboardActivities = async () => {
   try {
     const response = await api.get('/dashboard/activities');
-    // Return the data in a consistent format
-    return {
-      success: response.data?.success ?? false,
-      data: response.data?.data ?? []
-    };
+    return response.data;
   } catch (error) {
     console.error('Error fetching dashboard activities:', error);
-    // Return a consistent error response
-    return {
-      success: false,
-      error: error.message || 'Failed to fetch activities',
-      data: []
-    };
+    throw error;
   }
 };
 
+// Get dashboard charts
 export const getDashboardCharts = async () => {
   try {
     const response = await api.get('/dashboard/charts');
-    // Return the data in a consistent format with default empty arrays
-    return {
-      success: response.data?.success ?? false,
-      data: {
-        studentsByClass: response.data?.data?.studentsByClass || [],
-        examStats: response.data?.data?.examStats || [],
-        resultStats: response.data?.data?.resultStats || []
-      }
-    };
+    return response.data;
   } catch (error) {
     console.error('Error fetching dashboard charts:', error);
-    // Return a consistent error response with empty arrays
-    return {
-      success: false,
-      error: error.message || 'Failed to fetch chart data',
-      data: {
-        studentsByClass: [],
-        examStats: [],
-        resultStats: []
-      }
-    };
+    throw error;
   }
+};
+
+// Export all services as a single object for easier importing
+export const dashboardService = {
+  getDashboardStats,
+  getClassPerformanceOverview,
+  getClassWiseAbsentData,
+  getSubjectStats,
+  getDashboardActivities,
+  getDashboardCharts
 };

@@ -11,6 +11,7 @@ const Login = lazy(() => import("@pages/Auth/Login"));
 const PublicResultsPage = lazy(() => import("@pages/PublicResultsPage"));
 
 // Lazy load dashboard components
+const Dashboard = lazy(() => import("@pages/Dashboard"));
 const DashboardHome = lazy(() => import("@pages/Dashboard/DashboardHome"));
 const StudentsPanel = lazy(() => import("@pages/Dashboard/Students/StudentsPanel"));
 const AttendancePanel = lazy(() => import("./pages/Dashboard/Attendance/AttendancePanel"));
@@ -168,7 +169,7 @@ const AppContent = () => {
               </ProtectedRoute>
             }
           >
-            <Route index element={<DashboardHome />} />
+            <Route index element={<Dashboard />} />
             <Route path="students" element={<StudentsPanel />} />
             <Route path="attendance" element={<AttendancePanel />} />
             <Route path="academics" element={<AcademicsLayout />}>

@@ -13,7 +13,8 @@ import EditStudentModal from "./Modals/editStudentModal";
 import ExcelImportModal from "./Modals/ExcelImportModalforStudents";
 import BulkPhotoUpload from "./Modals/bulkPhotoUpload";
 import DeleteConfirmationModal from "./Modals/DeleteConfirmationModal";
-import { FaUserPlus, FaFileExcel, FaImages, FaTrash } from "react-icons/fa";
+import IDCardSelectionModal from "./Modals/IDCardSelectionModal";
+import { FaUserPlus, FaFileExcel, FaImages, FaTrash, FaIdCard } from "react-icons/fa";
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import schoolInformation from "@/shared/schoolInformation";
@@ -40,6 +41,7 @@ export default function StudentsPanel() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showIDSelection, setShowIDSelection] = useState(false);
 
 
   // Save selected class to localStorage when it changes
@@ -641,6 +643,14 @@ const getInitials = (name) => {
               Upload Photos
             </button>
             <button
+              onClick={() => setShowIDSelection(true)}
+              disabled={!selectedClass}
+              className="flex items-center px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 flex-1 sm:flex-none justify-center disabled:opacity-50"
+            >
+              <FaIdCard className="mr-2" />
+              Generate ID Cards
+            </button>
+            <button
               onClick={() => setShowAddModal(true)}
               className="flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 flex-1 sm:flex-none justify-center"
             >
@@ -784,6 +794,14 @@ const getInitials = (name) => {
         student={studentToDelete || {}}
         onConfirm={handleDeleteStudent}
         isLoading={isDeleting}
+      />
+
+      {/* ID Card Selection Modal */}
+      <IDCardSelectionModal
+        isOpen={showIDSelection}
+        onClose={() => setShowIDSelection(false)}
+        students={students}
+        selectedClass={selectedClass}
       />
 
       {/* Add Student Modal */}

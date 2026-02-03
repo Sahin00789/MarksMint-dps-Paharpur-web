@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaTimes, FaSearch, FaCheckSquare, FaSquare, FaPalette, FaUser } from 'react-icons/fa';
+import { FaTimes, FaSearch, FaCheckSquare, FaSquare, FaPrint, FaUser } from 'react-icons/fa';
 import IDCardPrintModal from './IDCardPrintModal';
 
 export default function IDCardSelectionModal({ isOpen, onClose, students = [], selectedClass }) {
@@ -53,7 +53,7 @@ export default function IDCardSelectionModal({ isOpen, onClose, students = [], s
                   onClick={() => setShowPrintModal(true)}
                   className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all font-bold shadow-lg disabled:opacity-50 disabled:shadow-none"
                 >
-                  <FaPalette /> Preview Print
+                  <FaPrint /> Preview Print
                 </button>
                 <button onClick={onClose} className="p-3 text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
                   <FaTimes size={20} />

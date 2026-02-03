@@ -22,25 +22,19 @@ const IDCard = ({ student }) => {
     } catch (e) { return dateStr; }
   };
 
-  // Enhanced premium themes for all classes
-  const getClassTheme = (className) => {
-    const themes = {
-      'LKG': { bg: 'linear-gradient(135deg, #fff1f2 0%, #ffffff 50%, #ffe4e6 100%)', border: '#fb7185', accent: '#e11d48', shadow: 'rgba(225,29,72,0.1)' },
-      'UKG': { bg: 'linear-gradient(135deg, #f0f9ff 0%, #ffffff 50%, #e0f2fe 100%)', border: '#38bdf8', accent: '#0284c7', shadow: 'rgba(2,132,199,0.1)' },
-      'I': { bg: 'linear-gradient(135deg, #f5f3ff 0%, #ffffff 50%, #ede9fe 100%)', border: '#8b5cf6', accent: '#6d28d9', shadow: 'rgba(109,40,217,0.1)' },
-      'II': { bg: 'linear-gradient(135deg, #fff7ed 0%, #ffffff 50%, #ffedd5 100%)', border: '#fb923c', accent: '#ea580c', shadow: 'rgba(234,88,12,0.1)' },
-      'III': { bg: 'linear-gradient(135deg, #ecfeff 0%, #ffffff 50%, #cffafe 100%)', border: '#22d3ee', accent: '#0891b2', shadow: 'rgba(8,145,178,0.1)' },
-      'IV': { bg: 'linear-gradient(135deg, #fefce8 0%, #ffffff 50%, #fef9c3 100%)', border: '#eab308', accent: '#a16207', shadow: 'rgba(161,98,7,0.1)' },
-      'V': { bg: 'linear-gradient(135deg, #eef2ff 0%, #ffffff 50%, #e0e7ff 100%)', border: '#6366f1', accent: '#4338ca', shadow: 'rgba(67,56,202,0.1)' },
-      'VI': { bg: 'linear-gradient(135deg, #f7fee7 0%, #ffffff 50%, #ecfccb 100%)', border: '#a3e635', accent: '#4d7c0f', shadow: 'rgba(77,124,15,0.1)' },
-      'VII': { bg: 'linear-gradient(135deg, #fafaf9 0%, #ffffff 50%, #f5f5f4 100%)', border: '#78716c', accent: '#44403c', shadow: 'rgba(68,64,60,0.1)' },
-    };
-    return themes[className] || { bg: 'linear-gradient(135deg, #f0fdf4 0%, #ffffff 50%, #dcfce7 100%)', border: '#16a34a', accent: '#15803d', shadow: 'rgba(21,128,61,0.1)' };
+  // Hardcoded Pink/Violet Theme (Deep Purple Text)
+  const theme = { 
+    bg: 'linear-gradient(135deg, #fdf4ff 0%, #ffffff 50%, #f5f3ff 100%)', // Very light pink/purple
+    border: '#d946ef',   // Fuchsia 500 (Pink/Purple)
+    accent: '#9333ea',   // Purple 600
+    shadow: 'rgba(217,70,239,0.15)',
+    primary: '#581c87',  // Purple 900 (Deep Violet - No Red Text)
+    secondary: '#7e22ce' // Purple 700
   };
 
-  const theme = getClassTheme(student.class);
   const patternMatch = theme.accent.replace('#', '%23');
-  const pattern = `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='${patternMatch}' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6zM36 4V0h-2v4h-4v2h4v4h2V6h4V4h-4z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`;
+  // Crystal Texture Pattern
+  const pattern = `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='${patternMatch}' fill-opacity='0.05' fill-rule='evenodd'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/svg%3E")`;
 
   useEffect(() => {
     if (!student || !qrContainerRef.current) return;
@@ -63,11 +57,9 @@ const IDCard = ({ student }) => {
   useEffect(() => {
     if (qrContainerRef.current && qrCodeSvg) {
       qrContainerRef.current.innerHTML = qrCodeSvg;
-      // Ensure the SVG inside fills the container perfectly
+      // SVG will be centered by the flex container
       const svg = qrContainerRef.current.querySelector('svg');
       if (svg) {
-        svg.style.width = '100%';
-        svg.style.height = '100%';
         svg.style.display = 'block';
       }
     }
@@ -112,7 +104,7 @@ const IDCard = ({ student }) => {
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '0mm', width: '100%', justifyContent: 'center' }}>
           <div style={{ height: '0.3mm', flex: 1, background: 'linear-gradient(to left, #fbbf24, transparent)' }}></div>
-          <span style={{ fontSize: '3.8pt', color: '#064e3b', backgroundColor: '#fbbf24', padding: '0.2mm 1.5mm', borderRadius: '30px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.2mm', border: '0.1mm solid rgba(0,0,0,0.1)', zIndex: 2 }}>{schoolinfo.branch} branch</span>
+          <span style={{ fontSize: '3.8pt', color: theme.primary, backgroundColor: '#fbbf24', padding: '0.2mm 1.5mm', borderRadius: '30px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.2mm', border: '0.1mm solid rgba(0,0,0,0.1)', zIndex: 2 }}>{schoolinfo.branch} branch</span>
           <div style={{ height: '0.3mm', flex: 1, background: 'linear-gradient(to right, #fbbf24, transparent)' }}></div>
         </div>
 
@@ -128,13 +120,15 @@ const IDCard = ({ student }) => {
 
       {/* Photo and Identity Row */}
       <div style={{ display: 'flex', padding: '1.2mm 3.5mm 1.2mm 3.5mm', gap: '3mm', zIndex: 2, position: 'relative', alignItems: 'center' }}>
-        <div style={{ width: '20mm', height: '23mm', border: `1.2px solid ${theme.accent}`, borderRadius: '4px', overflow: 'hidden', backgroundColor: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.06)', flexShrink: 0 }}>
-          {student.photoUrl ? <img src={student.photoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : 
-          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.accent, backgroundColor: '#fdfdfd' }}><FaUser size={22} /></div>}
+        <div style={{ width: '16mm', height: '19mm', padding: '0.4mm', background: `linear-gradient(45deg, ${theme.border}, ${theme.accent})`, borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.06)', flexShrink: 0, marginBottom: '1mm' }}>
+           <div style={{ width: '100%', height: '100%', backgroundColor: 'white', borderRadius: '3.6px', overflow: 'hidden' }}>
+            {student.photoUrl ? <img src={student.photoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : 
+            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.accent, backgroundColor: '#fdfdfd' }}><FaUser size={22} /></div>}
+           </div>
         </div>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.6mm' }}>
           <div style={{ fontSize: '3.2pt', color: theme.accent, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1mm' }}>Student Name</div>
-          <h3 style={{ fontSize: '8.5pt', fontWeight: 900, color: '#064e3b', textTransform: 'uppercase', lineHeight: 1.2, margin: 0, letterSpacing: '-0.1mm' }}>{student.studentName}</h3>
+          <h3 style={{ fontSize: '8.5pt', fontWeight: 900, color: theme.primary, textTransform: 'uppercase', lineHeight: 1.2, margin: 0, letterSpacing: '-0.1mm' }}>{student.studentName}</h3>
           <div style={{ display: 'flex', gap: '1.2mm', marginTop: '0.8mm' }}>
              <div style={{ flex: 1, border: `0.3mm solid ${theme.accent}`, color: theme.accent, padding: '0.4mm', borderRadius: '4px', textAlign: 'center', backgroundColor: 'white' }}>
                 <div style={{ fontSize: '2.8pt', fontWeight: 700, opacity: 0.8, textTransform: 'uppercase' }}>Roll</div>
@@ -157,7 +151,7 @@ const IDCard = ({ student }) => {
             gap: '1mm'
           }}>
             <span style={{ fontSize: '3pt', color: '#64748b', fontWeight: 800, textTransform: 'uppercase' }}>Academic Year:</span>
-            <span style={{ fontSize: '5pt', color: '#1e293b', fontWeight: 900 }}>2026</span>
+            <span style={{ fontSize: '5pt', color: theme.secondary, fontWeight: 900 }}>2026</span>
           </div>
         </div>
       </div>
@@ -167,16 +161,16 @@ const IDCard = ({ student }) => {
         <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.6fr', gap: '1.2mm 4mm' }}>
           {/* Column 1: Text Heavy */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5mm' }}>
-            <DetailRow icon={<FaUserFriends />} label="Father's Name" value={student.fatherName} accent={theme.accent} />
-            <DetailRow icon={<FaFemale />} label="Mother's Name" value={student.motherName} accent={theme.accent} />
-            <DetailRow icon={<FaMapMarkerAlt />} label="Address" value={student.address} multiLine accent={theme.accent} />
+            <DetailRow icon={<FaUserFriends />} label="Father's Name" value={student.fatherName} accent={theme.accent} theme={theme} />
+            <DetailRow icon={<FaFemale />} label="Mother's Name" value={student.motherName} accent={theme.accent} theme={theme} />
+            <DetailRow icon={<FaMapMarkerAlt />} label="Address" value={student.address} multiLine accent={theme.accent} theme={theme} />
           </div>
 
           {/* Column 2: Short Data */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5mm' }}>
-            <DetailRow icon={<FaVenusMars />} label="Gender" value={student.gender} accent={theme.accent} />
-            <DetailRow icon={<FaCalendarAlt />} label="DOB" value={formatDate(student.dob)} accent={theme.accent} />
-            <DetailRow icon={<FaTint />} label="Blood" value={student.bloodGroup} accent={theme.accent} />
+            <DetailRow icon={<FaVenusMars />} label="Gender" value={student.gender} accent={theme.accent} theme={theme} />
+            <DetailRow icon={<FaCalendarAlt />} label="DOB" value={formatDate(student.dob)} accent={theme.accent} theme={theme} />
+            <DetailRow icon={<FaTint />} label="Blood" value={student.bloodGroup} accent={theme.accent} theme={theme} />
           </div>
         </div>
 
@@ -195,7 +189,7 @@ const IDCard = ({ student }) => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.5mm' }}>
             <span style={{ fontSize: '4pt', color: theme.accent, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1mm' }}>Mobile Number</span>
           </div>
-          <span style={{ fontSize: '7.5pt', color: '#064e3b', fontWeight: 950 }}>{student.mobileNumber || '---'}</span>
+          <span style={{ fontSize: '7.5pt', color: theme.primary, fontWeight: 950 }}>{student.mobileNumber || '---'}</span>
         </div>
       </div>
 
@@ -206,14 +200,14 @@ const IDCard = ({ student }) => {
             width: '8.5mm', 
             height: '8.5mm', 
             backgroundColor: 'white', 
-            padding: '0.2mm', // Reduced padding for better fit
+            padding: '0', 
             borderRadius: '3px', 
             border: `0.1mm solid ${theme.border}`, 
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'center',
             boxSizing: 'border-box',
-            overflow: 'hidden' // Ensure no bleed out
+            overflow: 'hidden' 
           }}></div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6mm' }}>
             <div style={{ width: '22mm', height: '0.3mm', backgroundColor: theme.accent, margin: '0 auto' }}></div>
@@ -244,7 +238,7 @@ const IDCard = ({ student }) => {
   );
 };
 
-const DetailRow = ({ icon, label, value, multiLine = false, accent }) => (
+const DetailRow = ({ icon, label, value, multiLine = false, accent, theme }) => (
   <div style={{ overflow: 'hidden' }}>
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.8mm', fontSize: '3.2pt', color: accent, textTransform: 'uppercase', fontWeight: 800, lineHeight: 1, letterSpacing: '0.1mm' }}>
       {icon && <span style={{ fontSize: '3.5pt' }}>{icon}</span>}
@@ -252,7 +246,7 @@ const DetailRow = ({ icon, label, value, multiLine = false, accent }) => (
     </div>
     <div style={{ 
       fontSize: '5.8pt', 
-      color: '#064e3b', 
+      color: theme.primary, 
       fontWeight: 700, 
       whiteSpace: multiLine ? 'normal' : 'nowrap', 
       maxHeight: multiLine ? '7.5mm' : 'auto',

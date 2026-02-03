@@ -22,31 +22,39 @@ const IDCard = ({ student }) => {
     } catch (e) { return dateStr; }
   };
 
-  // Class-wise background colors (8+ distinct soft colors)
+  // Enhanced premium themes for all classes
   const getClassTheme = (className) => {
     const themes = {
-      'LKG': { bg: 'linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%)', border: '#fda4af', accent: '#fb7185' }, // Rose
-      'UKG': { bg: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)', border: '#7dd3fc', accent: '#38bdf8' }, // Sky
-      'I': { bg: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)', border: '#c4b5fd', accent: '#8b5cf6' },   // Violet
-      'II': { bg: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)', border: '#fdba74', accent: '#fb923c' },  // Orange
-      'III': { bg: 'linear-gradient(135deg, #ecfeff 0%, #cffafe 100%)', border: '#67e8f9', accent: '#22d3ee' }, // Cyan
-      'IV': { bg: 'linear-gradient(135deg, #fefce8 0%, #fef9c3 100%)', border: '#fde047', accent: '#eab308' },  // Yellow
-      'V': { bg: 'linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)', border: '#a5b4fc', accent: '#6366f1' },   // Indigo
-      'VI': { bg: 'linear-gradient(135deg, #f7fee7 0%, #ecfccb 100%)', border: '#bef264', accent: '#a3e635' },  // Lime
-      'VII': { bg: 'linear-gradient(135deg, #fafaf9 0%, #f5f5f4 100%)', border: '#d6d3d1', accent: '#78716c' }, // Stone
+      'LKG': { bg: 'linear-gradient(135deg, #fff1f2 0%, #ffffff 50%, #ffe4e6 100%)', border: '#fb7185', accent: '#e11d48', shadow: 'rgba(225,29,72,0.1)' },
+      'UKG': { bg: 'linear-gradient(135deg, #f0f9ff 0%, #ffffff 50%, #e0f2fe 100%)', border: '#38bdf8', accent: '#0284c7', shadow: 'rgba(2,132,199,0.1)' },
+      'I': { bg: 'linear-gradient(135deg, #f5f3ff 0%, #ffffff 50%, #ede9fe 100%)', border: '#8b5cf6', accent: '#6d28d9', shadow: 'rgba(109,40,217,0.1)' },
+      'II': { bg: 'linear-gradient(135deg, #fff7ed 0%, #ffffff 50%, #ffedd5 100%)', border: '#fb923c', accent: '#ea580c', shadow: 'rgba(234,88,12,0.1)' },
+      'III': { bg: 'linear-gradient(135deg, #ecfeff 0%, #ffffff 50%, #cffafe 100%)', border: '#22d3ee', accent: '#0891b2', shadow: 'rgba(8,145,178,0.1)' },
+      'IV': { bg: 'linear-gradient(135deg, #fefce8 0%, #ffffff 50%, #fef9c3 100%)', border: '#eab308', accent: '#a16207', shadow: 'rgba(161,98,7,0.1)' },
+      'V': { bg: 'linear-gradient(135deg, #eef2ff 0%, #ffffff 50%, #e0e7ff 100%)', border: '#6366f1', accent: '#4338ca', shadow: 'rgba(67,56,202,0.1)' },
+      'VI': { bg: 'linear-gradient(135deg, #f7fee7 0%, #ffffff 50%, #ecfccb 100%)', border: '#a3e635', accent: '#4d7c0f', shadow: 'rgba(77,124,15,0.1)' },
+      'VII': { bg: 'linear-gradient(135deg, #fafaf9 0%, #ffffff 50%, #f5f5f4 100%)', border: '#78716c', accent: '#44403c', shadow: 'rgba(68,64,60,0.1)' },
     };
-    return themes[className] || { bg: 'linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)', border: '#065f46', accent: '#065f46' };
+    return themes[className] || { bg: 'linear-gradient(135deg, #f0fdf4 0%, #ffffff 50%, #dcfce7 100%)', border: '#16a34a', accent: '#15803d', shadow: 'rgba(21,128,61,0.1)' };
   };
 
   const theme = getClassTheme(student.class);
+  const patternMatch = theme.accent.replace('#', '%23');
+  const pattern = `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='${patternMatch}' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6zM36 4V0h-2v4h-4v2h4v4h2V6h4V4h-4z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`;
 
   useEffect(() => {
     if (!student || !qrContainerRef.current) return;
     const qrData = `STUDENT: ${student.studentName}\nROLL: ${student.roll}\nCLASS: ${student.class}\nPHONE: ${student.mobileNumber || 'N/A'}`;
     try {
+      // Create QR with specific width/height to ensure it fits
       const qr = new QRCode({
-        content: qrData, padding: 0, width: 30, height: 30,
-        color: "#064e3b", background: "#ffffff", ecl: "M",
+        content: qrData, 
+        padding: 0, 
+        width: 28, // Generate larger high-quality SVG
+        height: 28,
+        color: theme.accent, 
+        background: "transparent", 
+        ecl: "M",
       });
       setQrCodeSvg(qr.svg());
     } catch (error) { console.error("Error generating QR code:", error); }
@@ -55,6 +63,13 @@ const IDCard = ({ student }) => {
   useEffect(() => {
     if (qrContainerRef.current && qrCodeSvg) {
       qrContainerRef.current.innerHTML = qrCodeSvg;
+      // Ensure the SVG inside fills the container perfectly
+      const svg = qrContainerRef.current.querySelector('svg');
+      if (svg) {
+        svg.style.width = '100%';
+        svg.style.height = '100%';
+        svg.style.display = 'block';
+      }
     }
   }, [qrCodeSvg]);
 
@@ -65,53 +80,90 @@ const IDCard = ({ student }) => {
       flexDirection: 'column', background: theme.bg, position: 'relative',
       fontFamily: 'Inter, system-ui, sans-serif', boxSizing: 'border-box',
     }}>
+      {/* Texture Layer */}
+      <div style={{ position: 'absolute', inset: 0, backgroundImage: pattern, opacity: 1, pointerEvents: 'none', zIndex: 0 }}></div>
+
       {/* Design Elements */}
-      <div style={{ position: 'absolute', top: '-5mm', right: '-5mm', width: '20mm', height: '20mm', backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: '50%', zIndex: 0 }}></div>
+      <div style={{ position: 'absolute', top: '-5mm', right: '-5mm', width: '20mm', height: '20mm', backgroundColor: theme.shadow, borderRadius: '50%', zIndex: 0 }}></div>
+
+      {/* Top Banner - Identity Card Title */}
+      <div style={{ 
+        background: `linear-gradient(90deg, ${theme.accent} 0%, ${theme.secondary || theme.accent} 100%)`, 
+        padding: '0.6mm 3.5mm', 
+        color: 'white', 
+        fontSize: '4.2pt', 
+        fontWeight: 900, 
+        textTransform: 'uppercase', 
+        letterSpacing: '0.4mm',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        width: '100%',
+        zIndex: 2,
+        boxSizing: 'border-box',
+        boxShadow: '0 0.5mm 1mm rgba(0,0,0,0.1)'
+      }}>
+        <span>Student Identity Card</span>
+      </div>
 
       {/* Header - White Background for Green Name */}
-      <div style={{ position: 'relative', background: 'white', zIndex: 1, padding: '1.2mm 1mm 1.5mm 1mm', display: 'flex', flexDirection: 'column', alignItems: 'center', borderBottom: `0.2mm solid ${theme.border}` }}>
-        <h2 style={{ fontSize: '9.2pt', color: '#065f46', margin: '0.5mm 0 1.2mm 0', fontWeight: 900, textTransform: 'uppercase', textAlign: 'center', lineHeight: 1, letterSpacing: '0.1mm' }}>{schoolinfo.name}</h2>
+      <div style={{ position: 'relative', background: 'white', zIndex: 1, padding: '1mm 1mm 1mm 1mm', display: 'flex', flexDirection: 'column', alignItems: 'center', borderBottom: `0.2mm solid ${theme.border}` }}>
+        <h2 style={{ fontSize: '8.2pt', color: '#065f46', margin: '0.3mm 0 0.8mm 0', fontWeight: 900, textTransform: 'uppercase', textAlign: 'center', lineHeight: 1, letterSpacing: '0.1mm' }}>{schoolinfo.name}</h2>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '0mm', width: '100%', justifyContent: 'center' }}>
           <div style={{ height: '0.3mm', flex: 1, background: 'linear-gradient(to left, #fbbf24, transparent)' }}></div>
-          <span style={{ fontSize: '4.2pt', color: '#064e3b', backgroundColor: '#fbbf24', padding: '0.2mm 1.5mm', borderRadius: '30px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.2mm', border: '0.1mm solid rgba(0,0,0,0.1)', zIndex: 2 }}>{schoolinfo.branch} branch</span>
+          <span style={{ fontSize: '3.8pt', color: '#064e3b', backgroundColor: '#fbbf24', padding: '0.2mm 1.5mm', borderRadius: '30px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.2mm', border: '0.1mm solid rgba(0,0,0,0.1)', zIndex: 2 }}>{schoolinfo.branch} branch</span>
           <div style={{ height: '0.3mm', flex: 1, background: 'linear-gradient(to right, #fbbf24, transparent)' }}></div>
         </div>
 
         {/* Info Row - Pill Chips Style */}
-        <div style={{ display: 'flex', gap: '0.8mm', marginTop: '1.5mm', justifyContent: 'center', width: '100%' }}>
-          <div style={{ backgroundColor: '#f1f5f9', border: '0.15mm solid #e2e8f0', padding: '0.4mm 1.2mm', borderRadius: '30px', fontSize: '3.2pt', color: '#475569', fontWeight: 800, whiteSpace: 'nowrap' }}>RUN BY: {schoolinfo.runBy}</div>
-          <div style={{ backgroundColor: '#f1f5f9', border: '0.15mm solid #e2e8f0', padding: '0.4mm 1.2mm', borderRadius: '30px', fontSize: '3.2pt', color: '#475569', fontWeight: 800, whiteSpace: 'nowrap' }}>ESTD: {schoolinfo.estd}</div>
-          <div style={{ backgroundColor: '#f1f5f9', border: '0.15mm solid #e2e8f0', padding: '0.4mm 1.2mm', borderRadius: '30px', fontSize: '3.2pt', color: '#475569', fontWeight: 800, whiteSpace: 'nowrap' }}>REG: {schoolinfo.regNumber}</div>
+        <div style={{ display: 'flex', gap: '0.8mm', marginTop: '1.2mm', justifyContent: 'center', width: '100%' }}>
+          <div style={{ backgroundColor: '#f1f5f9', border: '0.15mm solid #e2e8f0', padding: '0.4mm 1.2mm', borderRadius: '30px', fontSize: '3pt', color: '#475569', fontWeight: 800, whiteSpace: 'nowrap' }}>RUN BY: {schoolinfo.runBy}</div>
+          <div style={{ backgroundColor: '#f1f5f9', border: '0.15mm solid #e2e8f0', padding: '0.4mm 1.2mm', borderRadius: '30px', fontSize: '3pt', color: '#475569', fontWeight: 800, whiteSpace: 'nowrap' }}>ESTD: {schoolinfo.estd}</div>
+          <div style={{ backgroundColor: '#f1f5f9', border: '0.15mm solid #e2e8f0', padding: '0.4mm 1.2mm', borderRadius: '30px', fontSize: '3pt', color: '#475569', fontWeight: 800, whiteSpace: 'nowrap' }}>REG: {schoolinfo.regNumber}</div>
         </div>
 
-        <p style={{ fontSize: '3.5pt', color: '#64748b', margin: '1mm 0 0 0', textAlign: 'center', fontWeight: 600 }}>{schoolinfo.address}</p>
+        <p style={{ fontSize: '3.2pt', color: '#64748b', margin: '0.8mm 0 0 0', textAlign: 'center', fontWeight: 600 }}>{schoolinfo.address}</p>
       </div>
 
       {/* Photo and Identity Row */}
-      <div style={{ display: 'flex', padding: '1.5mm 3.5mm 1.8mm 3.5mm', gap: '3.5mm', zIndex: 2, position: 'relative', alignItems: 'center' }}>
+      <div style={{ display: 'flex', padding: '1.2mm 3.5mm 1.2mm 3.5mm', gap: '3mm', zIndex: 2, position: 'relative', alignItems: 'center' }}>
         <div style={{ width: '20mm', height: '23mm', border: `1.2px solid ${theme.accent}`, borderRadius: '4px', overflow: 'hidden', backgroundColor: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.06)', flexShrink: 0 }}>
           {student.photoUrl ? <img src={student.photoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : 
           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.accent, backgroundColor: '#fdfdfd' }}><FaUser size={22} /></div>}
         </div>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.8mm' }}>
-          <div style={{ fontSize: '3.6pt', color: theme.accent, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1mm' }}>Student Name</div>
-          <h3 style={{ fontSize: '9.2pt', fontWeight: 900, color: '#064e3b', textTransform: 'uppercase', lineHeight: 1.2, margin: 0, letterSpacing: '-0.1mm' }}>{student.studentName}</h3>
-          <div style={{ display: 'flex', gap: '1.2mm', marginTop: '1.2mm' }}>
-             <div style={{ flex: 1, border: `0.3mm solid ${theme.accent}`, color: theme.accent, padding: '0.5mm', borderRadius: '4px', textAlign: 'center', backgroundColor: 'white' }}>
-                <div style={{ fontSize: '3pt', fontWeight: 700, opacity: 0.8, textTransform: 'uppercase' }}>Roll</div>
-                <div style={{ fontSize: '7pt', fontWeight: 900 }}>{student.roll}</div>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.6mm' }}>
+          <div style={{ fontSize: '3.2pt', color: theme.accent, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1mm' }}>Student Name</div>
+          <h3 style={{ fontSize: '8.5pt', fontWeight: 900, color: '#064e3b', textTransform: 'uppercase', lineHeight: 1.2, margin: 0, letterSpacing: '-0.1mm' }}>{student.studentName}</h3>
+          <div style={{ display: 'flex', gap: '1.2mm', marginTop: '0.8mm' }}>
+             <div style={{ flex: 1, border: `0.3mm solid ${theme.accent}`, color: theme.accent, padding: '0.4mm', borderRadius: '4px', textAlign: 'center', backgroundColor: 'white' }}>
+                <div style={{ fontSize: '2.8pt', fontWeight: 700, opacity: 0.8, textTransform: 'uppercase' }}>Roll</div>
+                <div style={{ fontSize: '6.5pt', fontWeight: 900 }}>{student.roll}</div>
              </div>
-             <div style={{ flex: 1, backgroundColor: theme.accent, color: 'white', padding: '0.5mm', borderRadius: '4px', textAlign: 'center' }}>
-                <div style={{ fontSize: '3pt', fontWeight: 700, opacity: 0.8, textTransform: 'uppercase' }}>Class</div>
-                <div style={{ fontSize: '7pt', fontWeight: 900 }}>{student.class}</div>
+             <div style={{ flex: 1, backgroundColor: theme.accent, color: 'white', padding: '0.4mm', borderRadius: '4px', textAlign: 'center' }}>
+                <div style={{ fontSize: '2.8pt', fontWeight: 700, opacity: 0.8, textTransform: 'uppercase' }}>Class</div>
+                <div style={{ fontSize: '6.5pt', fontWeight: 900 }}>{student.class}</div>
              </div>
+          </div>
+          <div style={{ 
+            marginTop: '0.8mm', 
+            backgroundColor: '#f1f5f9', 
+            border: '0.15mm solid #e2e8f0', 
+            padding: '0.5mm 1mm', 
+            borderRadius: '4px', 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center',
+            gap: '1mm'
+          }}>
+            <span style={{ fontSize: '3pt', color: '#64748b', fontWeight: 800, textTransform: 'uppercase' }}>Academic Year:</span>
+            <span style={{ fontSize: '5pt', color: '#1e293b', fontWeight: 900 }}>2026</span>
           </div>
         </div>
       </div>
 
       {/* Details Section */}
-      <div style={{ padding: '0 3.5mm 1mm 3.5mm', flex: 1, zIndex: 2, position: 'relative', display: 'flex', flexDirection: 'column', gap: '1.5mm' }}>
+      <div style={{ padding: '0 3.5mm 1mm 3.5mm', flex: 1, zIndex: 2, position: 'relative', display: 'flex', flexDirection: 'column', gap: '1.2mm' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.6fr', gap: '1.2mm 4mm' }}>
           {/* Column 1: Text Heavy */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5mm' }}>
@@ -150,10 +202,22 @@ const IDCard = ({ student }) => {
       {/* Signature & QR Section */}
       <div style={{ position: 'relative', padding: '1mm 3.5mm 1mm 3.5mm', background: 'white', zIndex: 1, marginTop: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-          <div ref={qrContainerRef} style={{ width: '9mm', height: '9mm', backgroundColor: 'white', padding: '0.4mm', borderRadius: '3px', border: `0.1mm solid ${theme.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}></div>
+          <div ref={qrContainerRef} style={{ 
+            width: '8.5mm', 
+            height: '8.5mm', 
+            backgroundColor: 'white', 
+            padding: '0.2mm', // Reduced padding for better fit
+            borderRadius: '3px', 
+            border: `0.1mm solid ${theme.border}`, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            boxSizing: 'border-box',
+            overflow: 'hidden' // Ensure no bleed out
+          }}></div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6mm' }}>
-            <div style={{ width: '22mm', height: '0.3mm', backgroundColor: '#064e3b', margin: '0 auto' }}></div>
-            <p style={{ fontSize: '4.5pt', fontWeight: 900, color: '#064e3b', textTransform: 'uppercase', margin: 0, letterSpacing: '0.1mm' }}>Authorized Signatory</p>
+            <div style={{ width: '22mm', height: '0.3mm', backgroundColor: theme.accent, margin: '0 auto' }}></div>
+            <p style={{ fontSize: '4.2pt', fontWeight: 900, color: theme.accent, textTransform: 'uppercase', margin: 0, letterSpacing: '0.1mm' }}>Authorized Signatory</p>
           </div>
         </div>
       </div>
@@ -161,14 +225,15 @@ const IDCard = ({ student }) => {
       {/* Full Width Bottom Contact Bar */}
       <div style={{ 
         width: '100%', 
-        backgroundColor: '#065f46', 
+        background: `linear-gradient(90deg, ${theme.accent} 0%, ${theme.secondary || theme.accent} 100%)`, 
         padding: '1mm 0', 
         display: 'flex', 
         justifyContent: 'center', 
         alignItems: 'center', 
         gap: '2mm',
         color: 'white',
-        zIndex: 1
+        zIndex: 1,
+        boxShadow: '0 -0.5mm 1mm rgba(0,0,0,0.05)'
       }}>
         <FaPhone size={4.5} />
         <span style={{ fontSize: '4.8pt', fontWeight: 900, letterSpacing: '0.2mm' }}>{schoolinfo.contact.phone}</span>
@@ -181,12 +246,12 @@ const IDCard = ({ student }) => {
 
 const DetailRow = ({ icon, label, value, multiLine = false, accent }) => (
   <div style={{ overflow: 'hidden' }}>
-    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8mm', fontSize: '3.5pt', color: accent, textTransform: 'uppercase', fontWeight: 800, lineHeight: 1, letterSpacing: '0.1mm' }}>
-      {icon && <span style={{ fontSize: '3.8pt' }}>{icon}</span>}
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8mm', fontSize: '3.2pt', color: accent, textTransform: 'uppercase', fontWeight: 800, lineHeight: 1, letterSpacing: '0.1mm' }}>
+      {icon && <span style={{ fontSize: '3.5pt' }}>{icon}</span>}
       {label}
     </div>
     <div style={{ 
-      fontSize: '6.2pt', 
+      fontSize: '5.8pt', 
       color: '#064e3b', 
       fontWeight: 700, 
       whiteSpace: multiLine ? 'normal' : 'nowrap', 

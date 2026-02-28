@@ -39,9 +39,26 @@ export default function IDCardSelectionModal({ isOpen, onClose, students = [] })
     ).sort((a, b) => {
       // Sort by class first, then by roll
       if (a.class !== b.class) {
+        // LKG, UKG priority
+        const classOrder = ['LKG', 'UKG'];
+        const aIndex = classOrder.indexOf(a.class);
+        const bIndex = classOrder.indexOf(b.class);
+        
+        if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+        if (aIndex !== -1) return -1;
+        if (bIndex !== -1) return 1;
+        
+        // For other classes, try numeric sort first
+        const aNum = parseInt(a.class);
+        const bNum = parseInt(b.class);
+        if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
         return a.class.localeCompare(b.class);
       }
-      return (Number(a.roll) || 0) - (Number(b.roll) || 0);
+      
+      // Then sort by roll within the same class
+      const aRoll = parseInt(a.roll) || 0;
+      const bRoll = parseInt(b.roll) || 0;
+      return aRoll - bRoll;
     });
   }, [students, selectedClasses, searchTerm]);
 

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import ClassSelecorCard from "@/components/common/ClassSelectorCard";
 import {
   getStudentsByClass,
+  getAllStudents,
   createStudent,
   bulkCreateStudents,
   updateStudent,
@@ -29,6 +30,7 @@ export default function StudentsPanel() {
     return null;
   });
   const [students, setStudents] = useState([]);
+  const [allStudents, setAllStudents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -95,7 +97,8 @@ export default function StudentsPanel() {
             caste: student.Caste || student.caste || '',
             category: student.Category || student.category || '',
             bloodGroup: student["Blood Group"] || student.bloodGroup || '',
-            section: student.Section || student.section || ''
+            section: student.Section || student.section || '',
+            admissionType: student["Admission Type"] || student.admissionType || ''
           };
         });
         // Filter out any empty rows (where name and roll are empty)
@@ -149,6 +152,20 @@ export default function StudentsPanel() {
     
     fetchStudents();
   }, [selectedClass]);
+
+  // Fetch all students for ID card modal
+  useEffect(() => {
+    const fetchAllStudents = async () => {
+      try {
+        const data = await getAllStudents(); // We need to create this function
+        setAllStudents(data);
+      } catch (err) {
+        console.error('Error fetching all students:', err);
+      }
+    };
+    
+    fetchAllStudents();
+  }, []);
 
   const refresh = async () => {
     if (!selectedClass) return;
@@ -362,6 +379,23 @@ export default function StudentsPanel() {
             <div>
               <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Father's Name</p>
               <p className="text-gray-700 dark:text-gray-100 font-medium">{stu.fatherName}</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Admission Type
+    if (stu.admissionType) {
+      details.push(
+        <div key="admission-type" className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg border border-gray-100 dark:border-gray-600/30">
+          <div className="flex items-center">
+            {getAdmissionTypeIcon(stu.admissionType)}
+            <div className="ml-2">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Admission Type</p>
+              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getAdmissionTypeColor(stu.admissionType)}`}>
+                {getAdmissionTypeLabel(stu.admissionType)}
+              </span>
             </div>
           </div>
         </div>
@@ -622,6 +656,53 @@ const getInitials = (name) => {
   return `${names[0].charAt(0)}${names[names.length - 1].charAt(0)}`.toUpperCase();
 };
 
+const getAdmissionTypeLabel = (type) => {
+  switch (type) {
+    case 'day scholar': return 'Day Scholar';
+    case 'day hostel': return 'Day Hostel';
+    case 'hosteller': return 'Hosteller';
+    default: return 'Not Specified';
+  }
+};
+
+const getAdmissionTypeIcon = (type) => {
+  switch (type) {
+    case 'day scholar': 
+      return (
+        <svg className="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1z"/>
+        </svg>
+      );
+    case 'day hostel': 
+      return (
+        <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+      );
+    case 'hosteller': 
+      return (
+        <svg className="w-4 h-4 text-purple-500" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M17.75,4.09L15.22,6.03L16.13,9.09L13.5,7.28L10.87,9.09L11.78,6.03L9.25,4.09L12.44,4L13.5,1L14.56,4L17.75,4.09M21.25,11L19.61,12.25L20.2,14.23L18.5,13.06L16.8,14.23L17.39,12.25L15.75,11L17.81,10.95L18.5,9L19.19,10.95L21.25,11M18.97,15.95C19.8,15.87 20.69,17.05 20.16,17.8C19.84,18.25 19.5,18.67 19.08,19.07C15.17,23 8.84,23 4.94,19.07C1.03,15.17 1.03,8.83 4.94,4.93C5.34,4.53 5.76,4.17 6.21,3.85C6.96,3.32 8.14,4.21 8.06,5.04C7.79,7.9 8.75,10.87 10.95,13.06C13.14,15.26 16.1,16.22 18.97,15.95M17.33,17.97C14.5,17.81 11.7,16.64 9.53,14.5C7.36,12.31 6.2,9.5 6.04,6.68C3.23,9.82 3.34,14.64 6.35,17.66C9.37,20.67 14.19,20.78 17.33,17.97Z"/>
+        </svg>
+      );
+    default: 
+      return (
+        <svg className="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+        </svg>
+      );
+  }
+};
+
+const getAdmissionTypeColor = (type) => {
+  switch (type) {
+    case 'day scholar': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300';
+    case 'day hostel': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300';
+    case 'hosteller': return 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300';
+    default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-300';
+  }
+};
+
   return (
     <div className="p-2 bg-gray-50 dark:bg-gray-900 min-h-full">
       <div className="flex flex-col h-full">
@@ -694,52 +775,57 @@ const getInitials = (name) => {
                 >
                   {/* Card Header */}
                   <div className="p-4 bg-gradient-to-r from-blue-600 to-indigo-700 dark:from-blue-800 dark:to-indigo-900 rounded-t-2xl">
-                    <div className="flex items-start space-x-4">
-                      {/* Student Photo */}
-                      <div className="relative flex-shrink-0">
-                        {stu.photoUrl ? (
-                          <img
-                            className="h-16 w-16 rounded-lg object-cover border-2 border-white dark:border-gray-200 shadow-sm"
-                            src={stu.photoUrl}
-                            alt={stu.studentName}
-                            onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.style.display = 'none';
-                              e.target.nextElementSibling.style.display = 'flex';
-                            }}
-                          />
-                        ) : (
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start space-x-4">
+                        {/* Student Photo */}
+                        <div className="relative flex-shrink-0">
+                          {stu.photoUrl ? (
+                            <img
+                              className="h-16 w-16 rounded-lg object-cover border-2 border-white dark:border-gray-200 shadow-sm"
+                              src={stu.photoUrl}
+                              alt={stu.studentName}
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.style.display = 'none';
+                                e.target.nextElementSibling.style.display = 'flex';
+                              }}
+                            />
+                          ) : (
+                            <div 
+                              className="h-16 w-16 rounded-lg border-2 border-white dark:border-gray-200 shadow-sm flex items-center justify-center bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100 font-bold text-xl"
+                            >
+                              {getInitials(stu.studentName)}
+                            </div>
+                          )}
+                          {/* Fallback that shows up if image fails to load */}
                           <div 
-                            className="h-16 w-16 rounded-lg border-2 border-white dark:border-gray-200 shadow-sm flex items-center justify-center bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100 font-bold text-xl"
+                            className="h-16 w-16 rounded-lg border-2 border-white dark:border-gray-200 shadow-sm hidden items-center justify-center bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100 font-bold text-xl"
                           >
                             {getInitials(stu.studentName)}
                           </div>
-                        )}
-                        {/* Fallback that shows up if image fails to load */}
-                        <div 
-                          className="h-16 w-16 rounded-lg border-2 border-white dark:border-gray-200 shadow-sm hidden items-center justify-center bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100 font-bold text-xl"
-                        >
-                          {getInitials(stu.studentName)}
                         </div>
-                      </div>
-                      
-                      {/* Student Info */}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-bold text-white truncate">
-                          {stu.studentName || 'No Name'}
-                        </h3>
-                        <div className="mt-1.5 flex flex-wrap gap-1.5">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-white/20 text-white border border-white/30">
-                            Roll: {stu.roll || 'N/A'}
-                          </span>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-white/20 text-white border border-white/30">
-                            Class: {stu.class || 'N/A'}
-                          </span>
-                          {stu.session && (
+                        
+                        {/* Student Info */}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-lg font-semibold text-white truncate">
+                            {stu.studentName}
+                          </h3>
+                          <div className="flex items-center space-x-2 mt-1">
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-white/20 text-white border border-white/30">
-                              {stu.session}
+                              Class: {stu.class || 'N/A'}
                             </span>
-                          )}
+                            {stu.admissionType && (
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getAdmissionTypeColor(stu.admissionType)} border border-white/30`}>
+                                {getAdmissionTypeIcon(stu.admissionType)}
+                                <span className="ml-1">{getAdmissionTypeLabel(stu.admissionType)}</span>
+                              </span>
+                            )}
+                            {stu.session && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-white/20 text-white border border-white/30">
+                                {stu.session}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -800,8 +886,7 @@ const getInitials = (name) => {
       <IDCardSelectionModal
         isOpen={showIDSelection}
         onClose={() => setShowIDSelection(false)}
-        students={students}
-        selectedClass={selectedClass}
+        students={allStudents}
       />
 
       {/* Add Student Modal */}
@@ -868,6 +953,7 @@ const getInitials = (name) => {
           "Blood Group",
           "Caste",
           "Category",
+          "Admission Type",
         ]}
         onImport={handleExcelImport}
       />

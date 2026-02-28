@@ -382,8 +382,35 @@ export default function IDCardPrintModal({ isOpen, onClose, students = [], selec
   });
 
   if (!isOpen) return null;
+  
+  // Sort students by class first, then by roll
+  const sortedStudents = [...students].sort((a, b) => {
+    // Sort by class first
+    if (a.class !== b.class) {
+      // LKG, UKG priority
+      const classOrder = ['LKG', 'UKG'];
+      const aIndex = classOrder.indexOf(a.class);
+      const bIndex = classOrder.indexOf(b.class);
+      
+      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+      if (aIndex !== -1) return -1;
+      if (bIndex !== -1) return 1;
+      
+      // For other classes, try numeric sort first
+      const aNum = parseInt(a.class);
+      const bNum = parseInt(b.class);
+      if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
+      return a.class.localeCompare(b.class);
+    }
+    
+    // Then sort by roll within the same class
+    const aRoll = parseInt(a.roll) || 0;
+    const bRoll = parseInt(b.roll) || 0;
+    return aRoll - bRoll;
+  });
+  
   const pages = [];
-  for (let i = 0; i < students.length; i += 10) pages.push(students.slice(i, i + 10));
+  for (let i = 0; i < sortedStudents.length; i += 10) pages.push(sortedStudents.slice(i, i + 10));
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-xl p-4">
@@ -393,7 +420,7 @@ export default function IDCardPrintModal({ isOpen, onClose, students = [], selec
             <h3 className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter">Print ID Cards</h3>
             <div className="flex items-center gap-2 mt-1">
               <span className="px-3 py-0.5 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 text-[10px] font-black rounded-full uppercase tracking-widest">{selectedClass}</span>
-              <span className="text-xs font-semibold text-gray-400">{students.length} Students</span>
+              <span className="text-xs font-semibold text-gray-400">{sortedStudents.length} Students</span>
             </div>
           </div>
           <div className="flex items-center gap-3">

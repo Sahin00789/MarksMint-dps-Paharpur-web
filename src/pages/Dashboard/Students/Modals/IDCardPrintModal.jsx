@@ -102,7 +102,7 @@ const IDCard = ({ student }) => {
       background: `${DOT_PATTERN}, linear-gradient(170deg, #f0fdf4 0%, #ecfdf5 55%, #f0fdfa 100%)`,
       borderRadius: '10px', overflow: 'hidden',
       display: 'flex', flexDirection: 'column',
-      position: 'relative', fontFamily: "'Inter', system-ui, sans-serif",
+      position: 'relative', fontFamily: "'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif",
       boxSizing: 'border-box',
       border: `0.5mm solid ${C.g400}`,
       boxShadow: `
@@ -157,15 +157,15 @@ const IDCard = ({ student }) => {
         }}>{schoolinfo.name}</h2>
 
         <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-          <div style={{ flex: 1, height: '0.25mm', background: `linear-gradient(to left, ${C.a500}, transparent)` }} />
+          <div style={{ flex: 1, height: '0.25mm', background: `linear-gradient(to left, #1e40af, transparent)` }} />
           <span style={{
-            fontSize: '3.5pt', color: 'white',
-            background: `linear-gradient(90deg, ${C.a500}, ${C.a200}cc)`,
-            padding: '0.4mm 2mm', borderRadius: '30px', fontWeight: 900,
+            fontSize: '4.2pt', color: '#ffffff',
+            background: `linear-gradient(90deg, #1e40af, #3b82f6)`,
+            padding: '0.5mm 2.5mm', borderRadius: '30px', fontWeight: 900,
             textTransform: 'uppercase', letterSpacing: '0.2mm',
-            boxShadow: '0 0.5mm 1.5mm rgba(245,158,11,0.35)',
+            boxShadow: '0 0.5mm 1.5mm rgba(30,64,175,0.35)',
           }}>{schoolinfo.branch} Branch</span>
-          <div style={{ flex: 1, height: '0.25mm', background: `linear-gradient(to right, ${C.a500}, transparent)` }} />
+          <div style={{ flex: 1, height: '0.25mm', background: `linear-gradient(to right, #1e40af, transparent)` }} />
         </div>
 
         {/* Chips */}
@@ -178,8 +178,8 @@ const IDCard = ({ student }) => {
             <div key={i} style={{
               background: chip.bg, color: chip.color,
               border: `0.2mm solid ${chip.border}`,
-              padding: '0.4mm 1.2mm', borderRadius: '30px',
-              fontSize: '3.2pt', fontWeight: 800, whiteSpace: 'nowrap',
+              padding: '0.5mm 1.5mm', borderRadius: '30px',
+              fontSize: '3.8pt', fontWeight: 800, whiteSpace: 'nowrap',
               boxShadow: 'inset 0 0.3mm 0.5mm rgba(255,255,255,0.8)',
             }}>{chip.label}</div>
           ))}
@@ -194,7 +194,7 @@ const IDCard = ({ student }) => {
           boxShadow: 'inset 0 0.2mm 0.5mm rgba(5,150,105,0.07)',
         }}>
           <FaMapMarkerAlt style={{ fontSize: '3.5pt', color: C.t600, flexShrink: 0 }} />
-          <span style={{ fontSize: '3.2pt', color: '#374151', fontWeight: 600, textAlign: 'center', lineHeight: 1.2 }}>
+          <span style={{ fontSize: '3.8pt', color: '#374151', fontWeight: 600, textAlign: 'center', lineHeight: 1.2 }}>
             {schoolinfo.address}
           </span>
         </div>
@@ -230,7 +230,7 @@ const IDCard = ({ student }) => {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.7mm', paddingTop: '0.3mm' }}>
           <div style={{ fontSize: '3.3pt', color: C.g600, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12mm' }}>Student Name</div>
           <h3 style={{
-            fontSize: '9pt', fontWeight: 900, color: C.g900,
+            fontSize: '8.2pt', fontWeight: 900, color: C.g900,
             textTransform: 'uppercase', lineHeight: 1.1, margin: 0,
           }}>{student.studentName}</h3>
 
@@ -279,7 +279,7 @@ const IDCard = ({ student }) => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2mm' }}>
             <DetailRow icon={<FaUserFriends />} label="Father's Name" value={student.fatherName} iconColor={C.t600} />
             <DetailRow icon={<FaFemale />} label="Mother's Name" value={student.motherName} iconColor={C.g600} />
-            <DetailRow icon={<FaMapMarkerAlt />} label="Address" value={student.address} multiLine iconColor={C.i600} valueFontSize="4.8pt" />
+            <DetailRow icon={<FaMapMarkerAlt />} label="Address" value={student.address} multiLine iconColor={C.i600} valueFontSize="5.5pt" />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2mm' }}>
             <DetailRow icon={<FaVenusMars />} label="Gender" value={student.gender} iconColor={C.t600} />

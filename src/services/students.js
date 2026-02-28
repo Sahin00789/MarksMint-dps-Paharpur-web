@@ -5,8 +5,7 @@ export async function getStudentsByClass(cls, exam = null, params = {}) {
   try {
     const requestParams = { 
       class: cls, 
-      exam,
-      _ts: Date.now(),
+      ...(exam && { exam }),
       ...params 
     };
     
@@ -31,30 +30,6 @@ export async function getStudentsByClass(cls, exam = null, params = {}) {
         student.marks = {};
       }
       
-      // Ensure the exam exists in marks
-      if (exam && !student.marks[exam]) {
-        student.marks[exam] = {};
-      }
-      
-      // Process each subject's marks to ensure they're objects
-      if (student.marks[exam]) {
-        Object.keys(student.marks[exam]).forEach(subject => {
-          // If the mark is a string or number, convert it to { written: value } format
-          if (student.marks[exam][subject] !== null && 
-              typeof student.marks[exam][subject] === 'object' && 
-              !Array.isArray(student.marks[exam][subject])) {
-            // Already in the correct format
-            return;
-          }
-          
-          // Convert legacy format to new format
-          const markValue = student.marks[exam][subject];
-          if (markValue !== undefined && markValue !== null) {
-            student.marks[exam][subject] = { written: String(markValue) };
-          }
-        });
-      }
-      
       return student;
     });
     
@@ -63,6 +38,45 @@ export async function getStudentsByClass(cls, exam = null, params = {}) {
     
   } catch (error) {
     console.error('Error in getStudentsByClass:', error);
+    throw error;
+  }
+}
+
+export async function getAllStudents(params = {}) {
+  try {
+    const requestParams = { 
+      ...params 
+    };
+    
+    console.debug('[students] GET /students (all) params ->', requestParams);
+    const res = await api.get('/students', { params: requestParams });
+    let data = res?.data;
+    
+    // Ensure we have an array of students
+    let students = [];
+    if (Array.isArray(data)) {
+      students = data;
+    } else if (data && typeof data === 'object') {
+      if (Array.isArray(data.students)) students = data.students;
+      else if (Array.isArray(data.data)) students = data.data;
+      else if (Array.isArray(data.results)) students = data.results;
+    }
+    
+    // Process each student's marks to ensure consistent format
+    students = students.map(student => {
+      // Ensure marks is always an object
+      if (!student.marks || typeof student.marks !== 'object') {
+        student.marks = {};
+      }
+      
+      return student;
+    });
+    
+    console.debug('[students] Processed', students.length, 'all students');
+    return students;
+    
+  } catch (error) {
+    console.error('Error in getAllStudents:', error);
     throw error;
   }
 }

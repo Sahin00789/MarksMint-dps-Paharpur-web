@@ -820,6 +820,11 @@ const getAdmissionTypeColor = (type) => {
                                 <span className="ml-1">{getAdmissionTypeLabel(stu.admissionType)}</span>
                               </span>
                             )}
+                            
+                            {stu.roll && (
+                             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-white/20 text-white border border-white/30">
+                              Roll: {stu.roll} </span>
+                           )}
                             {stu.session && (
                               <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-white/20 text-white border border-white/30">
                                 {stu.session}
